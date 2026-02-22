@@ -123,13 +123,18 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   logout: () => {
+    // Preserve spreadsheet link across logouts so sync isn't lost
+    const { spreadsheetId, sheetGids } = get();
     localStorage.removeItem(LS_KEY);
+    if (spreadsheetId) {
+      localStorage.setItem(LS_KEY, JSON.stringify({ spreadsheetId, sheetGids }));
+    }
     set({
       user: null,
       accessToken: null,
       tokenExpiresAt: null,
-      spreadsheetId: null,
-      sheetGids: {},
+      spreadsheetId,
+      sheetGids,
     });
   },
 
