@@ -30,11 +30,16 @@ export function ShopView() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [pokeballOpen, setPokeballOpen] = useState(false);
   const [showPanel, setShowPanel] = useState(false);
+  const [showSync, setShowSync] = useState(false);
+  const [syncInput, setSyncInput] = useState('');
+  const [syncing, setSyncing] = useState(false);
   const selectedAgentId = useUIStore(s => s.selectedAgentId);
   const selectAgent = useUIStore(s => s.selectAgent);
   const clearAgent = useUIStore(s => s.clearAgent);
   const addToast = useUIStore(s => s.addToast);
   const logout = useAuthStore(s => s.logout);
+  const spreadsheetId = useAuthStore(s => s.spreadsheetId);
+  const setSpreadsheet = useAuthStore(s => s.setSpreadsheet);
 
   const houses = useCityStore(s => s.houses);
   const residents = useCityStore(s => s.residents);
@@ -95,6 +100,33 @@ export function ShopView() {
     clearAgent();
     addToast('Agent removed', 'info');
   }, [removeResident, clearAgent, addToast]);
+
+  const handleLinkDevice = useCallback(async () => {
+    const id = syncInput.trim();
+    if (!id) return;
+    setSyncing(true);
+    try {
+      // Verify the spreadsheet exists by fetching its metadata
+      const token = useAuthStore.getState().accessToken;
+      const res = await fetch(
+        `https://sheets.googleapis.com/v4/spreadsheets/${id}?fields=spreadsheetId,sheets.properties`,
+        { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } },
+      );
+      if (!res.ok) throw new Error('Spreadsheet not found');
+      const data = await res.json();
+      const gids: Record<string, number> = {};
+      for (const sheet of data.sheets ?? []) {
+        gids[sheet.properties.title] = sheet.properties.sheetId;
+      }
+      setSpreadsheet(data.spreadsheetId, gids);
+      // Reload data from the linked spreadsheet
+      setTimeout(() => window.location.reload(), 300);
+    } catch {
+      addToast('Invalid spreadsheet ID', 'error');
+    } finally {
+      setSyncing(false);
+    }
+  }, [syncInput, setSpreadsheet, addToast]);
 
   const handleCloseMenu = () => {
     setMenuOpen(false);
@@ -228,8 +260,49 @@ export function ShopView() {
             <div className="shop-panel__footer">
               <span className="shop-panel__stats">Houses: {houses.length} &nbsp; Agents: {residents.length}</span>
               <div style={{ flex: 1 }} />
+              <button className="mod-btn mod-btn--sm" onClick={() => setShowSync(true)}>Sync</button>
               <button className="mod-btn mod-btn--danger mod-btn--sm" onClick={logout}>Logout</button>
             </div>
+
+            {/* ── Sync modal ── */}
+            {showSync && (
+              <div className="sync-modal-overlay" onClick={() => setShowSync(false)}>
+                <div className="sync-modal" onClick={e => e.stopPropagation()}>
+                  <div className="sync-modal__title">Link Devices</div>
+                  <div className="sync-modal__section">
+                    <div className="sync-modal__label">Your Spreadsheet ID</div>
+                    <div className="sync-modal__id"
+                      onClick={() => {
+                        navigator.clipboard.writeText(spreadsheetId ?? '');
+                        addToast('Copied!', 'success');
+                      }}
+                    >
+                      {spreadsheetId ?? 'None'}
+                    </div>
+                    <div className="sync-modal__hint">Tap to copy. Share this ID with your other device.</div>
+                  </div>
+                  <div className="sync-modal__section">
+                    <div className="sync-modal__label">Link to another device</div>
+                    <input
+                      className="sync-modal__input"
+                      placeholder="Paste spreadsheet ID..."
+                      value={syncInput}
+                      onChange={e => setSyncInput(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && handleLinkDevice()}
+                    />
+                    <button
+                      className="mod-btn"
+                      style={{ width: '100%', marginTop: 8 }}
+                      onClick={handleLinkDevice}
+                      disabled={syncing || !syncInput.trim()}
+                    >
+                      {syncing ? 'Linking...' : 'Link'}
+                    </button>
+                  </div>
+                  <button className="sync-modal__close" onClick={() => setShowSync(false)}>Close</button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

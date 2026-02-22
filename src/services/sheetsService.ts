@@ -35,49 +35,6 @@ function objectToRow(sheetName: SheetName, obj: any): string[] {
 }
 
 export const SheetsService = {
-  // ── Find existing PokéCity spreadsheet in Drive ──
-  async findExistingSpreadsheet(): Promise<{ spreadsheetId: string; sheetGids: Record<string, number> } | null> {
-    const { accessToken } = useAuthStore.getState();
-    if (!accessToken) throw new Error('Not authenticated');
-
-    // Search for spreadsheets with "Pok" in name (avoids accented char issues)
-    const query = `name contains 'Pok' and name contains 'City' and mimeType='application/vnd.google-apps.spreadsheet' and trashed=false`;
-    const res = await fetch(
-      `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=files(id,name)&orderBy=createdTime&pageSize=5`,
-      { headers: headers(accessToken) },
-    );
-    if (!res.ok) {
-      console.warn('Drive search failed:', res.status, await res.text().catch(() => ''));
-      return null;
-    }
-
-    const data = await res.json();
-    console.log('Drive search results:', data.files);
-    if (!data.files || data.files.length === 0) return null;
-
-    // Use the oldest (first-created) spreadsheet so all devices converge
-    const fileId = data.files[0].id;
-
-    // Fetch the spreadsheet metadata to get sheet GIDs
-    const sheetRes = await fetch(
-      `${SHEETS_API}/${fileId}?fields=spreadsheetId,sheets.properties`,
-      { headers: headers(accessToken) },
-    );
-    if (!sheetRes.ok) {
-      console.warn('Sheet metadata fetch failed:', sheetRes.status);
-      return null;
-    }
-
-    const sheetData = await sheetRes.json();
-    const sheetGids: Record<string, number> = {};
-    for (const sheet of sheetData.sheets ?? []) {
-      sheetGids[sheet.properties.title] = sheet.properties.sheetId;
-    }
-
-    console.log('Found existing spreadsheet:', sheetData.spreadsheetId);
-    return { spreadsheetId: sheetData.spreadsheetId, sheetGids };
-  },
-
   // ── Bootstrap: create spreadsheet with all sheets ──
   async createSpreadsheet(title: string): Promise<{ spreadsheetId: string; sheetGids: Record<string, number> }> {
     const { accessToken } = useAuthStore.getState();

@@ -9,10 +9,9 @@ const SCOPES = [
   'email',
   'profile',
   'https://www.googleapis.com/auth/spreadsheets',
-  'https://www.googleapis.com/auth/drive.metadata.readonly',
 ].join(' ');
 // Bump this when scopes change to force re-login
-const SCOPES_VERSION = 2;
+const SCOPES_VERSION = 3;
 
 interface AuthState {
   user: GoogleUser | null;

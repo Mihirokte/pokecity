@@ -62,24 +62,13 @@ export default function App() {
     (async () => {
       try {
         if (!spreadsheetId) {
-          // Try to find an existing PokéCity spreadsheet first (cross-device sync)
-          const existing = await SheetsService.findExistingSpreadsheet();
-          if (cancelled) return;
-
-          if (existing) {
-            setSpreadsheet(existing.spreadsheetId, existing.sheetGids);
-            addToast('Found your existing city!', 'success');
-            return;
-          }
-
-          // No existing spreadsheet — create a new one
           const { spreadsheetId: newId, sheetGids } =
             await SheetsService.createSpreadsheet(`PokéCity - ${user?.name ?? 'User'}`);
           if (cancelled) return;
           setSpreadsheet(newId, sheetGids);
           await SheetsService.append('Meta', { key: 'cityName', value: 'My City' });
           if (cancelled) return;
-          addToast('City created! Start building.', 'success');
+          addToast('City created! Use Sync button to link devices.', 'success');
           return;
         }
 
