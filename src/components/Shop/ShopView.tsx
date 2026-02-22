@@ -3,8 +3,9 @@ import { useCityStore } from '../../stores/cityStore';
 import { useUIStore } from '../../stores/uiStore';
 import { useAuthStore } from '../../stores/authStore';
 import { HOUSE_TYPES, HOUSE_TYPE_LIST } from '../../config/houseTypes';
-import { spriteUrl, spriteAnimatedUrl, PLAYER_POKEMON_ID } from '../../config/pokemon';
+import { spriteAnimatedUrl, PLAYER_POKEMON_ID } from '../../config/pokemon';
 import { PokeCenterScene } from './PokeCenterScene';
+import { AgentCard } from './AgentCard';
 import { CalendarModule } from '../Modules/CalendarModule';
 import { TasksModule } from '../Modules/TasksModule';
 import { NotesModule } from '../Modules/NotesModule';
@@ -40,19 +41,18 @@ export function ShopView() {
   const removeResident = useCityStore(s => s.removeResident);
   const findOrCreateHouse = useCityStore(s => s.findOrCreateHouse);
 
-  const [hoveredAgentId, setHoveredAgentId] = useState<string | null>(null);
   const [addingAgent, setAddingAgent] = useState(false);
   const [newAgentName, setNewAgentName] = useState('');
   const [newAgentType, setNewAgentType] = useState<HouseModuleType>('tasks');
 
   const selectedAgent = residents.find(r => r.id === selectedAgentId);
-  const hoveredAgent = residents.find(r => r.id === hoveredAgentId);
-  const detailAgent = hoveredAgent;
 
   const getAgentHouseType = (r: Resident) => {
     const house = houses.find(h => h.id === r.houseId);
     return house ? HOUSE_TYPES[house.type] : null;
   };
+
+  const getAgentHouse = (r: Resident) => houses.find(h => h.id === r.houseId) ?? null;
 
   const getModuleComponent = () => {
     if (!selectedAgent) return null;
@@ -92,12 +92,9 @@ export function ShopView() {
 
   return (
     <div className="pokecenter">
-      {/* ─── Three.js isometric scene (canvas background) ─── */}
       <PokeCenterScene dimmed={menuOpen} />
 
-      {/* ─── DOM overlays on top of canvas ─── */}
       <div className={`pokecenter__ui${menuOpen ? ' pokecenter__ui--dim' : ''}`}>
-        {/* Shopkeeper (Pikachu) — DOM overlay positioned over the 3D counter */}
         <div
           className="pokecenter__keeper"
           onClick={() => !menuOpen && setMenuOpen(true)}
@@ -117,7 +114,6 @@ export function ShopView() {
         )}
       </div>
 
-      {/* ─── Shop panel overlay ─── */}
       {menuOpen && (
         <div
           className="shop-overlay"
@@ -129,7 +125,7 @@ export function ShopView() {
                 <button className="shop-panel__back" onClick={clearAgent}>←</button>
               )}
               <span className="shop-panel__title">
-                {selectedAgent ? selectedAgent.name : 'AGENTS'}
+                {selectedAgent ? selectedAgent.name : 'DASHBOARD'}
               </span>
               <button className="shop-panel__close" onClick={handleCloseMenu}>✕</button>
             </div>
@@ -137,67 +133,61 @@ export function ShopView() {
             <div className="shop-panel__body">
               {!selectedAgent ? (
                 <>
-                  <div className="shop-panel__list">
+                  {/* ── Dashboard grid ── */}
+                  <div className="dash-grid">
                     {residents.map(r => {
-                      const ht = getAgentHouseType(r);
+                      const house = getAgentHouse(r);
+                      if (!house) return null;
                       return (
-                        <div
+                        <AgentCard
                           key={r.id}
-                          className="shop-panel__row"
+                          resident={r}
+                          house={house}
                           onClick={() => selectAgent(r.id)}
-                          onMouseEnter={() => setHoveredAgentId(r.id)}
-                          onMouseLeave={() => setHoveredAgentId(null)}
-                        >
-                          <img src={spriteUrl(r.emoji)} alt={r.name} className="shop-panel__row-sprite" />
-                          <span className="shop-panel__row-name">{r.name}</span>
-                          {ht && (
-                            <span className="shop-panel__row-badge" style={{ background: ht.color }}>
-                              {ht.label}
-                            </span>
-                          )}
-                          <span className="shop-panel__row-arrow">▸</span>
-                        </div>
+                        />
                       );
                     })}
-                    {residents.length === 0 && !addingAgent && (
-                      <div className="mod-empty">No agents yet. Add one to get started!</div>
-                    )}
+
+                    {/* Add agent card */}
                     {addingAgent ? (
-                      <div className="shop-panel__add-form">
-                        <select value={newAgentType} onChange={e => setNewAgentType(e.target.value as HouseModuleType)}>
-                          {HOUSE_TYPE_LIST.map(ht => (
-                            <option key={ht.type} value={ht.type}>{ht.label}</option>
-                          ))}
-                        </select>
-                        <input
-                          autoFocus placeholder="Agent name..." value={newAgentName}
-                          onChange={e => setNewAgentName(e.target.value)}
-                          onKeyDown={e => e.key === 'Enter' && handleAddAgent()}
-                        />
-                        <button className="mod-btn" onClick={handleAddAgent}>Add</button>
-                        <button className="mod-btn mod-btn--danger" onClick={() => setAddingAgent(false)}>✕</button>
+                      <div className="dash-card dash-card--add-form">
+                        <div className="shop-panel__add-form">
+                          <select value={newAgentType} onChange={e => setNewAgentType(e.target.value as HouseModuleType)}>
+                            {HOUSE_TYPE_LIST.map(ht => (
+                              <option key={ht.type} value={ht.type}>{ht.label}</option>
+                            ))}
+                          </select>
+                          <input
+                            autoFocus placeholder="Agent name..." value={newAgentName}
+                            onChange={e => setNewAgentName(e.target.value)}
+                            onKeyDown={e => e.key === 'Enter' && handleAddAgent()}
+                          />
+                          <div style={{ display: 'flex', gap: 6 }}>
+                            <button className="mod-btn" onClick={handleAddAgent}>Add</button>
+                            <button className="mod-btn mod-btn--danger" onClick={() => setAddingAgent(false)}>Cancel</button>
+                          </div>
+                        </div>
                       </div>
                     ) : (
-                      <button className="shop-panel__add-btn" onClick={() => setAddingAgent(true)}>+ Add Agent</button>
+                      <div className="dash-card dash-card--add" onClick={() => setAddingAgent(true)}>
+                        <div className="dash-card__add-icon">+</div>
+                        <div className="dash-card__add-label">Add Agent</div>
+                      </div>
                     )}
                   </div>
-                  {detailAgent && (
-                    <div className="shop-panel__detail">
-                      <img src={spriteUrl(detailAgent.emoji)} alt="" className="shop-panel__detail-sprite" />
-                      <div className="shop-panel__detail-info">
-                        <div className="shop-panel__detail-name">{detailAgent.name}</div>
-                        <div className="shop-panel__detail-role">{detailAgent.role}</div>
-                        <div className="shop-panel__detail-bio">{detailAgent.bio}</div>
-                      </div>
-                    </div>
+
+                  {residents.length === 0 && !addingAgent && (
+                    <div className="mod-empty" style={{ marginTop: 40 }}>No agents yet. Add one to get started!</div>
                   )}
                 </>
               ) : (
                 <>
                   <div className="shop-panel__agent-bar">
-                    <div className="resident-panel__avatar" style={{ background: selectedAgent.avatarBg }}>
-                      <img src={spriteUrl(selectedAgent.emoji)} alt={selectedAgent.name} className="resident-panel__sprite" />
-                    </div>
+                    <img
+                      src={spriteAnimatedUrl(selectedAgent.emoji)}
+                      alt={selectedAgent.name}
+                      className="shop-panel__agent-sprite"
+                    />
                     <div>
                       <div className="resident-panel__name">{selectedAgent.name}</div>
                       <div className="resident-panel__role">{selectedAgent.role}</div>
@@ -213,7 +203,7 @@ export function ShopView() {
             </div>
 
             <div className="shop-panel__footer">
-              <span className="shop-panel__stats">🏠 {houses.length} &nbsp; 👤 {residents.length}</span>
+              <span className="shop-panel__stats">Houses: {houses.length} &nbsp; Agents: {residents.length}</span>
               <div style={{ flex: 1 }} />
               <button className="mod-btn mod-btn--danger mod-btn--sm" onClick={logout}>Logout</button>
             </div>
