@@ -15,9 +15,9 @@ function LoadingScreen() {
       background: 'linear-gradient(135deg, #2b2d42, #1a1c2c)',
     }}>
       <div style={{ position: 'relative', width: 280, height: 200 }}>
-        <div className="layer"><img src="/assets/ui/modal.png" alt="" /></div>
+        <div className="layer"><img src={`${import.meta.env.BASE_URL}assets/ui/modal.png`} alt="" /></div>
         <div className="layer layer--fg" style={{ flexDirection: 'column', gap: 16 }}>
-          <img src="/assets/gif/loading.gif" alt="Loading" style={{ width: 48, height: 48 }} />
+          <img src={`${import.meta.env.BASE_URL}assets/gif/loading.gif`} alt="Loading" style={{ width: 48, height: 48 }} />
           <span style={{ fontFamily: 'VT323, monospace', fontSize: 20, color: '#c0cbdc' }}>
             Loading your city...
           </span>

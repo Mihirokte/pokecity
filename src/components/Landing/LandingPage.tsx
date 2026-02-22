@@ -10,10 +10,10 @@ export function LandingPage() {
       <p className="subtitle">A gamified productivity city</p>
 
       <button className="auth-btn" onClick={login}>
-        <img src="/assets/ui/link_pointer.png" alt="" className="arrow left pixel"
+        <img src={`${import.meta.env.BASE_URL}assets/ui/link_pointer.png`} alt="" className="arrow left pixel"
              style={{ transform: 'scaleX(-1)' }} />
         <span>Sign in with Google</span>
-        <img src="/assets/ui/link_pointer.png" alt="" className="arrow right pixel" />
+        <img src={`${import.meta.env.BASE_URL}assets/ui/link_pointer.png`} alt="" className="arrow right pixel" />
       </button>
 
       {!clientId && (
