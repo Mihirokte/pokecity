@@ -8,7 +8,7 @@ const SCOPES = [
   'email',
   'profile',
   'https://www.googleapis.com/auth/spreadsheets',
-  'https://www.googleapis.com/auth/drive.file',
+  'https://www.googleapis.com/auth/drive.metadata.readonly',
 ].join(' ');
 
 interface AuthState {

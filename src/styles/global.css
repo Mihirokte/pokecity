@@ -11,11 +11,16 @@ body {
   color: #f4f4f4;
   text-shadow: 1px 1px 0 rgba(0,0,0,.3);
   overflow: hidden;
-  min-height: 100vh;
+  height: 100dvh;
+  height: 100vh; /* fallback */
   user-select: none;
+  position: fixed;
+  width: 100%;
+  top: 0;
+  left: 0;
 }
 
-#root { min-height: 100vh; }
+#root { height: 100dvh; height: 100vh; }
 img { image-rendering: pixelated; }
 
 ::-webkit-scrollbar { width: 6px; }
@@ -121,7 +126,8 @@ select { appearance: none; }
 
 .pokecenter {
   position: relative;
-  width: 100vw;
+  width: 100%;
+  height: 100dvh;
   height: 100vh;
   overflow: hidden;
   background:
@@ -1007,35 +1013,43 @@ select { appearance: none; }
 
 /* ─── Mobile responsive ─── */
 @media (max-width: 767px) {
+  .pokecenter { height: 100dvh; }
+
+  .shop-overlay { padding: 0; }
   .shop-panel {
-    width: 100vw;
+    width: 100%;
+    height: 100dvh;
     height: 100vh;
+    max-height: 100dvh;
     max-height: 100vh;
     border-radius: 0;
     border: none;
   }
-  .shop-panel__header { padding: 10px 12px; }
+  .shop-panel__header { padding: 8px 12px; }
   .shop-panel__title { font-size: 11px; }
+  .shop-panel__footer { padding: 6px 12px; }
+  .shop-panel__stats { font-size: 8px; }
   .dash-grid { grid-template-columns: 1fr; padding: 8px; gap: 8px; }
-  .dash-card__sprite { width: 56px; height: 56px; }
+  .dash-card__sprite { width: 48px; height: 48px; }
   .dash-card__name { font-size: 9px; }
+  .dash-card__widget { min-height: 50px; }
   .shop-panel__agent-bar { padding: 8px 12px; gap: 8px; }
-  .shop-panel__agent-sprite { width: 48px; height: 48px; }
+  .shop-panel__agent-sprite { width: 44px; height: 44px; }
   .module-container { padding: 0 10px 10px; }
 
   .pokecenter__keeper-sprite { width: 150px; height: 150px; }
   .pokecenter__bubble { font-size: 16px; max-width: 200px; padding: 10px 16px; }
 
-  .mod-header { margin-bottom: 10px; }
+  .mod-header { margin-bottom: 8px; }
   .mod-title { font-size: 9px; }
   .mod-btn { padding: 5px 10px; font-size: 7px; }
-  .mod-card { padding: 10px; }
+  .mod-card { padding: 8px; margin-bottom: 6px; }
   .mod-tabs { gap: 4px; }
   .mod-tab { padding: 4px 8px; font-size: 6px; }
-  .mod-form { padding: 12px; }
+  .mod-form { padding: 10px; }
   .timer-display { font-size: 22px; }
-  .modal { width: 95vw; }
-  .modal .layer--fg { padding: 24px 20px 28px; }
+  .modal { width: 95vw; max-height: 90dvh; }
+  .modal .layer--fg { padding: 20px 16px 24px; }
 }
 
 @media (max-width: 400px) {

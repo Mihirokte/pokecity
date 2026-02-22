@@ -40,17 +40,22 @@ export const SheetsService = {
     const { accessToken } = useAuthStore.getState();
     if (!accessToken) throw new Error('Not authenticated');
 
-    // Search for spreadsheets with "PokéCity" in the name that the user owns
-    const query = `name contains 'PokéCity' and mimeType='application/vnd.google-apps.spreadsheet' and trashed=false`;
+    // Search for spreadsheets with "Pok" in name (avoids accented char issues)
+    const query = `name contains 'Pok' and name contains 'City' and mimeType='application/vnd.google-apps.spreadsheet' and trashed=false`;
     const res = await fetch(
-      `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=files(id,name)&orderBy=createdTime desc&pageSize=1`,
+      `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=files(id,name)&orderBy=createdTime&pageSize=5`,
       { headers: headers(accessToken) },
     );
-    if (!res.ok) return null;
+    if (!res.ok) {
+      console.warn('Drive search failed:', res.status, await res.text().catch(() => ''));
+      return null;
+    }
 
     const data = await res.json();
+    console.log('Drive search results:', data.files);
     if (!data.files || data.files.length === 0) return null;
 
+    // Use the oldest (first-created) spreadsheet so all devices converge
     const fileId = data.files[0].id;
 
     // Fetch the spreadsheet metadata to get sheet GIDs
@@ -58,7 +63,10 @@ export const SheetsService = {
       `${SHEETS_API}/${fileId}?fields=spreadsheetId,sheets.properties`,
       { headers: headers(accessToken) },
     );
-    if (!sheetRes.ok) return null;
+    if (!sheetRes.ok) {
+      console.warn('Sheet metadata fetch failed:', sheetRes.status);
+      return null;
+    }
 
     const sheetData = await sheetRes.json();
     const sheetGids: Record<string, number> = {};
@@ -66,6 +74,7 @@ export const SheetsService = {
       sheetGids[sheet.properties.title] = sheet.properties.sheetId;
     }
 
+    console.log('Found existing spreadsheet:', sheetData.spreadsheetId);
     return { spreadsheetId: sheetData.spreadsheetId, sheetGids };
   },
 
