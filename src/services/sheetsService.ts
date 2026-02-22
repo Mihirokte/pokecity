@@ -35,6 +35,40 @@ function objectToRow(sheetName: SheetName, obj: any): string[] {
 }
 
 export const SheetsService = {
+  // ── Find existing PokéCity spreadsheet in Drive ──
+  async findExistingSpreadsheet(): Promise<{ spreadsheetId: string; sheetGids: Record<string, number> } | null> {
+    const { accessToken } = useAuthStore.getState();
+    if (!accessToken) throw new Error('Not authenticated');
+
+    // Search for spreadsheets with "PokéCity" in the name that the user owns
+    const query = `name contains 'PokéCity' and mimeType='application/vnd.google-apps.spreadsheet' and trashed=false`;
+    const res = await fetch(
+      `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=files(id,name)&orderBy=createdTime desc&pageSize=1`,
+      { headers: headers(accessToken) },
+    );
+    if (!res.ok) return null;
+
+    const data = await res.json();
+    if (!data.files || data.files.length === 0) return null;
+
+    const fileId = data.files[0].id;
+
+    // Fetch the spreadsheet metadata to get sheet GIDs
+    const sheetRes = await fetch(
+      `${SHEETS_API}/${fileId}?fields=spreadsheetId,sheets.properties`,
+      { headers: headers(accessToken) },
+    );
+    if (!sheetRes.ok) return null;
+
+    const sheetData = await sheetRes.json();
+    const sheetGids: Record<string, number> = {};
+    for (const sheet of sheetData.sheets ?? []) {
+      sheetGids[sheet.properties.title] = sheet.properties.sheetId;
+    }
+
+    return { spreadsheetId: sheetData.spreadsheetId, sheetGids };
+  },
+
   // ── Bootstrap: create spreadsheet with all sheets ──
   async createSpreadsheet(title: string): Promise<{ spreadsheetId: string; sheetGids: Record<string, number> }> {
     const { accessToken } = useAuthStore.getState();
