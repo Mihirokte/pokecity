@@ -4,7 +4,6 @@ import { useUIStore } from '../../stores/uiStore';
 import { useAuthStore } from '../../stores/authStore';
 import { HOUSE_TYPES, HOUSE_TYPE_LIST } from '../../config/houseTypes';
 import { spriteAnimatedUrl, PLAYER_POKEMON_ID } from '../../config/pokemon';
-import { PokeCenterScene } from './PokeCenterScene';
 import { AgentCard } from './AgentCard';
 import { CalendarModule } from '../Modules/CalendarModule';
 import { TasksModule } from '../Modules/TasksModule';
@@ -92,9 +91,8 @@ export function ShopView() {
 
   return (
     <div className="pokecenter">
-      <PokeCenterScene dimmed={menuOpen} />
-
-      <div className={`pokecenter__ui${menuOpen ? ' pokecenter__ui--dim' : ''}`}>
+      {/* ── Pikachu + speech bubble ── */}
+      <div className={`pokecenter__hero${menuOpen ? ' pokecenter__hero--dim' : ''}`}>
         <div
           className="pokecenter__keeper"
           onClick={() => !menuOpen && setMenuOpen(true)}
@@ -109,11 +107,12 @@ export function ShopView() {
 
         {!menuOpen && (
           <div className="pokecenter__interact">
-            ▲ Click the shopkeeper
+            Click the shopkeeper
           </div>
         )}
       </div>
 
+      {/* ── Dashboard panel ── */}
       {menuOpen && (
         <div
           className="shop-overlay"
@@ -133,7 +132,6 @@ export function ShopView() {
             <div className="shop-panel__body">
               {!selectedAgent ? (
                 <>
-                  {/* ── Dashboard grid ── */}
                   <div className="dash-grid">
                     {residents.map(r => {
                       const house = getAgentHouse(r);
@@ -148,7 +146,6 @@ export function ShopView() {
                       );
                     })}
 
-                    {/* Add agent card */}
                     {addingAgent ? (
                       <div className="dash-card dash-card--add-form">
                         <div className="shop-panel__add-form">
