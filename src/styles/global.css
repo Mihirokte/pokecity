@@ -116,7 +116,7 @@ select { appearance: none; }
 
 
 /* ═══════════════════════════════════════════════
-   POKEMON CENTER SCENE
+   POKEMON CENTER (Three.js scene + DOM overlays)
    ═══════════════════════════════════════════════ */
 
 .pokecenter {
@@ -126,121 +126,42 @@ select { appearance: none; }
   overflow: hidden;
 }
 
-/* ─── Scene ─── */
-.pokecenter__scene {
+/* ─── DOM overlay layer (Pikachu + interaction prompt) ─── */
+.pokecenter__ui {
   position: absolute;
   inset: 0;
-  display: flex;
-  flex-direction: column;
-  transition: filter .35s, opacity .35s;
-}
-.pokecenter__scene--dim {
-  filter: brightness(0.25) blur(3px);
+  z-index: 10;
   pointer-events: none;
+  transition: opacity .35s;
 }
-
-/* ─── Back Wall ─── */
-.pokecenter__wall {
-  flex: 0 0 46%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  position: relative;
-  background:
-    linear-gradient(180deg,
-      #905c38 0%, #905c38 6%,
-      #a87048 6%, #a87048 8%,
-      #c88858 8%, #c88858 88%,
-      #a06840 88%, #a06840 92%,
-      #c88858 92%, #c88858 100%
-    );
-  box-shadow:
-    inset 50px 0 40px -30px rgba(70,35,15,.4),
-    inset -50px 0 40px -30px rgba(70,35,15,.4);
-  padding-top: 5%;
-}
-
-/* ─── Equipment on back wall ─── */
-.pokecenter__machines {
-  display: flex;
-  gap: 20px;
-  align-items: flex-end;
-  margin-bottom: auto;
-}
-
-.pokecenter__machine { position: relative; }
-
-/* Bookshelf */
-.pokecenter__machine--shelf {
-  width: 48px;
-  height: 56px;
-  background:
-    linear-gradient(transparent 30%, #4a3020 30%, #4a3020 33%, transparent 33%,
-                    transparent 58%, #4a3020 58%, #4a3020 61%, transparent 61%),
-    linear-gradient(180deg, #7a5838 0%, #6a4a30 100%);
-  border: 2px solid #4a3020;
-  border-radius: 2px 2px 0 0;
-  box-shadow: 0 2px 4px rgba(0,0,0,.3);
-}
-
-/* Healing machine */
-.pokecenter__machine--healer {
-  width: 60px;
-  height: 52px;
-  background: linear-gradient(180deg, #e8e8f0 0%, #c8c8d0 100%);
-  border: 2px solid #a0a0a8;
-  border-radius: 8px 8px 2px 2px;
-  box-shadow: 0 2px 6px rgba(0,0,0,.3);
-}
-.pokecenter__healer-light {
-  position: absolute;
-  top: 10px; left: 50%;
-  transform: translateX(-50%);
-  width: 12px; height: 12px;
-  background: radial-gradient(circle, #ff6666, #cc3333);
-  border-radius: 50%;
-  box-shadow: 0 0 8px rgba(255,80,80,.6), 0 0 16px rgba(255,80,80,.3);
-  animation: pulse 2s ease-in-out infinite;
-}
-
-/* PC terminal */
-.pokecenter__machine--pc {
-  width: 44px;
-  height: 48px;
-  background: linear-gradient(180deg, #404850 0%, #353d45 100%);
-  border: 2px solid #2a3038;
-  border-radius: 3px 3px 0 0;
-  box-shadow: 0 2px 4px rgba(0,0,0,.3);
-}
-.pokecenter__pc-screen {
-  position: absolute;
-  top: 6px; left: 6px; right: 6px;
-  height: 20px;
-  background: linear-gradient(180deg, #50b8d8, #3898b8);
-  border: 1px solid #2878a0;
-  border-radius: 1px;
-  box-shadow: 0 0 6px rgba(56,152,184,.4);
+.pokecenter__ui--dim {
+  opacity: 0.15;
+  pointer-events: none;
 }
 
 /* ─── Shopkeeper (Pikachu) ─── */
 .pokecenter__keeper {
+  position: absolute;
+  left: 50%;
+  top: 30%;
+  transform: translateX(-50%);
   display: flex;
   flex-direction: column;
   align-items: center;
   cursor: pointer;
-  margin-bottom: -6px;
-  z-index: 5;
+  pointer-events: all;
+  z-index: 12;
   transition: transform .15s;
 }
 .pokecenter__keeper:hover {
-  transform: scale(1.05);
+  transform: translateX(-50%) scale(1.06);
 }
 .pokecenter__keeper-sprite {
   width: 80px;
   height: 80px;
   image-rendering: pixelated;
   object-fit: contain;
-  filter: drop-shadow(0 3px 6px rgba(0,0,0,.5));
+  filter: drop-shadow(0 4px 8px rgba(0,0,0,.6));
   animation: float 3s ease-in-out infinite;
 }
 
@@ -279,117 +200,28 @@ select { appearance: none; }
   border-bottom: 7px solid #fff;
 }
 
-/* ─── Counter ─── */
-.pokecenter__counter {
-  width: 78%;
-  position: relative;
-  z-index: 4;
-}
-.pokecenter__counter-top {
-  height: 10px;
-  background: linear-gradient(180deg, #d0d0d8, #b8b8c0);
-  border: 1px solid #a0a0a8;
-  border-bottom: none;
-  border-radius: 2px 2px 0 0;
-}
-.pokecenter__counter-front {
-  height: 30px;
-  background: linear-gradient(180deg, #a0a0a8 0%, #808088 100%);
-  border: 1px solid #686870;
-  border-top: 1px solid #b8b8c0;
-  position: relative;
-}
-/* Counter shadow on floor */
-.pokecenter__counter-front::after {
-  content: '';
-  position: absolute;
-  bottom: -10px;
-  left: -5%; right: -5%;
-  height: 10px;
-  background: linear-gradient(180deg, rgba(0,0,0,.25), transparent);
-}
-
-/* ─── Floor ─── */
-.pokecenter__floor {
-  flex: 1;
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 20px;
-  background:
-    linear-gradient(to right, rgba(0,0,0,.06) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(0,0,0,.06) 1px, transparent 1px),
-    #b84028;
-  background-size: 32px 32px;
-  border-top: 3px solid #803820;
-  box-shadow:
-    inset 50px 0 40px -30px rgba(100,30,15,.4),
-    inset -50px 0 40px -30px rgba(100,30,15,.4);
-}
-
-/* Pokeball emblem on floor */
-.pokecenter__pokeball {
-  width: 120px;
-  height: 120px;
-  border-radius: 50%;
-  border: 4px solid rgba(72,184,136,.4);
-  position: relative;
-}
-.pokecenter__pokeball::before {
-  content: '';
-  position: absolute;
-  top: 50%; left: -4px; right: -4px;
-  height: 4px;
-  background: rgba(72,184,136,.4);
-  transform: translateY(-50%);
-}
-.pokecenter__pokeball::after {
-  content: '';
-  position: absolute;
-  top: 50%; left: 50%;
-  transform: translate(-50%, -50%);
-  width: 26px; height: 26px;
-  border-radius: 50%;
-  border: 4px solid rgba(72,184,136,.4);
-}
-
 /* Interaction prompt */
 .pokecenter__interact {
+  position: absolute;
+  left: 50%;
+  bottom: 14%;
+  transform: translateX(-50%);
   font-family: 'VT323', monospace;
   font-size: 18px;
   color: #f4f4f4;
   animation: glow 2.5s ease-in-out infinite;
   letter-spacing: 1px;
+  pointer-events: none;
+  z-index: 12;
+  text-shadow: 0 2px 6px rgba(0,0,0,.7);
 }
 
-/* Potted plants on floor */
-.pokecenter__plant {
-  position: absolute;
-  width: 32px;
-  height: 44px;
-  top: 16px;
+/* ─── Three.js canvas styling ─── */
+.pokecenter canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
-.pokecenter__plant--left { left: 12%; }
-.pokecenter__plant--right { right: 12%; }
-.pokecenter__plant::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 2px;
-  width: 28px; height: 28px;
-  background: radial-gradient(ellipse at 50% 60%, #48a058, #2d7838);
-  border-radius: 50%;
-}
-.pokecenter__plant::after {
-  content: '';
-  position: absolute;
-  bottom: 0; left: 6px;
-  width: 20px; height: 18px;
-  background: linear-gradient(180deg, #c06830, #a05828);
-  border-radius: 2px 2px 4px 4px;
-}
-
 
 /* ═══════════════════════════════════════════════
    SHOP PANEL OVERLAY
@@ -823,6 +655,7 @@ select { appearance: none; }
 
 /* ─── Mobile responsive ─── */
 @media (max-width: 767px) {
+  /* Shop panel fullscreen on mobile */
   .shop-panel {
     width: 100vw;
     height: 100vh;
@@ -830,12 +663,40 @@ select { appearance: none; }
     border-radius: 0;
     border: none;
   }
-  .pokecenter__machines { gap: 10px; }
-  .pokecenter__machine--shelf { width: 36px; height: 42px; }
-  .pokecenter__machine--healer { width: 44px; height: 40px; }
-  .pokecenter__machine--pc { width: 36px; height: 38px; }
+  .shop-panel__header { padding: 10px 12px; }
+  .shop-panel__title { font-size: 11px; }
+  .shop-panel__row { padding: 8px 10px; gap: 8px; }
+  .shop-panel__row-sprite { width: 32px; height: 32px; }
+  .shop-panel__row-name { font-size: 8px; }
+  .shop-panel__row-badge { font-size: 11px; padding: 2px 6px; }
+  .shop-panel__add-form { flex-direction: column; }
+  .shop-panel__add-form select,
+  .shop-panel__add-form input { font-size: 9px; }
+  .shop-panel__detail { padding: 10px 12px; gap: 10px; }
+  .shop-panel__detail-sprite { width: 40px; height: 40px; }
+  .shop-panel__agent-bar { padding: 8px 12px; gap: 8px; }
+  .module-container { padding: 0 10px 10px; }
+
+  /* Pokemon Center DOM overlays */
   .pokecenter__keeper-sprite { width: 56px; height: 56px; }
-  .pokecenter__bubble { font-size: 12px; max-width: 140px; padding: 6px 10px; }
-  .pokecenter__pokeball { width: 80px; height: 80px; }
-  .pokecenter__plant { display: none; }
+  .pokecenter__bubble { font-size: 11px; max-width: 120px; padding: 5px 8px; }
+  .pokecenter__interact { font-size: 14px; }
+
+  /* Module styles */
+  .mod-header { margin-bottom: 10px; }
+  .mod-title { font-size: 9px; }
+  .mod-btn { padding: 5px 10px; font-size: 7px; }
+  .mod-card { padding: 10px; }
+  .mod-tabs { gap: 4px; }
+  .mod-tab { padding: 4px 8px; font-size: 6px; }
+  .mod-form { padding: 12px; }
+  .timer-display { font-size: 22px; }
+  .modal { width: 95vw; }
+  .modal .layer--fg { padding: 24px 20px 28px; }
+}
+
+/* Very small screens */
+@media (max-width: 400px) {
+  .pokecenter__keeper-sprite { width: 44px; height: 44px; }
+  .pokecenter__bubble { font-size: 10px; max-width: 100px; }
 }

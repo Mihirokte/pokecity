@@ -4,6 +4,7 @@ import { useUIStore } from '../../stores/uiStore';
 import { useAuthStore } from '../../stores/authStore';
 import { HOUSE_TYPES, HOUSE_TYPE_LIST } from '../../config/houseTypes';
 import { spriteUrl, spriteAnimatedUrl, PLAYER_POKEMON_ID } from '../../config/pokemon';
+import { PokeCenterScene } from './PokeCenterScene';
 import { CalendarModule } from '../Modules/CalendarModule';
 import { TasksModule } from '../Modules/TasksModule';
 import { NotesModule } from '../Modules/NotesModule';
@@ -91,52 +92,29 @@ export function ShopView() {
 
   return (
     <div className="pokecenter">
-      {/* ─── Scene (Pokemon Center interior) ─── */}
-      <div className={`pokecenter__scene${menuOpen ? ' pokecenter__scene--dim' : ''}`}>
-        {/* Back wall with equipment */}
-        <div className="pokecenter__wall">
-          <div className="pokecenter__machines">
-            <div className="pokecenter__machine pokecenter__machine--shelf" />
-            <div className="pokecenter__machine pokecenter__machine--healer">
-              <div className="pokecenter__healer-light" />
-            </div>
-            <div className="pokecenter__machine pokecenter__machine--pc">
-              <div className="pokecenter__pc-screen" />
-            </div>
-            <div className="pokecenter__machine pokecenter__machine--shelf" />
-          </div>
+      {/* ─── Three.js isometric scene (canvas background) ─── */}
+      <PokeCenterScene dimmed={menuOpen} />
 
-          {/* Shopkeeper (Pikachu) */}
-          <div
-            className="pokecenter__keeper"
-            onClick={() => !menuOpen && setMenuOpen(true)}
-          >
-            <img
-              src={spriteAnimatedUrl(PLAYER_POKEMON_ID)}
-              alt="Shopkeeper"
-              className="pokecenter__keeper-sprite"
-            />
-            <div className="pokecenter__bubble">{speechText}</div>
-          </div>
-
-          {/* Counter */}
-          <div className="pokecenter__counter">
-            <div className="pokecenter__counter-top" />
-            <div className="pokecenter__counter-front" />
-          </div>
+      {/* ─── DOM overlays on top of canvas ─── */}
+      <div className={`pokecenter__ui${menuOpen ? ' pokecenter__ui--dim' : ''}`}>
+        {/* Shopkeeper (Pikachu) — DOM overlay positioned over the 3D counter */}
+        <div
+          className="pokecenter__keeper"
+          onClick={() => !menuOpen && setMenuOpen(true)}
+        >
+          <img
+            src={spriteAnimatedUrl(PLAYER_POKEMON_ID)}
+            alt="Shopkeeper"
+            className="pokecenter__keeper-sprite"
+          />
+          <div className="pokecenter__bubble">{speechText}</div>
         </div>
 
-        {/* Floor with pokeball emblem */}
-        <div className="pokecenter__floor">
-          <div className="pokecenter__plant pokecenter__plant--left" />
-          <div className="pokecenter__plant pokecenter__plant--right" />
-          <div className="pokecenter__pokeball" />
-          {!menuOpen && (
-            <div className="pokecenter__interact">
-              ▲ Click the shopkeeper
-            </div>
-          )}
-        </div>
+        {!menuOpen && (
+          <div className="pokecenter__interact">
+            ▲ Click the shopkeeper
+          </div>
+        )}
       </div>
 
       {/* ─── Shop panel overlay ─── */}
@@ -146,26 +124,19 @@ export function ShopView() {
           onClick={(e) => { if (e.target === e.currentTarget) handleCloseMenu(); }}
         >
           <div className="shop-panel">
-            {/* Header */}
             <div className="shop-panel__header">
               {selectedAgent && (
-                <button className="shop-panel__back" onClick={clearAgent}>
-                  ←
-                </button>
+                <button className="shop-panel__back" onClick={clearAgent}>←</button>
               )}
               <span className="shop-panel__title">
                 {selectedAgent ? selectedAgent.name : 'AGENTS'}
               </span>
-              <button className="shop-panel__close" onClick={handleCloseMenu}>
-                ✕
-              </button>
+              <button className="shop-panel__close" onClick={handleCloseMenu}>✕</button>
             </div>
 
-            {/* Body */}
             <div className="shop-panel__body">
               {!selectedAgent ? (
                 <>
-                  {/* Agent list */}
                   <div className="shop-panel__list">
                     {residents.map(r => {
                       const ht = getAgentHouseType(r);
@@ -177,17 +148,10 @@ export function ShopView() {
                           onMouseEnter={() => setHoveredAgentId(r.id)}
                           onMouseLeave={() => setHoveredAgentId(null)}
                         >
-                          <img
-                            src={spriteUrl(r.emoji)}
-                            alt={r.name}
-                            className="shop-panel__row-sprite"
-                          />
+                          <img src={spriteUrl(r.emoji)} alt={r.name} className="shop-panel__row-sprite" />
                           <span className="shop-panel__row-name">{r.name}</span>
                           {ht && (
-                            <span
-                              className="shop-panel__row-badge"
-                              style={{ background: ht.color }}
-                            >
+                            <span className="shop-panel__row-badge" style={{ background: ht.color }}>
                               {ht.label}
                             </span>
                           )}
@@ -195,129 +159,63 @@ export function ShopView() {
                         </div>
                       );
                     })}
-
                     {residents.length === 0 && !addingAgent && (
-                      <div className="mod-empty">
-                        No agents yet. Add one to get started!
-                      </div>
+                      <div className="mod-empty">No agents yet. Add one to get started!</div>
                     )}
-
                     {addingAgent ? (
                       <div className="shop-panel__add-form">
-                        <select
-                          value={newAgentType}
-                          onChange={e =>
-                            setNewAgentType(e.target.value as HouseModuleType)
-                          }
-                        >
+                        <select value={newAgentType} onChange={e => setNewAgentType(e.target.value as HouseModuleType)}>
                           {HOUSE_TYPE_LIST.map(ht => (
-                            <option key={ht.type} value={ht.type}>
-                              {ht.label}
-                            </option>
+                            <option key={ht.type} value={ht.type}>{ht.label}</option>
                           ))}
                         </select>
                         <input
-                          autoFocus
-                          placeholder="Agent name..."
-                          value={newAgentName}
+                          autoFocus placeholder="Agent name..." value={newAgentName}
                           onChange={e => setNewAgentName(e.target.value)}
-                          onKeyDown={e =>
-                            e.key === 'Enter' && handleAddAgent()
-                          }
+                          onKeyDown={e => e.key === 'Enter' && handleAddAgent()}
                         />
-                        <button className="mod-btn" onClick={handleAddAgent}>
-                          Add
-                        </button>
-                        <button
-                          className="mod-btn mod-btn--danger"
-                          onClick={() => setAddingAgent(false)}
-                        >
-                          ✕
-                        </button>
+                        <button className="mod-btn" onClick={handleAddAgent}>Add</button>
+                        <button className="mod-btn mod-btn--danger" onClick={() => setAddingAgent(false)}>✕</button>
                       </div>
                     ) : (
-                      <button
-                        className="shop-panel__add-btn"
-                        onClick={() => setAddingAgent(true)}
-                      >
-                        + Add Agent
-                      </button>
+                      <button className="shop-panel__add-btn" onClick={() => setAddingAgent(true)}>+ Add Agent</button>
                     )}
                   </div>
-
-                  {/* Detail panel on hover */}
                   {detailAgent && (
                     <div className="shop-panel__detail">
-                      <img
-                        src={spriteUrl(detailAgent.emoji)}
-                        alt=""
-                        className="shop-panel__detail-sprite"
-                      />
+                      <img src={spriteUrl(detailAgent.emoji)} alt="" className="shop-panel__detail-sprite" />
                       <div className="shop-panel__detail-info">
-                        <div className="shop-panel__detail-name">
-                          {detailAgent.name}
-                        </div>
-                        <div className="shop-panel__detail-role">
-                          {detailAgent.role}
-                        </div>
-                        <div className="shop-panel__detail-bio">
-                          {detailAgent.bio}
-                        </div>
+                        <div className="shop-panel__detail-name">{detailAgent.name}</div>
+                        <div className="shop-panel__detail-role">{detailAgent.role}</div>
+                        <div className="shop-panel__detail-bio">{detailAgent.bio}</div>
                       </div>
                     </div>
                   )}
                 </>
               ) : (
-                /* Module view */
                 <>
                   <div className="shop-panel__agent-bar">
-                    <div
-                      className="resident-panel__avatar"
-                      style={{ background: selectedAgent.avatarBg }}
-                    >
-                      <img
-                        src={spriteUrl(selectedAgent.emoji)}
-                        alt={selectedAgent.name}
-                        className="resident-panel__sprite"
-                      />
+                    <div className="resident-panel__avatar" style={{ background: selectedAgent.avatarBg }}>
+                      <img src={spriteUrl(selectedAgent.emoji)} alt={selectedAgent.name} className="resident-panel__sprite" />
                     </div>
                     <div>
-                      <div className="resident-panel__name">
-                        {selectedAgent.name}
-                      </div>
-                      <div className="resident-panel__role">
-                        {selectedAgent.role}
-                      </div>
+                      <div className="resident-panel__name">{selectedAgent.name}</div>
+                      <div className="resident-panel__role">{selectedAgent.role}</div>
                     </div>
                     <div style={{ flex: 1 }} />
-                    <button
-                      className="resident-panel__delete"
-                      onClick={() => handleRemoveAgent(selectedAgent.id)}
-                    >
-                      Remove
-                    </button>
+                    <button className="resident-panel__delete" onClick={() => handleRemoveAgent(selectedAgent.id)}>Remove</button>
                   </div>
                   <div className="module-container">
-                    {ModuleComponent && (
-                      <ModuleComponent resident={selectedAgent} />
-                    )}
+                    {ModuleComponent && <ModuleComponent resident={selectedAgent} />}
                   </div>
                 </>
               )}
             </div>
 
-            {/* Footer */}
             <div className="shop-panel__footer">
-              <span className="shop-panel__stats">
-                🏠 {houses.length} &nbsp; 👤 {residents.length}
-              </span>
+              <span className="shop-panel__stats">🏠 {houses.length} &nbsp; 👤 {residents.length}</span>
               <div style={{ flex: 1 }} />
-              <button
-                className="mod-btn mod-btn--danger mod-btn--sm"
-                onClick={logout}
-              >
-                Logout
-              </button>
+              <button className="mod-btn mod-btn--danger mod-btn--sm" onClick={logout}>Logout</button>
             </div>
           </div>
         </div>
