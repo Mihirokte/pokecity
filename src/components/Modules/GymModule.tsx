@@ -4,24 +4,23 @@ import { useUIStore } from '../../stores/uiStore';
 import { SheetsService } from '../../services/sheetsService';
 import type { Resident, HealthMetric } from '../../types';
 
-const METRIC_TYPES = ['weight', 'sleep', 'steps', 'heartRate', 'water', 'calories', 'mood', 'custom'] as const;
+const METRIC_TYPES = ['weight', 'reps', 'sets', 'duration', 'distance', 'calories', 'custom'] as const;
 
 const METRIC_LABELS: Record<string, string> = {
   weight: 'Weight',
-  sleep: 'Sleep',
-  steps: 'Steps',
-  heartRate: 'Heart Rate',
-  water: 'Water',
+  reps: 'Reps',
+  sets: 'Sets',
+  duration: 'Duration',
+  distance: 'Distance',
   calories: 'Calories',
-  mood: 'Mood',
   custom: 'Custom',
 };
 
 const PRESETS: { label: string; metricType: string; unit: string }[] = [
   { label: 'Weight (kg)', metricType: 'weight', unit: 'kg' },
-  { label: 'Sleep (hrs)', metricType: 'sleep', unit: 'hrs' },
-  { label: 'Steps', metricType: 'steps', unit: 'steps' },
-  { label: 'Mood (/10)', metricType: 'mood', unit: '/10' },
+  { label: 'Reps', metricType: 'reps', unit: 'reps' },
+  { label: 'Duration (min)', metricType: 'duration', unit: 'min' },
+  { label: 'Distance (km)', metricType: 'distance', unit: 'km' },
 ];
 
 interface HealthForm {
@@ -40,7 +39,7 @@ const emptyForm = (metricType: string): HealthForm => ({
   notes: '',
 });
 
-export function HealthModule({ resident }: { resident: Resident }) {
+export function GymModule({ resident }: { resident: Resident }) {
   const moduleData = useCityStore(s => s.moduleData);
   const setModuleData = useCityStore(s => s.setModuleData);
   const addToast = useUIStore(s => s.addToast);
@@ -148,7 +147,7 @@ export function HealthModule({ resident }: { resident: Resident }) {
     <div>
       {/* Header */}
       <div className="mod-header">
-        <span className="mod-title">Health Tracker</span>
+        <span className="mod-title">Gym</span>
         <button className="mod-btn mod-btn--sm" onClick={() => { setForm(emptyForm(activeType)); setShowForm(!showForm); }}>
           {showForm ? 'Cancel' : '+ Log'}
         </button>

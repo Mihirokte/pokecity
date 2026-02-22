@@ -14,8 +14,6 @@ export type SheetName =
   | 'CalendarEvents'
   | 'Tasks'
   | 'Notes'
-  | 'TimeEntries'
-  | 'Habits'
   | 'TripPlans'
   | 'HealthMetrics'
   | 'ShoppingItems';
@@ -25,10 +23,8 @@ export type HouseModuleType =
   | 'calendar'
   | 'tasks'
   | 'notes'
-  | 'timetracker'
-  | 'habits'
   | 'travel'
-  | 'health'
+  | 'gym'
   | 'shopping';
 
 // ─── City ───
@@ -106,30 +102,6 @@ export interface Note {
   updatedAt: string;
 }
 
-export interface TimeEntry {
-  id: string;
-  residentId: string;
-  taskRef: string;
-  description: string;
-  startTime: string;
-  endTime: string;
-  durationMinutes: string;
-  date: string;
-  createdAt: string;
-}
-
-export interface Habit {
-  id: string;
-  residentId: string;
-  name: string;
-  frequency: 'daily' | 'weekdays' | 'weekly' | 'custom';
-  currentStreak: string;
-  longestStreak: string;
-  completionHistory: string; // JSON array of date strings
-  createdAt: string;
-  updatedAt: string;
-}
-
 export interface TripPlan {
   id: string;
   residentId: string;
@@ -187,8 +159,6 @@ export interface AllModuleData {
   calendarEvents: CalendarEvent[];
   tasks: Task[];
   notes: Note[];
-  timeEntries: TimeEntry[];
-  habits: Habit[];
   tripPlans: TripPlan[];
   healthMetrics: HealthMetric[];
   shoppingItems: ShoppingItem[];

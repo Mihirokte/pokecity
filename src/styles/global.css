@@ -848,8 +848,28 @@ select { appearance: none; }
 .resident-panel__name {
   font-family: 'dogicabold', monospace; font-size: 11px; color: #ffcd75;
 }
+.resident-panel__name:hover { text-decoration: underline; text-decoration-style: dotted; }
 .resident-panel__role {
   font-family: 'VT323', monospace; font-size: 15px; color: #8b9bb4;
+}
+.resident-panel__role:hover { text-decoration: underline; text-decoration-style: dotted; }
+.agent-edit-input {
+  background: rgba(0,0,0,.3);
+  border: 1px solid #ffcd75;
+  border-radius: 3px;
+  padding: 3px 6px;
+  font-family: 'dogicabold', monospace;
+  font-size: 11px;
+  color: #ffcd75;
+  width: 100%;
+  outline: none;
+}
+.agent-edit-input--sm {
+  font-family: 'VT323', monospace;
+  font-size: 15px;
+  color: #8b9bb4;
+  border-color: rgba(255,255,255,.2);
+  margin-top: 2px;
 }
 .resident-panel__bio {
   font-family: 'VT323', monospace; font-size: 15px; color: #c0cbdc;

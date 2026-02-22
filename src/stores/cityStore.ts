@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { AllModuleData, CalendarEvent, Habit, HealthMetric, House, HouseModuleType, Note, Resident, ShoppingItem, Task, TimeEntry, TripPlan } from '../types';
+import type { AllModuleData, CalendarEvent, HealthMetric, House, HouseModuleType, Note, Resident, ShoppingItem, Task, TripPlan } from '../types';
 import { SheetsService } from '../services/sheetsService';
 import { AVATAR_COLORS, HOUSE_TYPES } from '../config/houseTypes';
 import { RESIDENT_POKEMON_IDS } from '../config/pokemon';
@@ -19,6 +19,7 @@ interface CityState {
   findOrCreateHouse: (type: HouseModuleType) => Promise<House>;
   addResident: (houseId: string, name: string) => Promise<void>;
   removeResident: (id: string) => Promise<void>;
+  updateResident: (id: string, updates: Partial<Resident>) => Promise<void>;
   setModuleData: <K extends keyof AllModuleData>(key: K, data: AllModuleData[K]) => void;
   loadAllData: () => Promise<void>;
 }
@@ -27,8 +28,6 @@ const emptyModuleData: AllModuleData = {
   calendarEvents: [],
   tasks: [],
   notes: [],
-  timeEntries: [],
-  habits: [],
   tripPlans: [],
   healthMetrics: [],
   shoppingItems: [],
@@ -105,21 +104,28 @@ export const useCityStore = create<CityState>((set, get) => ({
     SheetsService.deleteRow('Residents', id).catch(() => {});
   },
 
+  updateResident: async (id, updates) => {
+    const residents = get().residents.map(r =>
+      r.id === id ? { ...r, ...updates } : r
+    );
+    set({ residents });
+    const updated = residents.find(r => r.id === id);
+    if (updated) SheetsService.update('Residents', updated).catch(() => {});
+  },
+
   setModuleData: (key, data) => {
     set({ moduleData: { ...get().moduleData, [key]: data } });
   },
 
   loadAllData: async () => {
     try {
-      const [houses, residents, calendarEvents, tasks, notes, timeEntries, habits, tripPlans, healthMetrics, shoppingItems] =
+      const [houses, residents, calendarEvents, tasks, notes, tripPlans, healthMetrics, shoppingItems] =
         await Promise.all([
           SheetsService.readAll<House>('Houses'),
           SheetsService.readAll<Resident>('Residents'),
           SheetsService.readAll<CalendarEvent>('CalendarEvents'),
           SheetsService.readAll<Task>('Tasks'),
           SheetsService.readAll<Note>('Notes'),
-          SheetsService.readAll<TimeEntry>('TimeEntries'),
-          SheetsService.readAll<Habit>('Habits'),
           SheetsService.readAll<TripPlan>('TripPlans'),
           SheetsService.readAll<HealthMetric>('HealthMetrics'),
           SheetsService.readAll<ShoppingItem>('ShoppingItems'),
@@ -131,7 +137,7 @@ export const useCityStore = create<CityState>((set, get) => ({
       set({
         houses,
         residents,
-        moduleData: { calendarEvents, tasks, notes, timeEntries, habits, tripPlans, healthMetrics, shoppingItems },
+        moduleData: { calendarEvents, tasks, notes, tripPlans, healthMetrics, shoppingItems },
         cityName: cityNameRow?.value ?? 'My City',
         dataLoaded: true,
       });

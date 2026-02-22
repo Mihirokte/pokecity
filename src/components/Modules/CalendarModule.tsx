@@ -2,6 +2,7 @@ import { useState, useMemo, useCallback } from 'react';
 import type { Resident, CalendarEvent } from '../../types';
 import { useCityStore } from '../../stores/cityStore';
 import { useUIStore } from '../../stores/uiStore';
+import { useAuthStore } from '../../stores/authStore';
 import { SheetsService } from '../../services/sheetsService';
 
 interface CalendarModuleProps {
@@ -46,6 +47,7 @@ export function CalendarModule({ resident }: CalendarModuleProps) {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm());
+  const [syncing, setSyncing] = useState(false);
 
   const events = useMemo(
     () => moduleData.calendarEvents.filter(e => e.residentId === resident.id),
@@ -169,6 +171,65 @@ export function CalendarModule({ resident }: CalendarModuleProps) {
     }
   }, [moduleData.calendarEvents, setModuleData, addToast]);
 
+  const handleGoogleSync = useCallback(async () => {
+    const token = useAuthStore.getState().accessToken;
+    if (!token) { addToast('Not authenticated', 'error'); return; }
+
+    setSyncing(true);
+    try {
+      // Fetch next 60 days of events from Google Calendar (primary calendar, no birthdays)
+      const now = new Date();
+      const timeMin = now.toISOString();
+      const timeMax = new Date(now.getTime() + 60 * 86400000).toISOString();
+      const url = `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}&singleEvents=true&orderBy=startTime&maxResults=100`;
+
+      const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) throw new Error(`Google Calendar API error: ${res.status}`);
+      const data = await res.json();
+
+      const gcalEvents: CalendarEvent[] = (data.items ?? [])
+        .filter((item: any) => item.status !== 'cancelled')
+        .map((item: any) => {
+          const start = item.start?.dateTime ?? item.start?.date ?? '';
+          const end = item.end?.dateTime ?? item.end?.date ?? '';
+          const isAllDay = !item.start?.dateTime;
+          const startDate = isAllDay ? start : start.slice(0, 10);
+          const endDate = isAllDay
+            ? new Date(new Date(end).getTime() - 86400000).toISOString().slice(0, 10)
+            : end.slice(0, 10);
+
+          return {
+            id: `gcal_${item.id}`,
+            residentId: resident.id,
+            title: item.summary ?? '(No title)',
+            startDate,
+            endDate,
+            startTime: isAllDay ? '' : start.slice(11, 16),
+            endTime: isAllDay ? '' : end.slice(11, 16),
+            allDay: isAllDay ? 'true' : 'false',
+            location: item.location ?? '',
+            description: item.description?.slice(0, 200) ?? '',
+            color: '#4a90d9',
+            recurrence: 'none',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          } as CalendarEvent;
+        });
+
+      // Keep other residents' events + this resident's manual events, replace gcal events
+      const otherEvents = moduleData.calendarEvents.filter(e => e.residentId !== resident.id);
+      const myManualEvents = moduleData.calendarEvents.filter(e => e.residentId === resident.id && !e.id.startsWith('gcal_'));
+      setModuleData('calendarEvents', [...otherEvents, ...myManualEvents, ...gcalEvents]);
+
+      addToast(`Synced ${gcalEvents.length} events from Google Calendar`, 'success');
+    } catch (e: any) {
+      console.error('Google Calendar sync error:', e);
+      addToast('Failed to sync Google Calendar', 'error');
+    } finally {
+      setSyncing(false);
+    }
+  }, [moduleData.calendarEvents, resident.id, setModuleData, addToast]);
+
   const renderEvent = (evt: CalendarEvent) => (
     <div className="mod-card" key={evt.id} style={{ borderLeft: `3px solid ${evt.color || '#ffcd75'}` }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -230,7 +291,12 @@ export function CalendarModule({ resident }: CalendarModuleProps) {
     <div>
       <div className="mod-header">
         <span className="mod-title">Calendar</span>
-        <button className="mod-btn" onClick={openCreate}>+ Event</button>
+        <div style={{ display: 'flex', gap: 6 }}>
+          <button className="mod-btn mod-btn--sm" onClick={handleGoogleSync} disabled={syncing}>
+            {syncing ? 'Syncing...' : 'Google Sync'}
+          </button>
+          <button className="mod-btn" onClick={openCreate}>+ Event</button>
+        </div>
       </div>
 
       {showForm && (

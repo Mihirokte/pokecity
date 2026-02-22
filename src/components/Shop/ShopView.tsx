@@ -8,10 +8,8 @@ import { AgentCard } from './AgentCard';
 import { CalendarModule } from '../Modules/CalendarModule';
 import { TasksModule } from '../Modules/TasksModule';
 import { NotesModule } from '../Modules/NotesModule';
-import { TimeTrackerModule } from '../Modules/TimeTrackerModule';
-import { HabitsModule } from '../Modules/HabitsModule';
 import { TravelModule } from '../Modules/TravelModule';
-import { HealthModule } from '../Modules/HealthModule';
+import { GymModule } from '../Modules/GymModule';
 import { ShoppingModule } from '../Modules/ShoppingModule';
 import type { HouseModuleType, Resident } from '../../types';
 
@@ -19,10 +17,8 @@ const MODULE_MAP: Record<string, React.FC<{ resident: Resident }>> = {
   calendar: CalendarModule,
   tasks: TasksModule,
   notes: NotesModule,
-  timetracker: TimeTrackerModule,
-  habits: HabitsModule,
   travel: TravelModule,
-  health: HealthModule,
+  gym: GymModule,
   shopping: ShoppingModule,
 };
 
@@ -45,11 +41,14 @@ export function ShopView() {
   const residents = useCityStore(s => s.residents);
   const addResident = useCityStore(s => s.addResident);
   const removeResident = useCityStore(s => s.removeResident);
+  const updateResident = useCityStore(s => s.updateResident);
   const findOrCreateHouse = useCityStore(s => s.findOrCreateHouse);
 
   const [addingAgent, setAddingAgent] = useState(false);
   const [newAgentName, setNewAgentName] = useState('');
   const [newAgentType, setNewAgentType] = useState<HouseModuleType>('tasks');
+  const [editingField, setEditingField] = useState<'name' | 'role' | null>(null);
+  const [editValue, setEditValue] = useState('');
 
   const selectedAgent = residents.find(r => r.id === selectedAgentId);
 
@@ -127,6 +126,21 @@ export function ShopView() {
       setSyncing(false);
     }
   }, [syncInput, setSpreadsheet, addToast]);
+
+  const startEdit = useCallback((field: 'name' | 'role', value: string) => {
+    setEditingField(field);
+    setEditValue(value);
+  }, []);
+
+  const saveEdit = useCallback(() => {
+    if (!selectedAgent || !editingField || !editValue.trim()) {
+      setEditingField(null);
+      return;
+    }
+    updateResident(selectedAgent.id, { [editingField]: editValue.trim() });
+    setEditingField(null);
+    addToast(`${editingField === 'name' ? 'Name' : 'Role'} updated`, 'success');
+  }, [selectedAgent, editingField, editValue, updateResident, addToast]);
 
   const handleCloseMenu = () => {
     setMenuOpen(false);
@@ -243,11 +257,36 @@ export function ShopView() {
                       alt={selectedAgent.name}
                       className="shop-panel__agent-sprite"
                     />
-                    <div>
-                      <div className="resident-panel__name">{selectedAgent.name}</div>
-                      <div className="resident-panel__role">{selectedAgent.role}</div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      {editingField === 'name' ? (
+                        <input
+                          autoFocus
+                          className="agent-edit-input"
+                          value={editValue}
+                          onChange={e => setEditValue(e.target.value)}
+                          onBlur={saveEdit}
+                          onKeyDown={e => e.key === 'Enter' && saveEdit()}
+                        />
+                      ) : (
+                        <div className="resident-panel__name" onClick={() => startEdit('name', selectedAgent.name)} style={{ cursor: 'pointer' }}>
+                          {selectedAgent.name}
+                        </div>
+                      )}
+                      {editingField === 'role' ? (
+                        <input
+                          autoFocus
+                          className="agent-edit-input agent-edit-input--sm"
+                          value={editValue}
+                          onChange={e => setEditValue(e.target.value)}
+                          onBlur={saveEdit}
+                          onKeyDown={e => e.key === 'Enter' && saveEdit()}
+                        />
+                      ) : (
+                        <div className="resident-panel__role" onClick={() => startEdit('role', selectedAgent.role)} style={{ cursor: 'pointer' }}>
+                          {selectedAgent.role}
+                        </div>
+                      )}
                     </div>
-                    <div style={{ flex: 1 }} />
                     <button className="resident-panel__delete" onClick={() => handleRemoveAgent(selectedAgent.id)}>Remove</button>
                   </div>
                   <div className="module-container">

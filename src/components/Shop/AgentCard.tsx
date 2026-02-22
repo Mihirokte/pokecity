@@ -106,103 +106,6 @@ function NotesWidget({ residentId }: { residentId: string }) {
   );
 }
 
-/* ── Mini widget: Time Tracker ── */
-function TimeWidget({ residentId }: { residentId: string }) {
-  const entries = useCityStore(s => s.moduleData.timeEntries);
-  const today = todayStr();
-  const todayEntries = useMemo(
-    () => entries.filter(e => e.residentId === residentId && e.date === today),
-    [entries, residentId, today],
-  );
-  const totalMin = todayEntries.reduce((s, e) => s + parseInt(e.durationMinutes || '0', 10), 0);
-  const hrs = Math.floor(totalMin / 60);
-  const mins = totalMin % 60;
-
-  // 7-day sparkline
-  const weekData = useMemo(() => {
-    const days: number[] = [];
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date(Date.now() - i * 86400000).toISOString().slice(0, 10);
-      const dayMin = entries
-        .filter(e => e.residentId === residentId && e.date === d)
-        .reduce((s, e) => s + parseInt(e.durationMinutes || '0', 10), 0);
-      days.push(dayMin);
-    }
-    return days;
-  }, [entries, residentId]);
-
-  const maxMin = Math.max(...weekData, 1);
-
-  return (
-    <div className="dash-widget dash-widget--time">
-      <div className="dash-time__display">
-        <span className="dash-time__num">{hrs}</span>
-        <span className="dash-time__unit">h</span>
-        <span className="dash-time__num">{String(mins).padStart(2, '0')}</span>
-        <span className="dash-time__unit">m</span>
-      </div>
-      <div className="dash-time__spark">
-        {weekData.map((v, i) => (
-          <div key={i} className="dash-time__bar" style={{ height: `${Math.max(8, (v / maxMin) * 100)}%` }} />
-        ))}
-      </div>
-      <div className="dash-widget__stat">today</div>
-    </div>
-  );
-}
-
-/* ── Mini widget: Habits ── */
-function HabitsWidget({ residentId }: { residentId: string }) {
-  const habits = useCityStore(s => s.moduleData.habits);
-  const myHabits = useMemo(() => habits.filter(h => h.residentId === residentId), [habits, residentId]);
-
-  const bestStreak = myHabits.reduce((max, h) => Math.max(max, parseInt(h.currentStreak || '0', 10)), 0);
-  const today = todayStr();
-
-  // 14-day mini heatmap
-  const heatmap = useMemo(() => {
-    const cells: number[] = [];
-    for (let i = 13; i >= 0; i--) {
-      const d = new Date(Date.now() - i * 86400000).toISOString().slice(0, 10);
-      let completed = 0;
-      let total = 0;
-      for (const h of myHabits) {
-        if (h.createdAt.slice(0, 10) > d) continue;
-        total++;
-        try {
-          const hist = JSON.parse(h.completionHistory);
-          if (Array.isArray(hist) && hist.includes(d)) completed++;
-        } catch { /* empty */ }
-      }
-      cells.push(total > 0 ? completed / total : 0);
-    }
-    return cells;
-  }, [myHabits]);
-
-  // Count completed today
-  const completedToday = myHabits.filter(h => {
-    try {
-      const hist = JSON.parse(h.completionHistory);
-      return Array.isArray(hist) && hist.includes(today);
-    } catch { return false; }
-  }).length;
-
-  return (
-    <div className="dash-widget dash-widget--habits">
-      <div className="dash-habits__streak">
-        <span className="dash-habits__fire">&#x1F525;</span>
-        <span className="dash-habits__num">{bestStreak}</span>
-      </div>
-      <div className="dash-habits__heat">
-        {heatmap.map((v, i) => (
-          <div key={i} className={`dash-habits__cell ${v <= 0 ? '' : v <= 0.33 ? 'l1' : v <= 0.66 ? 'l2' : 'l3'}`} />
-        ))}
-      </div>
-      <div className="dash-widget__stat">{completedToday}/{myHabits.length} today</div>
-    </div>
-  );
-}
-
 /* ── Mini widget: Travel ── */
 function TravelWidget({ residentId }: { residentId: string }) {
   const trips = useCityStore(s => s.moduleData.tripPlans);
@@ -304,10 +207,8 @@ const WIDGET_MAP: Record<string, React.FC<{ residentId: string }>> = {
   calendar: CalendarWidget,
   tasks: TasksWidget,
   notes: NotesWidget,
-  timetracker: TimeWidget,
-  habits: HabitsWidget,
   travel: TravelWidget,
-  health: HealthWidget,
+  gym: HealthWidget,
   shopping: ShoppingWidget,
 };
 

@@ -43,26 +43,6 @@ export const HOUSE_TYPES: Record<HouseModuleType, HouseTypeConfig> = {
     defaultRole: 'Note Keeper',
     sheetName: 'Notes',
   },
-  timetracker: {
-    type: 'timetracker',
-    label: 'Time Tracker',
-    emoji: '⏱️',
-    pokemonId: MODULE_POKEMON.timetracker,
-    color: '#e74c3c',
-    description: 'Track time with Pomodoro support',
-    defaultRole: 'Timekeeper',
-    sheetName: 'TimeEntries',
-  },
-  habits: {
-    type: 'habits',
-    label: 'Habits',
-    emoji: '🔥',
-    pokemonId: MODULE_POKEMON.habits,
-    color: '#9b59b6',
-    description: 'Build streaks and track habits',
-    defaultRole: 'Coach',
-    sheetName: 'Habits',
-  },
   travel: {
     type: 'travel',
     label: 'Travel',
@@ -73,14 +53,14 @@ export const HOUSE_TYPES: Record<HouseModuleType, HouseTypeConfig> = {
     defaultRole: 'Travel Agent',
     sheetName: 'TripPlans',
   },
-  health: {
-    type: 'health',
-    label: 'Health',
-    emoji: '💚',
-    pokemonId: MODULE_POKEMON.health,
-    color: '#2ecc71',
-    description: 'Log health metrics and wellness data',
-    defaultRole: 'Nurse',
+  gym: {
+    type: 'gym',
+    label: 'Gym',
+    emoji: '💪',
+    pokemonId: MODULE_POKEMON.gym,
+    color: '#e74c3c',
+    description: 'Track your workouts and fitness',
+    defaultRole: 'Trainer',
     sheetName: 'HealthMetrics',
   },
   shopping: {
@@ -96,8 +76,6 @@ export const HOUSE_TYPES: Record<HouseModuleType, HouseTypeConfig> = {
 };
 
 export const HOUSE_TYPE_LIST = Object.values(HOUSE_TYPES);
-
-// Legacy: AVATAR_EMOJIS replaced by RESIDENT_POKEMON_IDS from pokemon.ts
 
 export const AVATAR_COLORS = [
   '#ff6b6b', '#feca57', '#48dbfb', '#ff9ff3', '#54a0ff',

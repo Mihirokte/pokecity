@@ -7,8 +7,6 @@ export const SHEET_NAMES: SheetName[] = [
   'CalendarEvents',
   'Tasks',
   'Notes',
-  'TimeEntries',
-  'Habits',
   'TripPlans',
   'HealthMetrics',
   'ShoppingItems',
@@ -30,14 +28,6 @@ export const SHEET_HEADERS: Record<SheetName, string[]> = {
   Notes: [
     'id', 'residentId', 'title', 'content', 'tags', 'version',
     'createdAt', 'updatedAt',
-  ],
-  TimeEntries: [
-    'id', 'residentId', 'taskRef', 'description', 'startTime', 'endTime',
-    'durationMinutes', 'date', 'createdAt',
-  ],
-  Habits: [
-    'id', 'residentId', 'name', 'frequency', 'currentStreak', 'longestStreak',
-    'completionHistory', 'createdAt', 'updatedAt',
   ],
   TripPlans: [
     'id', 'residentId', 'tripName', 'startDate', 'endDate', 'destination',

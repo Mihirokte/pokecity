@@ -30,10 +30,8 @@ export const MODULE_POKEMON: Record<string, number> = {
   calendar: 251,     // Celebi — time travel Pokemon
   tasks: 68,         // Machamp — hard worker, gets things done
   notes: 235,        // Smeargle — the artist/writer Pokemon
-  timetracker: 483,  // Dialga — lord of time
-  habits: 143,       // Snorlax — all about daily routine
   travel: 18,        // Pidgeot — the traveler bird
-  health: 113,       // Chansey — the healer
+  gym: 57,           // Primeape — the fighting Pokemon
   shopping: 52,      // Meowth — Pay Day, loves coins
 };
 
