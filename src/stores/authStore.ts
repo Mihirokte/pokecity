@@ -56,7 +56,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   isInitializing: false,
 
   login: () => {
-    const redirectUri = window.location.origin;
+    const redirectUri = window.location.origin + (import.meta.env.BASE_URL || '/');
     const url = new URL('https://accounts.google.com/o/oauth2/v2/auth');
     url.searchParams.set('client_id', GOOGLE_CLIENT_ID);
     url.searchParams.set('redirect_uri', redirectUri);
