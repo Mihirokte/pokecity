@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type { GoogleUser, SheetName } from '../types';
 
 const LS_KEY = 'pokecity_auth';
+const SCOPES_VERSION_KEY = 'pokecity_scopes_v';
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID ?? '';
 const SCOPES = [
   'openid',
@@ -10,6 +11,8 @@ const SCOPES = [
   'https://www.googleapis.com/auth/spreadsheets',
   'https://www.googleapis.com/auth/drive.metadata.readonly',
 ].join(' ');
+// Bump this when scopes change to force re-login
+const SCOPES_VERSION = 2;
 
 interface AuthState {
   user: GoogleUser | null;
@@ -98,18 +101,24 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     };
     const tokenExpiresAt = Date.now() + expiresIn * 1000;
 
-    // Restore spreadsheetId from localStorage if exists
-    const stored = loadFromStorage();
+    // Check if this is a fresh login with updated scopes
+    const storedVersion = parseInt(localStorage.getItem(SCOPES_VERSION_KEY) ?? '0', 10);
+    const scopesChanged = storedVersion < SCOPES_VERSION;
+
+    // Restore spreadsheetId from localStorage (unless scopes changed — need fresh Drive search)
+    const stored = scopesChanged ? {} : loadFromStorage();
 
     set({
       user,
       accessToken,
       tokenExpiresAt,
-      spreadsheetId: stored.spreadsheetId ?? null,
-      sheetGids: (stored.sheetGids ?? {}) as Record<SheetName, number>,
+      spreadsheetId: (stored as Partial<AuthState>).spreadsheetId ?? null,
+      sheetGids: ((stored as Partial<AuthState>).sheetGids ?? {}) as Record<SheetName, number>,
       isInitializing: false,
     });
 
+    // Mark scopes version as current
+    localStorage.setItem(SCOPES_VERSION_KEY, String(SCOPES_VERSION));
     saveToStorage(get());
     return true;
   },
@@ -137,6 +146,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   restoreSession: () => {
+    // If scopes changed since last login, force re-login
+    const storedVersion = parseInt(localStorage.getItem(SCOPES_VERSION_KEY) ?? '0', 10);
+    if (storedVersion < SCOPES_VERSION) {
+      localStorage.removeItem(LS_KEY);
+      return false;
+    }
+
     const stored = loadFromStorage();
     if (stored.accessToken && stored.tokenExpiresAt && Date.now() < stored.tokenExpiresAt) {
       set({

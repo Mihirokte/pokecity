@@ -7,28 +7,10 @@ import { LandingPage } from './components/Landing/LandingPage';
 import { ShopView } from './components/Shop/ShopView';
 import { Toasts } from './components/Toasts';
 
-// One-time migration: clear stale per-device spreadsheet IDs so Drive search kicks in
-const SYNC_VERSION = 'pokecity_sync_v2';
-if (!localStorage.getItem(SYNC_VERSION)) {
-  // Clear the stored spreadsheet ID so the app re-discovers via Drive search
-  const raw = localStorage.getItem('pokecity_auth');
-  if (raw) {
-    try {
-      const parsed = JSON.parse(raw);
-      if (parsed.spreadsheetId) {
-        parsed.spreadsheetId = null;
-        parsed.sheetGids = {};
-        localStorage.setItem('pokecity_auth', JSON.stringify(parsed));
-      }
-    } catch { /* ignore */ }
-  }
-  localStorage.setItem(SYNC_VERSION, '1');
-}
-
 function LoadingScreen() {
   return (
     <div style={{
-      height: '100dvh', display: 'flex', flexDirection: 'column',
+      height: '100%', display: 'flex', flexDirection: 'column',
       alignItems: 'center', justifyContent: 'center',
       background: 'linear-gradient(135deg, #2b2d42, #1a1c2c)',
     }}>
