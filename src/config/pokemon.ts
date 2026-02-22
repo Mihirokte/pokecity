@@ -12,6 +12,11 @@ export function spriteAnimatedUrl(id: number | string): string {
   return `${SPRITE_BASE}/other/showdown/${id}.gif`;
 }
 
+/** Get the high-res official artwork (clean, no pixels) */
+export function spriteArtworkUrl(id: number | string): string {
+  return `${SPRITE_BASE}/other/official-artwork/${id}.png`;
+}
+
 /** Get the back-facing sprite */
 export function spriteBackUrl(id: number | string): string {
   return `${SPRITE_BASE}/back/${id}.png`;

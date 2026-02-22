@@ -1,9 +1,9 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useCityStore } from '../../stores/cityStore';
 import { useUIStore } from '../../stores/uiStore';
 import { useAuthStore } from '../../stores/authStore';
 import { HOUSE_TYPES, HOUSE_TYPE_LIST } from '../../config/houseTypes';
-import { spriteAnimatedUrl, PLAYER_POKEMON_ID } from '../../config/pokemon';
+import { spriteAnimatedUrl, spriteArtworkUrl, PLAYER_POKEMON_ID } from '../../config/pokemon';
 import { AgentCard } from './AgentCard';
 import { CalendarModule } from '../Modules/CalendarModule';
 import { TasksModule } from '../Modules/TasksModule';
@@ -28,6 +28,8 @@ const MODULE_MAP: Record<string, React.FC<{ resident: Resident }>> = {
 
 export function ShopView() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [pokeballOpen, setPokeballOpen] = useState(false);
+  const [showPanel, setShowPanel] = useState(false);
   const selectedAgentId = useUIStore(s => s.selectedAgentId);
   const selectAgent = useUIStore(s => s.selectAgent);
   const clearAgent = useUIStore(s => s.clearAgent);
@@ -62,6 +64,23 @@ export function ShopView() {
 
   const ModuleComponent = getModuleComponent();
 
+  /* ── Pokeball open sequence ── */
+  const handleOpen = useCallback(() => {
+    setMenuOpen(true);
+    setPokeballOpen(true);
+    setShowPanel(false);
+  }, []);
+
+  useEffect(() => {
+    if (!pokeballOpen) return;
+    const timer = setTimeout(() => {
+      setShowPanel(true);
+      // Let panel fade in, then hide pokeball
+      setTimeout(() => setPokeballOpen(false), 300);
+    }, 700);
+    return () => clearTimeout(timer);
+  }, [pokeballOpen]);
+
   const handleAddAgent = useCallback(async () => {
     if (!newAgentName.trim()) return;
     const house = await findOrCreateHouse(newAgentType);
@@ -79,6 +98,8 @@ export function ShopView() {
 
   const handleCloseMenu = () => {
     setMenuOpen(false);
+    setPokeballOpen(false);
+    setShowPanel(false);
     clearAgent();
     setAddingAgent(false);
   };
@@ -95,25 +116,30 @@ export function ShopView() {
       <div className={`pokecenter__hero${menuOpen ? ' pokecenter__hero--dim' : ''}`}>
         <div
           className="pokecenter__keeper"
-          onClick={() => !menuOpen && setMenuOpen(true)}
+          onClick={() => !menuOpen && handleOpen()}
         >
           <img
-            src={spriteAnimatedUrl(PLAYER_POKEMON_ID)}
-            alt="Shopkeeper"
+            src={spriteArtworkUrl(PLAYER_POKEMON_ID)}
+            alt="Pikachu"
             className="pokecenter__keeper-sprite"
           />
           <div className="pokecenter__bubble">{speechText}</div>
         </div>
-
-        {!menuOpen && (
-          <div className="pokecenter__interact">
-            Click the shopkeeper
-          </div>
-        )}
       </div>
 
+      {/* ── Pokeball open transition ── */}
+      {menuOpen && pokeballOpen && (
+        <div className="pokeball-transition">
+          <div className={`pokeball-transition__top${showPanel ? ' pokeball-transition__top--open' : ''}`} />
+          <div className="pokeball-transition__center">
+            <div className="pokeball-transition__button" />
+          </div>
+          <div className={`pokeball-transition__bottom${showPanel ? ' pokeball-transition__bottom--open' : ''}`} />
+        </div>
+      )}
+
       {/* ── Dashboard panel ── */}
-      {menuOpen && (
+      {menuOpen && showPanel && (
         <div
           className="shop-overlay"
           onClick={(e) => { if (e.target === e.currentTarget) handleCloseMenu(); }}
