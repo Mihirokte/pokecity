@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { usePokecenterStore } from './pokecenterStore';
-import { useAgentSimulation } from './hooks/useAgentSimulation';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { Dashboard } from './pages/Dashboard';
@@ -13,15 +12,12 @@ import { Travel } from './pages/Travel';
 import { Gym } from './pages/Gym';
 import { Shopping } from './pages/Shopping';
 import { Notifications } from './pages/Notifications';
-import { KnowledgeBase } from './pages/KnowledgeBase';
 import { AgentDetail } from './pages/AgentDetail';
 import './pokecenter.css';
 
 export function AppShell() {
   const currentPage = usePokecenterStore(s => s.currentPage);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-
-  useAgentSimulation();
 
   const renderPage = () => {
     if (currentPage.startsWith('agent:')) {
@@ -39,7 +35,6 @@ export function AppShell() {
       case 'gym': return <Gym />;
       case 'shopping': return <Shopping />;
       case 'notifications': return <Notifications />;
-      case 'knowledge': return <KnowledgeBase />;
       default: return <Dashboard />;
     }
   };

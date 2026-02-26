@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import type { PCAgent, AgentLog, SessionData, TwitterPost, LinkedInPost, KnowledgeEntry, CachedCalendarEvent, PCNotification, AgentOutput, AgentStatus } from '../types';
 import { SheetsService } from '../services/sheetsService';
-import { DEFAULT_AGENTS, DEFAULT_LOGS, DEFAULT_NOTIFICATIONS, DEFAULT_TWITTER_POSTS, DEFAULT_LINKEDIN_POSTS } from './default-agents';
+import { DEFAULT_AGENTS } from './default-agents';
 
 interface PokecenterState {
   // Data
@@ -121,65 +121,6 @@ export const usePokecenterStore = create<PokecenterState>((set, get) => ({
     // Persist to sheets (fire and forget)
     for (const agent of agents) {
       SheetsService.append('Agents', agent).catch(() => {});
-    }
-
-    // Seed logs
-    const logs: AgentLog[] = DEFAULT_LOGS.map((l, i) => ({
-      id: `log_${i}_${Date.now()}`,
-      agentId: l.agentId,
-      timestamp: ts,
-      level: l.level,
-      message: l.message,
-    }));
-    set({ agentLogs: logs });
-    for (const log of logs) {
-      SheetsService.append('AgentLogs', log).catch(() => {});
-    }
-
-    // Seed notifications
-    const notifs: PCNotification[] = DEFAULT_NOTIFICATIONS.map((n, i) => ({
-      id: `notif_${i}_${Date.now()}`,
-      type: n.type,
-      message: n.message,
-      read: 'false',
-      agentId: n.agentId,
-      createdAt: ts,
-    }));
-    set({ notifications: notifs });
-    for (const n of notifs) {
-      SheetsService.append('Notifications', n).catch(() => {});
-    }
-
-    // Seed twitter posts
-    const tweets: TwitterPost[] = DEFAULT_TWITTER_POSTS.map((t, i) => ({
-      id: `tweet_${i}_${Date.now()}`,
-      content: t.content,
-      status: t.status,
-      scheduledAt: t.scheduledAt || '',
-      postedAt: (t as { postedAt?: string }).postedAt || '',
-      engagementLikes: t.engagementLikes,
-      engagementRetweets: t.engagementRetweets,
-      engagementReplies: t.engagementReplies,
-    }));
-    set({ twitterPosts: tweets });
-    for (const t of tweets) {
-      SheetsService.append('TwitterBot', t).catch(() => {});
-    }
-
-    // Seed linkedin posts
-    const liPosts: LinkedInPost[] = DEFAULT_LINKEDIN_POSTS.map((p, i) => ({
-      id: `li_${i}_${Date.now()}`,
-      content: p.content,
-      status: p.status,
-      scheduledAt: p.scheduledAt || '',
-      postedAt: (p as { postedAt?: string }).postedAt || '',
-      engagementLikes: p.engagementLikes,
-      engagementComments: p.engagementComments,
-      engagementShares: p.engagementShares,
-    }));
-    set({ linkedInPosts: liPosts });
-    for (const p of liPosts) {
-      SheetsService.append('LinkedInBot', p).catch(() => {});
     }
   },
 

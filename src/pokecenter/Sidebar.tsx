@@ -44,10 +44,6 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     { id: 'shopping', label: 'Shopping', icon: '\uD83D\uDED2' },
   ];
 
-  const systemItems: NavItem[] = [
-    { id: 'knowledge', label: 'Knowledge Base', icon: '\uD83D\uDCDA' },
-  ];
-
   const handleNav = (page: string) => {
     setCurrentPage(page);
     onClose();
@@ -91,7 +87,6 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           {renderGroup('Productivity', moduleItems)}
           {renderGroup('Social', socialItems)}
           {renderGroup('Lifestyle', lifeItems)}
-          {renderGroup('System', systemItems)}
         </nav>
 
         {user && (
