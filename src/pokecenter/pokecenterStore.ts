@@ -16,11 +16,11 @@ interface PokecenterState {
   agentOutputs: AgentOutput[];
   pcDataLoaded: boolean;
 
-  // Player state (local, persisted to session sheet)
-  playerPos: { x: number; y: number };
-  playerDir: string;
+  // Navigation
+  currentPage: string;
 
   // Actions
+  setCurrentPage: (page: string) => void;
   loadPCData: () => Promise<void>;
   seedDefaults: () => Promise<void>;
 
@@ -28,11 +28,6 @@ interface PokecenterState {
   updateAgentStatus: (agentId: string, status: AgentStatus) => void;
   updateAgentProgress: (agentId: string, progress: number) => void;
   addAgentLog: (agentId: string, level: string, message: string) => void;
-
-  // Session
-  saveSession: (data: Partial<SessionData>) => void;
-  setPlayerPos: (x: number, y: number) => void;
-  setPlayerDir: (dir: string) => void;
 
   // Twitter
   addTwitterPost: (content: string, status: string, scheduledAt: string) => void;
@@ -62,8 +57,9 @@ export const usePokecenterStore = create<PokecenterState>((set, get) => ({
   agentOutputs: [],
   pcDataLoaded: false,
 
-  playerPos: { x: 10, y: 13 },
-  playerDir: 'up',
+  currentPage: 'dashboard',
+
+  setCurrentPage: (page) => set({ currentPage: page }),
 
   loadPCData: async () => {
     try {
@@ -80,10 +76,7 @@ export const usePokecenterStore = create<PokecenterState>((set, get) => ({
           SheetsService.readAll<AgentOutput>('AgentOutputs'),
         ]);
 
-      // Restore session if exists
       const session = sessionRows[0] || null;
-      const playerPos = session ? { x: parseInt(session.lastX) || 10, y: parseInt(session.lastY) || 13 } : { x: 10, y: 13 };
-      const playerDir = session?.lastDirection || 'up';
 
       set({
         agents,
@@ -96,8 +89,6 @@ export const usePokecenterStore = create<PokecenterState>((set, get) => ({
         notifications,
         agentOutputs,
         pcDataLoaded: true,
-        playerPos,
-        playerDir,
       });
 
       // Seed defaults if no agents exist
@@ -220,31 +211,6 @@ export const usePokecenterStore = create<PokecenterState>((set, get) => ({
     set({ agentLogs: [...get().agentLogs, log] });
     SheetsService.append('AgentLogs', log).catch(() => {});
   },
-
-  // ── Session ──
-  saveSession: (data) => {
-    const { session } = get();
-    const userId = session?.userId || 'default';
-    const updated: SessionData = {
-      userId,
-      lastX: String(get().playerPos.x),
-      lastY: String(get().playerPos.y),
-      lastDirection: get().playerDir,
-      lastOpenPanel: '',
-      timestamp: now(),
-      ...data,
-    };
-    set({ session: updated });
-
-    if (session) {
-      SheetsService.update('Session', { ...updated, id: userId }, 'userId').catch(() => {});
-    } else {
-      SheetsService.append('Session', updated).catch(() => {});
-    }
-  },
-
-  setPlayerPos: (x, y) => set({ playerPos: { x, y } }),
-  setPlayerDir: (dir) => set({ playerDir: dir }),
 
   // ── Twitter ──
   addTwitterPost: (content, status, scheduledAt) => {

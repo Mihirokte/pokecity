@@ -5,7 +5,7 @@ import { useUIStore } from './stores/uiStore';
 import { SheetsService } from './services/sheetsService';
 import { usePokecenterStore } from './pokecenter/pokecenterStore';
 import { LandingPage } from './components/Landing/LandingPage';
-import { PokeCenterHub } from './pokecenter/PokeCenterHub';
+import { AppShell } from './pokecenter/AppShell';
 import { Toasts } from './components/Toasts';
 
 function LoadingScreen() {
@@ -13,20 +13,18 @@ function LoadingScreen() {
     <div style={{
       height: '100vh', width: '100vw', display: 'flex', flexDirection: 'column',
       alignItems: 'center', justifyContent: 'center',
-      background: '#0F2027',
-      fontFamily: '"Press Start 2P", monospace',
+      background: '#09090b',
+      fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif",
     }}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');`}</style>
       <div style={{
         width: 64, height: 64, marginBottom: 24,
-        background: `url(https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/113.png) center/contain no-repeat`,
-        imageRendering: 'pixelated',
+        background: `url(https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/25.png) center/contain no-repeat`,
         animation: 'pulse 1.5s ease infinite',
       }} />
-      <div style={{ fontSize: 12, color: '#F8F8F8', marginBottom: 8 }}>
-        Loading PokéCenter...
+      <div style={{ fontSize: 15, color: '#f0f0f5', fontWeight: 500, marginBottom: 6 }}>
+        Loading PokéCity...
       </div>
-      <div style={{ fontSize: 8, color: '#607880' }}>
+      <div style={{ fontSize: 13, color: '#55556a' }}>
         Connecting to your data
       </div>
       <style>{`@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }`}</style>
@@ -125,7 +123,7 @@ export default function App() {
       ) : !(dataLoaded && pcDataLoaded) ? (
         <LoadingScreen />
       ) : (
-        <PokeCenterHub />
+        <AppShell />
       )}
     </>
   );
