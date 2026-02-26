@@ -3,6 +3,7 @@ import type { SheetName } from '../types';
 import { useAuthStore } from '../stores/authStore';
 
 const SHEETS_API = 'https://sheets.googleapis.com/v4/spreadsheets';
+const DRIVE_API = 'https://www.googleapis.com/drive/v3/files';
 
 function getAuth() {
   const state = useAuthStore.getState();
@@ -235,6 +236,58 @@ export const SheetsService = {
     );
 
     return updatedGids;
+  },
+
+  // ── Drive: find or create a folder, move a file into it ──
+  async ensureDriveFolder(folderName: string): Promise<string> {
+    const { accessToken } = useAuthStore.getState();
+    if (!accessToken) throw new Error('Not authenticated');
+
+    // Search for existing folder
+    const q = `name='${folderName}' and mimeType='application/vnd.google-apps.folder' and trashed=false`;
+    const searchRes = await fetch(
+      `${DRIVE_API}?q=${encodeURIComponent(q)}&fields=files(id,name)`,
+      { headers: headers(accessToken) },
+    );
+    if (searchRes.ok) {
+      const data = await searchRes.json();
+      if (data.files && data.files.length > 0) {
+        return data.files[0].id;
+      }
+    }
+
+    // Create folder
+    const createRes = await fetch(DRIVE_API, {
+      method: 'POST',
+      headers: headers(accessToken),
+      body: JSON.stringify({
+        name: folderName,
+        mimeType: 'application/vnd.google-apps.folder',
+      }),
+    });
+    if (!createRes.ok) {
+      const errBody = await createRes.text().catch(() => '');
+      throw new Error(`Failed to create Drive folder (${createRes.status}): ${errBody || createRes.statusText}`);
+    }
+    const folder = await createRes.json();
+    return folder.id;
+  },
+
+  async moveToFolder(fileId: string, folderId: string): Promise<void> {
+    const { accessToken } = useAuthStore.getState();
+    if (!accessToken) throw new Error('Not authenticated');
+
+    const res = await fetch(
+      `${DRIVE_API}/${fileId}?addParents=${folderId}&removeParents=root`,
+      {
+        method: 'PATCH',
+        headers: headers(accessToken),
+      },
+    );
+    if (!res.ok) {
+      const errBody = await res.text().catch(() => '');
+      throw new Error(`Failed to move file to folder (${res.status}): ${errBody || res.statusText}`);
+    }
   },
 
   // ── Delete a row by ID ──

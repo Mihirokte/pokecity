@@ -74,6 +74,15 @@ export default function App() {
             await SheetsService.createSpreadsheet(`PokéCenter Hub - ${user?.name ?? 'User'}`);
           if (cancelled) return;
           setSpreadsheet(newId, sheetGids);
+
+          // Move spreadsheet into a "PokéCity" Drive folder
+          try {
+            const folderId = await SheetsService.ensureDriveFolder('PokéCity');
+            await SheetsService.moveToFolder(newId, folderId);
+          } catch (e) {
+            console.warn('Could not move spreadsheet to Drive folder:', e);
+          }
+
           await SheetsService.append('Meta', { key: 'cityName', value: 'PokéCenter' });
           if (cancelled) return;
           addToast('PokéCenter created!', 'success');
