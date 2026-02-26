@@ -22,7 +22,6 @@ export type SheetName =
   | 'AgentLogs'
   | 'TwitterBot'
   | 'LinkedInBot'
-  | 'KnowledgeBase'
   | 'CalendarSync'
   | 'Notifications'
   | 'AgentOutputs';
@@ -232,16 +231,6 @@ export interface LinkedInPost {
   engagementShares: string;
 }
 
-export interface KnowledgeEntry {
-  id: string;
-  agentId: string;
-  source: string;
-  title: string;
-  contentSummary: string;
-  rawRef: string;
-  fetchedAt: string;
-}
-
 export interface CachedCalendarEvent {
   id: string;
   title: string;
@@ -277,7 +266,6 @@ export interface PCModuleData extends AllModuleData {
   session: SessionData[];
   twitterPosts: TwitterPost[];
   linkedInPosts: LinkedInPost[];
-  knowledgeEntries: KnowledgeEntry[];
   cachedCalendarEvents: CachedCalendarEvent[];
   notifications: PCNotification[];
   agentOutputs: AgentOutput[];

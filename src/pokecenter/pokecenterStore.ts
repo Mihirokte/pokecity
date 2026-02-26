@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { PCAgent, AgentLog, SessionData, TwitterPost, LinkedInPost, KnowledgeEntry, CachedCalendarEvent, PCNotification, AgentOutput, AgentStatus } from '../types';
+import type { PCAgent, AgentLog, SessionData, TwitterPost, LinkedInPost, CachedCalendarEvent, PCNotification, AgentOutput, AgentStatus } from '../types';
 import { SheetsService } from '../services/sheetsService';
 import { DEFAULT_AGENTS } from './default-agents';
 
@@ -10,7 +10,6 @@ interface PokecenterState {
   session: SessionData | null;
   twitterPosts: TwitterPost[];
   linkedInPosts: LinkedInPost[];
-  knowledgeEntries: KnowledgeEntry[];
   cachedCalendarEvents: CachedCalendarEvent[];
   notifications: PCNotification[];
   agentOutputs: AgentOutput[];
@@ -51,7 +50,6 @@ export const usePokecenterStore = create<PokecenterState>((set, get) => ({
   session: null,
   twitterPosts: [],
   linkedInPosts: [],
-  knowledgeEntries: [],
   cachedCalendarEvents: [],
   notifications: [],
   agentOutputs: [],
@@ -63,14 +61,13 @@ export const usePokecenterStore = create<PokecenterState>((set, get) => ({
 
   loadPCData: async () => {
     try {
-      const [agents, agentLogs, sessionRows, twitterPosts, linkedInPosts, knowledgeEntries, cachedCalendarEvents, notifications, agentOutputs] =
+      const [agents, agentLogs, sessionRows, twitterPosts, linkedInPosts, cachedCalendarEvents, notifications, agentOutputs] =
         await Promise.all([
           SheetsService.readAll<PCAgent>('Agents'),
           SheetsService.readAll<AgentLog>('AgentLogs'),
           SheetsService.readAll<SessionData>('Session'),
           SheetsService.readAll<TwitterPost>('TwitterBot'),
           SheetsService.readAll<LinkedInPost>('LinkedInBot'),
-          SheetsService.readAll<KnowledgeEntry>('KnowledgeBase'),
           SheetsService.readAll<CachedCalendarEvent>('CalendarSync'),
           SheetsService.readAll<PCNotification>('Notifications'),
           SheetsService.readAll<AgentOutput>('AgentOutputs'),
@@ -84,7 +81,6 @@ export const usePokecenterStore = create<PokecenterState>((set, get) => ({
         session,
         twitterPosts,
         linkedInPosts,
-        knowledgeEntries,
         cachedCalendarEvents,
         notifications,
         agentOutputs,

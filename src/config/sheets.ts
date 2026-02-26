@@ -15,7 +15,6 @@ export const SHEET_NAMES: SheetName[] = [
   'AgentLogs',
   'TwitterBot',
   'LinkedInBot',
-  'KnowledgeBase',
   'CalendarSync',
   'Notifications',
   'AgentOutputs',
@@ -29,8 +28,39 @@ export const LEGACY_SHEET_NAMES: SheetName[] = [
 
 export const NEW_SHEET_NAMES: SheetName[] = [
   'Session', 'Agents', 'AgentLogs', 'TwitterBot', 'LinkedInBot',
-  'KnowledgeBase', 'CalendarSync', 'Notifications', 'AgentOutputs',
+  'CalendarSync', 'Notifications', 'AgentOutputs',
 ];
+
+// Indexed tab names shown in Google Sheets for easy identification
+export const TAB_NAMES: Record<SheetName, string> = {
+  Meta:           '01_Meta',
+  Houses:         '02_Houses',
+  Residents:      '03_Residents',
+  Session:        '04_Session',
+  Agents:         '05_Agents',
+  AgentLogs:      '06_AgentLogs',
+  AgentOutputs:   '07_AgentOutputs',
+  Tasks:          '08_Tasks',
+  CalendarEvents: '09_Calendar',
+  Notes:          '10_Notes',
+  TwitterBot:     '11_TwitterBot',
+  LinkedInBot:    '12_LinkedInBot',
+  TripPlans:      '13_Travel',
+  HealthMetrics:  '14_Gym',
+  ShoppingItems:  '15_Shopping',
+  Notifications:  '16_Notifications',
+  CalendarSync:   '17_CalendarSync',
+};
+
+// Reverse map: tab name → internal SheetName
+export const TAB_TO_SHEET: Record<string, SheetName> = Object.fromEntries(
+  Object.entries(TAB_NAMES).map(([k, v]) => [v, k as SheetName])
+) as Record<string, SheetName>;
+
+// Get the Google Sheets tab name for an internal sheet name
+export function tabName(sheet: SheetName): string {
+  return TAB_NAMES[sheet];
+}
 
 export const SHEET_HEADERS: Record<SheetName, string[]> = {
   Meta: ['key', 'value'],
@@ -80,9 +110,6 @@ export const SHEET_HEADERS: Record<SheetName, string[]> = {
   LinkedInBot: [
     'id', 'content', 'status', 'scheduledAt', 'postedAt',
     'engagementLikes', 'engagementComments', 'engagementShares',
-  ],
-  KnowledgeBase: [
-    'id', 'agentId', 'source', 'title', 'contentSummary', 'rawRef', 'fetchedAt',
   ],
   CalendarSync: [
     'id', 'title', 'start', 'end', 'source', 'syncedAt',

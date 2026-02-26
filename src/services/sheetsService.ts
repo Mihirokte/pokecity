@@ -1,4 +1,4 @@
-import { SHEET_HEADERS, SHEET_NAMES, NEW_SHEET_NAMES } from '../config/sheets';
+import { SHEET_HEADERS, SHEET_NAMES, NEW_SHEET_NAMES, tabName, TAB_TO_SHEET } from '../config/sheets';
 import type { SheetName } from '../types';
 import { useAuthStore } from '../stores/authStore';
 
@@ -45,7 +45,7 @@ export const SheetsService = {
     const body = {
       properties: { title },
       sheets: SHEET_NAMES.map(name => ({
-        properties: { title: name },
+        properties: { title: tabName(name) },
         data: [{
           startRow: 0,
           startColumn: 0,
@@ -69,9 +69,14 @@ export const SheetsService = {
     }
     const data = await res.json();
 
+    // Map tab titles back to internal SheetName keys
     const sheetGids: Record<string, number> = {};
     for (const sheet of data.sheets) {
-      sheetGids[sheet.properties.title] = sheet.properties.sheetId;
+      const title = sheet.properties.title as string;
+      const internal = TAB_TO_SHEET[title];
+      if (internal) {
+        sheetGids[internal] = sheet.properties.sheetId;
+      }
     }
 
     return { spreadsheetId: data.spreadsheetId, sheetGids };
@@ -80,8 +85,9 @@ export const SheetsService = {
   // ── Read all rows from a sheet ──
   async readAll<T>(sheetName: SheetName): Promise<T[]> {
     const { token, sheetId } = getAuth();
+    const tab = tabName(sheetName);
     const res = await fetch(
-      `${SHEETS_API}/${sheetId}/values/${sheetName}`,
+      `${SHEETS_API}/${sheetId}/values/${encodeURIComponent(tab)}`,
       { headers: headers(token) },
     );
     if (!res.ok) {
@@ -98,9 +104,10 @@ export const SheetsService = {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async append(sheetName: SheetName, obj: any): Promise<void> {
     const { token, sheetId } = getAuth();
+    const tab = tabName(sheetName);
     const row = objectToRow(sheetName, obj);
     const res = await fetch(
-      `${SHEETS_API}/${sheetId}/values/${sheetName}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`,
+      `${SHEETS_API}/${sheetId}/values/${encodeURIComponent(tab)}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`,
       {
         method: 'POST',
         headers: headers(token),
@@ -117,6 +124,7 @@ export const SheetsService = {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async update(sheetName: SheetName, obj: any & { id: string }, lookupField = 'id'): Promise<void> {
     const { token, sheetId } = getAuth();
+    const tab = tabName(sheetName);
     // First find the row index
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const all = await this.readAll<any>(sheetName);
@@ -126,9 +134,9 @@ export const SheetsService = {
     const rowNum = idx + 2; // 1-indexed, row 1 is header
 
     const row = objectToRow(sheetName, obj);
-    const range = `${sheetName}!A${rowNum}`;
+    const range = `${tab}!A${rowNum}`;
     const res = await fetch(
-      `${SHEETS_API}/${sheetId}/values/${range}?valueInputOption=RAW`,
+      `${SHEETS_API}/${sheetId}/values/${encodeURIComponent(range)}?valueInputOption=RAW`,
       {
         method: 'PUT',
         headers: headers(token),
@@ -152,17 +160,21 @@ export const SheetsService = {
     });
     if (!res.ok) throw new Error(`Failed to fetch sheet metadata: ${res.status}`);
     const data = await res.json();
-    const existingNames = new Set(
+    const existingTitles = new Set(
       (data.sheets || []).map((s: { properties: { title: string } }) => s.properties.title)
     );
 
-    // Find missing sheets
-    const missing = NEW_SHEET_NAMES.filter(name => !existingNames.has(name));
+    // Find missing sheets by checking if the tab name exists
+    const missing = NEW_SHEET_NAMES.filter(name => !existingTitles.has(tabName(name)));
     if (missing.length === 0) {
       // Ensure we have GIDs for all sheets
       const updatedGids = { ...sheetGids };
       for (const sheet of data.sheets) {
-        updatedGids[sheet.properties.title as string] = sheet.properties.sheetId;
+        const title = sheet.properties.title as string;
+        const internal = TAB_TO_SHEET[title];
+        if (internal) {
+          updatedGids[internal] = sheet.properties.sheetId;
+        }
       }
       return updatedGids;
     }
@@ -170,7 +182,7 @@ export const SheetsService = {
     // Add missing sheets via batchUpdate
     const requests = missing.map(name => ({
       addSheet: {
-        properties: { title: name },
+        properties: { title: tabName(name) },
       },
     }));
 
@@ -185,21 +197,28 @@ export const SheetsService = {
     }
     const batchData = await batchRes.json();
 
-    // Collect new GIDs
+    // Collect GIDs — map tab titles back to internal names
     const updatedGids = { ...sheetGids };
     for (const sheet of data.sheets) {
-      updatedGids[sheet.properties.title as string] = sheet.properties.sheetId;
+      const title = sheet.properties.title as string;
+      const internal = TAB_TO_SHEET[title];
+      if (internal) {
+        updatedGids[internal] = sheet.properties.sheetId;
+      }
     }
     for (const reply of batchData.replies || []) {
       if (reply.addSheet) {
         const props = reply.addSheet.properties;
-        updatedGids[props.title] = props.sheetId;
+        const internal = TAB_TO_SHEET[props.title];
+        if (internal) {
+          updatedGids[internal] = props.sheetId;
+        }
       }
     }
 
     // Add header rows to new sheets
     const headerRequests = missing.map(name => ({
-      range: `${name}!A1`,
+      range: `${tabName(name)}!A1`,
       values: [SHEET_HEADERS[name]],
     }));
 
