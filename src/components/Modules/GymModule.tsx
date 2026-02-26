@@ -32,7 +32,7 @@ interface HealthForm {
 }
 
 const emptyForm = (metricType: string): HealthForm => ({
-  date: new Date().toISOString().slice(0, 10),
+  date: (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; })(),
   metricType,
   value: '',
   unit: '',
@@ -104,7 +104,7 @@ export function GymModule({ resident }: { resident: Resident }) {
     }
 
     const entry: HealthMetric = {
-      id: `health_${Date.now()}`,
+      id: `health_${crypto.randomUUID()}`,
       residentId: resident.id,
       date: form.date,
       metricType: form.metricType,

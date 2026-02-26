@@ -11,7 +11,8 @@ interface AgentCardProps {
 }
 
 function todayStr(): string {
-  return new Date().toISOString().slice(0, 10);
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
 /* ── Mini widget: Calendar ── */
@@ -27,7 +28,7 @@ function CalendarWidget({ residentId }: { residentId: string }) {
   const today = now.getDate();
 
   const eventDates = new Set(myEvents.map(e => {
-    const d = new Date(e.startDate);
+    const d = new Date(e.startDate + 'T00:00:00');
     return d.getMonth() === month && d.getFullYear() === year ? d.getDate() : -1;
   }).filter(d => d > 0));
 
@@ -117,7 +118,7 @@ function TravelWidget({ residentId }: { residentId: string }) {
     .sort((a, b) => a.startDate.localeCompare(b.startDate));
   const next = upcoming[0] ?? null;
 
-  const daysUntil = next ? Math.ceil((new Date(next.startDate).getTime() - Date.now()) / 86400000) : null;
+  const daysUntil = next ? Math.ceil((new Date(next.startDate + 'T00:00:00').getTime() - Date.now()) / 86400000) : null;
 
   return (
     <div className="dash-widget dash-widget--travel">

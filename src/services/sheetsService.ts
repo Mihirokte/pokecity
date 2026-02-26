@@ -1,12 +1,14 @@
-import { SHEET_HEADERS, SHEET_NAMES } from '../config/sheets';
+import { SHEET_HEADERS, SHEET_NAMES, NEW_SHEET_NAMES } from '../config/sheets';
 import type { SheetName } from '../types';
 import { useAuthStore } from '../stores/authStore';
 
 const SHEETS_API = 'https://sheets.googleapis.com/v4/spreadsheets';
 
 function getAuth() {
-  const { accessToken, spreadsheetId } = useAuthStore.getState();
+  const state = useAuthStore.getState();
+  const { accessToken, spreadsheetId } = state;
   if (!accessToken || !spreadsheetId) throw new Error('Not authenticated');
+  if (!state.isTokenValid()) throw new Error('Token expired');
   return { token: accessToken, sheetId: spreadsheetId };
 }
 
@@ -111,14 +113,16 @@ export const SheetsService = {
     }
   },
 
-  // ── Update a specific row (find by ID in column A) ──
+  // ── Update a specific row (find by lookup field, defaults to 'id') ──
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  async update(sheetName: SheetName, obj: any & { id: string }): Promise<void> {
+  async update(sheetName: SheetName, obj: any & { id: string }, lookupField = 'id'): Promise<void> {
     const { token, sheetId } = getAuth();
     // First find the row index
-    const all = await this.readAll<{ id: string }>(sheetName);
-    const idx = all.findIndex(r => r.id === obj.id);
-    if (idx === -1) throw new Error(`Row not found in ${sheetName}: ${obj.id}`);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const all = await this.readAll<any>(sheetName);
+    const lookupValue = obj[lookupField];
+    const idx = all.findIndex((r: any) => r[lookupField] === lookupValue); // eslint-disable-line @typescript-eslint/no-explicit-any
+    if (idx === -1) throw new Error(`Row not found in ${sheetName}: ${lookupValue}`);
     const rowNum = idx + 2; // 1-indexed, row 1 is header
 
     const row = objectToRow(sheetName, obj);
@@ -135,6 +139,83 @@ export const SheetsService = {
       const errBody = await res.text().catch(() => '');
       throw new Error(`Failed to update ${sheetName} (${res.status}): ${errBody || res.statusText}`);
     }
+  },
+
+  // ── Ensure new sheets exist on legacy spreadsheets ──
+  async ensureSheets(): Promise<Record<string, number>> {
+    const { token, sheetId } = getAuth();
+    const { sheetGids } = useAuthStore.getState();
+
+    // Get existing sheet names
+    const res = await fetch(`${SHEETS_API}/${sheetId}?fields=sheets.properties`, {
+      headers: headers(token),
+    });
+    if (!res.ok) throw new Error(`Failed to fetch sheet metadata: ${res.status}`);
+    const data = await res.json();
+    const existingNames = new Set(
+      (data.sheets || []).map((s: { properties: { title: string } }) => s.properties.title)
+    );
+
+    // Find missing sheets
+    const missing = NEW_SHEET_NAMES.filter(name => !existingNames.has(name));
+    if (missing.length === 0) {
+      // Ensure we have GIDs for all sheets
+      const updatedGids = { ...sheetGids };
+      for (const sheet of data.sheets) {
+        updatedGids[sheet.properties.title as string] = sheet.properties.sheetId;
+      }
+      return updatedGids;
+    }
+
+    // Add missing sheets via batchUpdate
+    const requests = missing.map(name => ({
+      addSheet: {
+        properties: { title: name },
+      },
+    }));
+
+    const batchRes = await fetch(`${SHEETS_API}/${sheetId}:batchUpdate`, {
+      method: 'POST',
+      headers: headers(token),
+      body: JSON.stringify({ requests }),
+    });
+    if (!batchRes.ok) {
+      const errBody = await batchRes.text().catch(() => '');
+      throw new Error(`Failed to add sheets (${batchRes.status}): ${errBody}`);
+    }
+    const batchData = await batchRes.json();
+
+    // Collect new GIDs
+    const updatedGids = { ...sheetGids };
+    for (const sheet of data.sheets) {
+      updatedGids[sheet.properties.title as string] = sheet.properties.sheetId;
+    }
+    for (const reply of batchData.replies || []) {
+      if (reply.addSheet) {
+        const props = reply.addSheet.properties;
+        updatedGids[props.title] = props.sheetId;
+      }
+    }
+
+    // Add header rows to new sheets
+    const headerRequests = missing.map(name => ({
+      range: `${name}!A1`,
+      values: [SHEET_HEADERS[name]],
+    }));
+
+    await fetch(
+      `${SHEETS_API}/${sheetId}/values:batchUpdate`,
+      {
+        method: 'POST',
+        headers: headers(token),
+        body: JSON.stringify({
+          valueInputOption: 'RAW',
+          data: headerRequests,
+        }),
+      },
+    );
+
+    return updatedGids;
   },
 
   // ── Delete a row by ID ──

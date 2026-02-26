@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useCityStore } from '../../stores/cityStore';
 import { useUIStore } from '../../stores/uiStore';
 import { SheetsService } from '../../services/sheetsService';
@@ -72,13 +72,25 @@ export function TravelModule({ resident }: TravelModuleProps) {
     [tripPlans, resident.id],
   );
 
+  // Reset leg/packing form when switching trips
+  useEffect(() => {
+    setLegFrom('');
+    setLegTo('');
+    setLegDate('');
+    setLegTransport('flight');
+    setLegDetails('');
+    setPackingInput('');
+  }, [expandedId]);
+
   // ── Helper to persist a trip update ──
   const updateTrip = useCallback(
     (updated: TripPlan) => {
-      const next = tripPlans.map(t => (t.id === updated.id ? updated : t));
+      const prev = tripPlans;
+      const next = prev.map(t => (t.id === updated.id ? updated : t));
       setModuleData('tripPlans', next);
 
       SheetsService.update('TripPlans', updated).catch(() => {
+        setModuleData('tripPlans', prev);
         addToast('Failed to save trip', 'error');
       });
     },
@@ -93,7 +105,7 @@ export function TravelModule({ resident }: TravelModuleProps) {
 
     const now = new Date().toISOString();
     const trip: TripPlan = {
-      id: `trip_${Date.now()}`,
+      id: `trip_${crypto.randomUUID()}`,
       residentId: resident.id,
       tripName: name,
       startDate: formStart,
@@ -106,6 +118,7 @@ export function TravelModule({ resident }: TravelModuleProps) {
       updatedAt: now,
     };
 
+    const prev = tripPlans;
     setModuleData('tripPlans', [...tripPlans, trip]);
     setFormName('');
     setFormDest('');
@@ -115,6 +128,7 @@ export function TravelModule({ resident }: TravelModuleProps) {
     addToast('Trip created', 'success');
 
     SheetsService.append('TripPlans', trip).catch(() => {
+      setModuleData('tripPlans', prev);
       addToast('Failed to save trip', 'error');
     });
   }, [formName, formDest, formStart, formEnd, resident.id, tripPlans, setModuleData, addToast]);
@@ -122,11 +136,13 @@ export function TravelModule({ resident }: TravelModuleProps) {
   // ── Delete trip ──
   const handleDelete = useCallback(
     (id: string) => {
+      const prev = tripPlans;
       setModuleData('tripPlans', tripPlans.filter(t => t.id !== id));
       if (expandedId === id) setExpandedId(null);
       addToast('Trip deleted', 'info');
 
       SheetsService.deleteRow('TripPlans', id).catch(() => {
+        setModuleData('tripPlans', prev);
         addToast('Failed to delete trip', 'error');
       });
     },

@@ -43,13 +43,13 @@ const emptyForm = (): Omit<Task, 'id' | 'residentId' | 'createdAt' | 'updatedAt'
   tags: '',
 });
 
-function getToday(): string {
-  return new Date().toISOString().split('T')[0];
+function getLocalDate(d = new Date()): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
 function isOverdue(task: Task): boolean {
   if (!task.dueDate || task.status === 'done') return false;
-  return task.dueDate < getToday();
+  return task.dueDate < getLocalDate();
 }
 
 export function TasksModule({ resident }: TasksModuleProps) {
@@ -111,6 +111,8 @@ export function TasksModule({ resident }: TasksModuleProps) {
     const now = new Date().toISOString();
     const allTasks = moduleData.tasks;
 
+    const prev = allTasks;
+
     if (editingId) {
       const updated: Task = {
         id: editingId,
@@ -129,11 +131,12 @@ export function TasksModule({ resident }: TasksModuleProps) {
       try {
         await SheetsService.update('Tasks', updated);
       } catch {
+        setModuleData('tasks', prev);
         addToast('Failed to sync update', 'error');
       }
     } else {
       const newTask: Task = {
-        id: `task_${Date.now()}`,
+        id: `task_${crypto.randomUUID()}`,
         residentId: resident.id,
         ...form,
         createdAt: now,
@@ -147,19 +150,21 @@ export function TasksModule({ resident }: TasksModuleProps) {
       try {
         await SheetsService.append('Tasks', newTask);
       } catch {
+        setModuleData('tasks', prev);
         addToast('Failed to sync task', 'error');
       }
     }
   }, [form, editingId, moduleData.tasks, resident.id, setModuleData, addToast]);
 
   const handleDelete = useCallback(async (id: string) => {
-    const next = moduleData.tasks.filter(t => t.id !== id);
-    setModuleData('tasks', next);
+    const prev = moduleData.tasks;
+    setModuleData('tasks', prev.filter(t => t.id !== id));
     addToast('Task deleted', 'success');
 
     try {
       await SheetsService.deleteRow('Tasks', id);
     } catch {
+      setModuleData('tasks', prev);
       addToast('Failed to sync deletion', 'error');
     }
   }, [moduleData.tasks, setModuleData, addToast]);
@@ -169,13 +174,15 @@ export function TasksModule({ resident }: TasksModuleProps) {
     const now = new Date().toISOString();
     const updated: Task = { ...task, status: nextStatus, updatedAt: now };
 
-    const next = moduleData.tasks.map(t => (t.id === task.id ? updated : t));
+    const prev = moduleData.tasks;
+    const next = prev.map(t => (t.id === task.id ? updated : t));
     setModuleData('tasks', next);
     addToast(`Status: ${STATUS_LABELS[nextStatus]}`, 'info');
 
     try {
       await SheetsService.update('Tasks', updated);
     } catch {
+      setModuleData('tasks', prev);
       addToast('Failed to sync status', 'error');
     }
   }, [moduleData.tasks, setModuleData, addToast]);

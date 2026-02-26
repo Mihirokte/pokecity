@@ -312,8 +312,12 @@ export function ShopView() {
                     <div className="sync-modal__label">Your Spreadsheet ID</div>
                     <div className="sync-modal__id"
                       onClick={() => {
-                        navigator.clipboard.writeText(spreadsheetId ?? '');
-                        addToast('Copied!', 'success');
+                        try {
+                          navigator.clipboard.writeText(spreadsheetId ?? '');
+                          addToast('Copied!', 'success');
+                        } catch {
+                          addToast('Failed to copy — use manual selection', 'error');
+                        }
                       }}
                     >
                       {spreadsheetId ?? 'None'}

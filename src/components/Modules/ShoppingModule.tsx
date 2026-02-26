@@ -92,7 +92,7 @@ export function ShoppingModule({ resident }: { resident: Resident }) {
 
     const now = new Date().toISOString();
     const item: ShoppingItem = {
-      id: `shop_${Date.now()}`,
+      id: `shop_${crypto.randomUUID()}`,
       residentId: resident.id,
       listName: activeList,
       itemName: name,
@@ -127,7 +127,7 @@ export function ShoppingModule({ resident }: { resident: Resident }) {
 
     const now = new Date().toISOString();
     const item: ShoppingItem = {
-      id: `shop_${Date.now()}`,
+      id: `shop_${crypto.randomUUID()}`,
       residentId: resident.id,
       listName: activeList,
       itemName: detailForm.itemName.trim(),
@@ -197,14 +197,21 @@ export function ShoppingModule({ resident }: { resident: Resident }) {
     setModuleData('shoppingItems', allItems.filter(i => !checkedIds.has(i.id)));
     addToast(`${checkedItems.length} item${checkedItems.length > 1 ? 's' : ''} cleared`, 'success');
 
-    // Delete from sheets sequentially
-    try {
-      for (const item of checkedItems) {
-        await SheetsService.deleteRow('ShoppingItems', item.id);
-      }
-    } catch {
-      setModuleData('shoppingItems', prev);
-      addToast('Failed to clear checked items', 'error');
+    // Delete from sheets — handle partial failures
+    const results = await Promise.allSettled(
+      checkedItems.map(item => SheetsService.deleteRow('ShoppingItems', item.id)),
+    );
+    const failedIds = new Set(
+      results
+        .map((r, i) => (r.status === 'rejected' ? checkedItems[i].id : null))
+        .filter(Boolean) as string[],
+    );
+    if (failedIds.size > 0) {
+      // Restore only items that failed to delete from Sheets
+      const currentItems = useCityStore.getState().moduleData.shoppingItems;
+      const failedItems = prev.filter(i => failedIds.has(i.id));
+      setModuleData('shoppingItems', [...currentItems, ...failedItems]);
+      addToast(`${failedIds.size} item(s) failed to delete`, 'error');
     }
   }, [listItems, allItems, setModuleData, addToast]);
 

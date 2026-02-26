@@ -10,6 +10,26 @@ export const SHEET_NAMES: SheetName[] = [
   'TripPlans',
   'HealthMetrics',
   'ShoppingItems',
+  'Session',
+  'Agents',
+  'AgentLogs',
+  'TwitterBot',
+  'LinkedInBot',
+  'KnowledgeBase',
+  'CalendarSync',
+  'Notifications',
+  'AgentOutputs',
+];
+
+// Original 9 sheets — used to detect legacy spreadsheets that need migration
+export const LEGACY_SHEET_NAMES: SheetName[] = [
+  'Meta', 'Houses', 'Residents', 'CalendarEvents', 'Tasks',
+  'Notes', 'TripPlans', 'HealthMetrics', 'ShoppingItems',
+];
+
+export const NEW_SHEET_NAMES: SheetName[] = [
+  'Session', 'Agents', 'AgentLogs', 'TwitterBot', 'LinkedInBot',
+  'KnowledgeBase', 'CalendarSync', 'Notifications', 'AgentOutputs',
 ];
 
 export const SHEET_HEADERS: Record<SheetName, string[]> = {
@@ -40,5 +60,37 @@ export const SHEET_HEADERS: Record<SheetName, string[]> = {
   ShoppingItems: [
     'id', 'residentId', 'listName', 'itemName', 'quantity', 'unit',
     'estimatedPrice', 'checked', 'category', 'createdAt', 'updatedAt',
+  ],
+  // ─── PokéCenter sheets ───
+  Session: [
+    'userId', 'lastX', 'lastY', 'lastDirection', 'lastOpenPanel', 'timestamp',
+  ],
+  Agents: [
+    'id', 'name', 'pokemon', 'pokemonId', 'type', 'typeIcon',
+    'status', 'progress', 'isRunOnce', 'description', 'configJson',
+    'createdAt', 'updatedAt',
+  ],
+  AgentLogs: [
+    'id', 'agentId', 'timestamp', 'level', 'message',
+  ],
+  TwitterBot: [
+    'id', 'content', 'status', 'scheduledAt', 'postedAt',
+    'engagementLikes', 'engagementRetweets', 'engagementReplies',
+  ],
+  LinkedInBot: [
+    'id', 'content', 'status', 'scheduledAt', 'postedAt',
+    'engagementLikes', 'engagementComments', 'engagementShares',
+  ],
+  KnowledgeBase: [
+    'id', 'agentId', 'source', 'title', 'contentSummary', 'rawRef', 'fetchedAt',
+  ],
+  CalendarSync: [
+    'id', 'title', 'start', 'end', 'source', 'syncedAt',
+  ],
+  Notifications: [
+    'id', 'type', 'message', 'read', 'agentId', 'createdAt',
+  ],
+  AgentOutputs: [
+    'id', 'agentId', 'type', 'title', 'content', 'fileRef', 'createdAt',
   ],
 };

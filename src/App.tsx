@@ -3,26 +3,33 @@ import { useAuthStore } from './stores/authStore';
 import { useCityStore } from './stores/cityStore';
 import { useUIStore } from './stores/uiStore';
 import { SheetsService } from './services/sheetsService';
+import { usePokecenterStore } from './pokecenter/pokecenterStore';
 import { LandingPage } from './components/Landing/LandingPage';
-import { ShopView } from './components/Shop/ShopView';
+import { PokeCenterHub } from './pokecenter/PokeCenterHub';
 import { Toasts } from './components/Toasts';
 
 function LoadingScreen() {
   return (
     <div style={{
-      height: '100%', display: 'flex', flexDirection: 'column',
+      height: '100vh', width: '100vw', display: 'flex', flexDirection: 'column',
       alignItems: 'center', justifyContent: 'center',
-      background: 'linear-gradient(135deg, #2b2d42, #1a1c2c)',
+      background: '#0F2027',
+      fontFamily: '"Press Start 2P", monospace',
     }}>
-      <div style={{ position: 'relative', width: 280, height: 200 }}>
-        <div className="layer"><img src={`${import.meta.env.BASE_URL}assets/ui/modal.png`} alt="" /></div>
-        <div className="layer layer--fg" style={{ flexDirection: 'column', gap: 16 }}>
-          <img src={`${import.meta.env.BASE_URL}assets/gif/loading.gif`} alt="Loading" style={{ width: 48, height: 48 }} />
-          <span style={{ fontFamily: 'VT323, monospace', fontSize: 20, color: '#c0cbdc' }}>
-            Loading your city...
-          </span>
-        </div>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');`}</style>
+      <div style={{
+        width: 64, height: 64, marginBottom: 24,
+        background: `url(https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/113.png) center/contain no-repeat`,
+        imageRendering: 'pixelated',
+        animation: 'pulse 1.5s ease infinite',
+      }} />
+      <div style={{ fontSize: 12, color: '#F8F8F8', marginBottom: 8 }}>
+        Loading PokéCenter...
       </div>
+      <div style={{ fontSize: 8, color: '#607880' }}>
+        Connecting to your data
+      </div>
+      <style>{`@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }`}</style>
     </div>
   );
 }
@@ -38,6 +45,8 @@ export default function App() {
   const addToast = useUIStore(s => s.addToast);
   const loadAllData = useCityStore(s => s.loadAllData);
   const dataLoaded = useCityStore(s => s.dataLoaded);
+  const loadPCData = usePokecenterStore(s => s.loadPCData);
+  const pcDataLoaded = usePokecenterStore(s => s.pcDataLoaded);
 
   const [booting, setBooting] = useState(true);
 
@@ -54,7 +63,7 @@ export default function App() {
     })();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // After auth, bootstrap spreadsheet if needed, then load data
+  // After auth, bootstrap spreadsheet, ensure new sheets exist, load data
   useEffect(() => {
     if (!accessToken || !isTokenValid() || booting) return;
     let cancelled = false;
@@ -62,29 +71,40 @@ export default function App() {
     (async () => {
       try {
         if (!spreadsheetId) {
+          // First time: create spreadsheet with ALL sheets (legacy + new)
           const { spreadsheetId: newId, sheetGids } =
-            await SheetsService.createSpreadsheet(`PokéCity - ${user?.name ?? 'User'}`);
+            await SheetsService.createSpreadsheet(`PokéCenter Hub - ${user?.name ?? 'User'}`);
           if (cancelled) return;
           setSpreadsheet(newId, sheetGids);
-          await SheetsService.append('Meta', { key: 'cityName', value: 'My City' });
+          await SheetsService.append('Meta', { key: 'cityName', value: 'PokéCenter' });
           if (cancelled) return;
-          addToast('City created! Use Sync button to link devices.', 'success');
+          addToast('PokéCenter created!', 'success');
           return;
         }
 
         try {
-          await loadAllData();
-        } catch (loadErr: any) {
-          if (loadErr?.message?.includes('404') || loadErr?.message?.includes('Not Found')) {
+          // Ensure new sheets exist (migration for existing spreadsheets)
+          const updatedGids = await SheetsService.ensureSheets();
+          if (cancelled) return;
+          setSpreadsheet(spreadsheetId, updatedGids);
+
+          // Load legacy module data + new pokecenter data in parallel
+          await Promise.all([
+            loadAllData(),
+            loadPCData(),
+          ]);
+        } catch (loadErr: unknown) {
+          const msg = loadErr instanceof Error ? loadErr.message : String(loadErr);
+          if (msg.includes('404') || msg.includes('Not Found')) {
             console.warn('Spreadsheet not found, clearing stale ID');
             setSpreadsheet('', {});
             return;
           }
           throw loadErr;
         }
-      } catch (e: any) {
+      } catch (e: unknown) {
         console.error('Bootstrap error:', e);
-        const msg = e?.message ?? String(e);
+        const msg = e instanceof Error ? e.message : String(e);
         addToast(`Bootstrap failed: ${msg}`, 'error');
       }
     })();
@@ -102,10 +122,10 @@ export default function App() {
       <Toasts />
       {!isAuthed ? (
         <LandingPage />
-      ) : !dataLoaded ? (
+      ) : !(dataLoaded && pcDataLoaded) ? (
         <LoadingScreen />
       ) : (
-        <ShopView />
+        <PokeCenterHub />
       )}
     </>
   );

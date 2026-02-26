@@ -20,7 +20,7 @@ export const useUIStore = create<UIState>((set, get) => ({
   clearAgent: () => set({ selectedAgentId: null }),
 
   addToast: (text, type = 'info') => {
-    const id = `toast_${Date.now()}`;
+    const id = crypto.randomUUID();
     set({ toasts: [...get().toasts, { id, text, type }] });
     setTimeout(() => get().removeToast(id), 3500);
   },

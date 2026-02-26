@@ -18,8 +18,8 @@ const COLOR_OPTIONS = [
 
 const emptyForm = (): Omit<CalendarEvent, 'id' | 'residentId' | 'createdAt' | 'updatedAt'> => ({
   title: '',
-  startDate: new Date().toISOString().split('T')[0],
-  endDate: new Date().toISOString().split('T')[0],
+  startDate: getLocalDate(),
+  endDate: getLocalDate(),
   startTime: '09:00',
   endTime: '10:00',
   allDay: 'false',
@@ -35,8 +35,8 @@ function formatDate(dateStr: string): string {
   return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 }
 
-function getToday(): string {
-  return new Date().toISOString().split('T')[0];
+function getLocalDate(d = new Date()): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
 export function CalendarModule({ resident }: CalendarModuleProps) {
@@ -55,7 +55,7 @@ export function CalendarModule({ resident }: CalendarModuleProps) {
   );
 
   const grouped = useMemo(() => {
-    const today = getToday();
+    const today = getLocalDate();
     const todayEvents: CalendarEvent[] = [];
     const upcoming: CalendarEvent[] = [];
     const past: CalendarEvent[] = [];
@@ -118,6 +118,8 @@ export function CalendarModule({ resident }: CalendarModuleProps) {
     const now = new Date().toISOString();
     const allEvents = moduleData.calendarEvents;
 
+    const prev = allEvents;
+
     if (editingId) {
       const updated: CalendarEvent = {
         id: editingId,
@@ -136,11 +138,12 @@ export function CalendarModule({ resident }: CalendarModuleProps) {
       try {
         await SheetsService.update('CalendarEvents', updated);
       } catch {
+        setModuleData('calendarEvents', prev);
         addToast('Failed to sync update', 'error');
       }
     } else {
       const newEvent: CalendarEvent = {
-        id: `evt_${Date.now()}`,
+        id: `evt_${crypto.randomUUID()}`,
         residentId: resident.id,
         ...form,
         createdAt: now,
@@ -154,19 +157,21 @@ export function CalendarModule({ resident }: CalendarModuleProps) {
       try {
         await SheetsService.append('CalendarEvents', newEvent);
       } catch {
+        setModuleData('calendarEvents', prev);
         addToast('Failed to sync event', 'error');
       }
     }
   }, [form, editingId, moduleData.calendarEvents, resident.id, setModuleData, addToast]);
 
   const handleDelete = useCallback(async (id: string) => {
-    const next = moduleData.calendarEvents.filter(e => e.id !== id);
-    setModuleData('calendarEvents', next);
+    const prev = moduleData.calendarEvents;
+    setModuleData('calendarEvents', prev.filter(e => e.id !== id));
     addToast('Event deleted', 'success');
 
     try {
       await SheetsService.deleteRow('CalendarEvents', id);
     } catch {
+      setModuleData('calendarEvents', prev);
       addToast('Failed to sync deletion', 'error');
     }
   }, [moduleData.calendarEvents, setModuleData, addToast]);

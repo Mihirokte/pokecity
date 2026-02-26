@@ -16,7 +16,16 @@ export type SheetName =
   | 'Notes'
   | 'TripPlans'
   | 'HealthMetrics'
-  | 'ShoppingItems';
+  | 'ShoppingItems'
+  | 'Session'
+  | 'Agents'
+  | 'AgentLogs'
+  | 'TwitterBot'
+  | 'LinkedInBot'
+  | 'KnowledgeBase'
+  | 'CalendarSync'
+  | 'Notifications'
+  | 'AgentOutputs';
 
 // ─── House Module Types ───
 export type HouseModuleType =
@@ -162,4 +171,114 @@ export interface AllModuleData {
   tripPlans: TripPlan[];
   healthMetrics: HealthMetric[];
   shoppingItems: ShoppingItem[];
+}
+
+// ─── PokéCenter Types ───
+
+export type AgentStatus = 'running' | 'idle' | 'stopped' | 'completed' | 'error';
+
+export interface PCAgent {
+  id: string;
+  name: string;
+  pokemon: string;
+  pokemonId: string;
+  type: string;
+  typeIcon: string;
+  status: AgentStatus;
+  progress: string;
+  isRunOnce: string;
+  description: string;
+  configJson: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AgentLog {
+  id: string;
+  agentId: string;
+  timestamp: string;
+  level: string;
+  message: string;
+}
+
+export interface SessionData {
+  userId: string;
+  lastX: string;
+  lastY: string;
+  lastDirection: string;
+  lastOpenPanel: string;
+  timestamp: string;
+}
+
+export interface TwitterPost {
+  id: string;
+  content: string;
+  status: string;
+  scheduledAt: string;
+  postedAt: string;
+  engagementLikes: string;
+  engagementRetweets: string;
+  engagementReplies: string;
+}
+
+export interface LinkedInPost {
+  id: string;
+  content: string;
+  status: string;
+  scheduledAt: string;
+  postedAt: string;
+  engagementLikes: string;
+  engagementComments: string;
+  engagementShares: string;
+}
+
+export interface KnowledgeEntry {
+  id: string;
+  agentId: string;
+  source: string;
+  title: string;
+  contentSummary: string;
+  rawRef: string;
+  fetchedAt: string;
+}
+
+export interface CachedCalendarEvent {
+  id: string;
+  title: string;
+  start: string;
+  end: string;
+  source: string;
+  syncedAt: string;
+}
+
+export interface PCNotification {
+  id: string;
+  type: string;
+  message: string;
+  read: string;
+  agentId: string;
+  createdAt: string;
+}
+
+export interface AgentOutput {
+  id: string;
+  agentId: string;
+  type: string;
+  title: string;
+  content: string;
+  fileRef: string;
+  createdAt: string;
+}
+
+// ─── PokéCenter Module Data ───
+export interface PCModuleData extends AllModuleData {
+  agents: PCAgent[];
+  agentLogs: AgentLog[];
+  session: SessionData[];
+  twitterPosts: TwitterPost[];
+  linkedInPosts: LinkedInPost[];
+  knowledgeEntries: KnowledgeEntry[];
+  cachedCalendarEvents: CachedCalendarEvent[];
+  notifications: PCNotification[];
+  agentOutputs: AgentOutput[];
 }

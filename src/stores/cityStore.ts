@@ -42,13 +42,13 @@ export const useCityStore = create<CityState>((set, get) => ({
 
   setCityName: (name) => {
     set({ cityName: name });
-    SheetsService.update('Meta', { id: 'cityName', key: 'cityName', value: name }).catch(() => {});
+    SheetsService.update('Meta', { key: 'cityName', value: name }, 'key').catch(() => {});
   },
 
   placeHouse: async (type) => {
     const { houses } = get();
     const house: House = {
-      id: `house_${Date.now()}`,
+      id: `house_${crypto.randomUUID()}`,
       type,
       name: HOUSE_TYPES[type].label,
       gridX: 0,
@@ -62,8 +62,15 @@ export const useCityStore = create<CityState>((set, get) => ({
   },
 
   removeHouse: async (id) => {
-    set({ houses: get().houses.filter(h => h.id !== id) });
+    const orphanedResidents = get().residents.filter(r => r.houseId === id);
+    set({
+      houses: get().houses.filter(h => h.id !== id),
+      residents: get().residents.filter(r => r.houseId !== id),
+    });
     SheetsService.deleteRow('Houses', id).catch(() => {});
+    for (const r of orphanedResidents) {
+      SheetsService.deleteRow('Residents', r.id).catch(() => {});
+    }
   },
 
   renameHouse: async (id, name) => {
@@ -85,7 +92,7 @@ export const useCityStore = create<CityState>((set, get) => ({
     const config = HOUSE_TYPES[house.type];
 
     const resident: Resident = {
-      id: `res_${Date.now()}`,
+      id: `res_${crypto.randomUUID()}`,
       houseId,
       name,
       role: config.defaultRole,

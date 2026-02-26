@@ -62,10 +62,16 @@ export function NotesModule({ resident }: NotesModuleProps) {
 
   const saveNote = useCallback(
     async (noteId: string, title: string, content: string, tags: string) => {
-      if (savingRef.current) return;
+      if (savingRef.current) {
+        // Reschedule instead of dropping
+        setTimeout(() => saveNote(noteId, title, content, tags), 500);
+        return;
+      }
       savingRef.current = true;
 
-      const existing = notes.find(n => n.id === noteId);
+      // Read latest notes from store to avoid stale closure
+      const currentNotes = useCityStore.getState().moduleData.notes;
+      const existing = currentNotes.find(n => n.id === noteId);
       if (!existing) {
         savingRef.current = false;
         return;
@@ -82,7 +88,7 @@ export function NotesModule({ resident }: NotesModuleProps) {
       };
 
       // Optimistic update
-      const updatedNotes = notes.map(n => (n.id === noteId ? updated : n));
+      const updatedNotes = currentNotes.map(n => (n.id === noteId ? updated : n));
       setModuleData('notes', updatedNotes);
 
       try {
@@ -90,13 +96,13 @@ export function NotesModule({ resident }: NotesModuleProps) {
         addToast('Note saved', 'success');
       } catch {
         // Revert on failure
-        setModuleData('notes', notes);
+        setModuleData('notes', currentNotes);
         addToast('Failed to save note', 'error');
       } finally {
         savingRef.current = false;
       }
     },
-    [notes, setModuleData, addToast],
+    [setModuleData, addToast],
   );
 
   const scheduleSave = useCallback(
@@ -145,7 +151,7 @@ export function NotesModule({ resident }: NotesModuleProps) {
 
     const now = new Date().toISOString();
     const note: Note = {
-      id: `note_${Date.now()}`,
+      id: `note_${crypto.randomUUID()}`,
       residentId: resident.id,
       title,
       content: '',
