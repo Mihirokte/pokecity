@@ -74,6 +74,7 @@ export const SHEET_HEADERS: Record<SheetName, string[]> = {
   Tasks: [
     'id', 'residentId', 'title', 'priority', 'status', 'dueDate',
     'notes', 'parentId', 'projectName', 'tags', 'createdAt', 'updatedAt',
+    'dueTime', 'gcalEventId',
   ],
   Notes: [
     'id', 'residentId', 'title', 'content', 'tags', 'version',

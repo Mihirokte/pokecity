@@ -202,6 +202,9 @@ select { appearance: none; }
 }
 .modal--wide { width: 720px; }
 
+/* ─── Task Calendar ─── */
+.task-cal-day:hover { background: rgba(255,255,255,.06) !important; }
+
 /* ─── Mobile responsive ─── */
 @media (max-width: 767px) {
   .modal { width: 95vw; max-height: 80%; }

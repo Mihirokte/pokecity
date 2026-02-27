@@ -9,11 +9,11 @@ const SCOPES = [
   'email',
   'profile',
   'https://www.googleapis.com/auth/spreadsheets',
-  'https://www.googleapis.com/auth/calendar.readonly',
+  'https://www.googleapis.com/auth/calendar',
   'https://www.googleapis.com/auth/drive.file',
 ].join(' ');
 // Bump this when scopes change to force re-login
-const SCOPES_VERSION = 5;
+const SCOPES_VERSION = 6;
 
 interface AuthState {
   user: GoogleUser | null;

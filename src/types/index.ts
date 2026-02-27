@@ -97,6 +97,8 @@ export interface Task {
   tags: string;
   createdAt: string;
   updatedAt: string;
+  dueTime: string;
+  gcalEventId: string;
 }
 
 export interface Note {

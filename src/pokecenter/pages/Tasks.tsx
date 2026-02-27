@@ -64,6 +64,8 @@ export function Tasks() {
       tags: '',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
+      dueTime: '',
+      gcalEventId: '',
     };
     setModuleData('tasks', [...tasks, task]);
     SheetsService.append('Tasks', task).catch(() => addToast('Sync failed', 'error'));
