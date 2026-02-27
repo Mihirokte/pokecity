@@ -90,6 +90,18 @@ export const usePokecenterStore = create<PokecenterState>((set, get) => ({
       // Seed defaults if no agents exist
       if (agents.length === 0) {
         await get().seedDefaults();
+      } else {
+        // Merge any missing default agents for existing users
+        const existingIds = new Set(agents.map(a => a.id));
+        const missing = DEFAULT_AGENTS.filter(d => !existingIds.has(d.id));
+        if (missing.length > 0) {
+          const ts = now();
+          const newAgents = missing.map(a => ({ ...a, createdAt: ts, updatedAt: ts }));
+          set({ agents: [...agents, ...newAgents] });
+          for (const agent of newAgents) {
+            SheetsService.append('Agents', agent).catch(() => {});
+          }
+        }
       }
     } catch (e) {
       console.error('Failed to load PC data:', e);

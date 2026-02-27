@@ -1011,6 +1011,69 @@
 }
 
 /* ─── Agent Detail ─── */
+.agent-detail__top-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-0);
+}
+
+.agent-detail__top-sprite {
+  width: 40px;
+  height: 40px;
+  image-rendering: auto;
+  object-fit: contain;
+}
+
+.agent-detail__top-info {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.agent-detail__top-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.agent-detail__top-type {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.agent-detail__tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 20px;
+  border-bottom: 2px solid var(--border-0);
+}
+
+.agent-detail__tab {
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.agent-detail__tab:hover {
+  color: var(--text-primary);
+}
+
+.agent-detail__tab--active {
+  color: var(--blue);
+  border-bottom-color: var(--blue);
+}
+
 .agent-detail__header {
   display: flex;
   align-items: center;
@@ -1045,6 +1108,11 @@
   color: var(--text-secondary);
   line-height: 1.6;
   margin-top: 8px;
+}
+
+.btn--sm {
+  padding: 4px 10px;
+  font-size: 12px;
 }
 
 /* ─── Log Entry ─── */

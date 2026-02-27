@@ -22,26 +22,9 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
   const unreadCount = notifications.filter(n => n.read !== 'true').length;
 
-  const overviewItems: NavItem[] = [
+  const navItems: NavItem[] = [
     { id: 'dashboard', label: 'Dashboard', icon: '\u25A3' },
     { id: 'notifications', label: 'Notifications', icon: '\uD83D\uDD14', badge: unreadCount || undefined },
-  ];
-
-  const moduleItems: NavItem[] = [
-    { id: 'tasks', label: 'Tasks', icon: '\u2611' },
-    { id: 'calendar', label: 'Calendar', icon: '\uD83D\uDCC5' },
-    { id: 'notes', label: 'Notes', icon: '\uD83D\uDCDD' },
-  ];
-
-  const socialItems: NavItem[] = [
-    { id: 'twitter', label: 'Twitter Bot', icon: '\uD83D\uDC26' },
-    { id: 'linkedin', label: 'LinkedIn Bot', icon: '\uD83D\uDCBC' },
-  ];
-
-  const lifeItems: NavItem[] = [
-    { id: 'travel', label: 'Travel', icon: '\u2708' },
-    { id: 'gym', label: 'Gym', icon: '\uD83C\uDFCB' },
-    { id: 'shopping', label: 'Shopping', icon: '\uD83D\uDED2' },
   ];
 
   const handleNav = (page: string) => {
@@ -83,10 +66,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         </div>
 
         <nav className="sidebar__nav">
-          {renderGroup('Overview', overviewItems)}
-          {renderGroup('Productivity', moduleItems)}
-          {renderGroup('Social', socialItems)}
-          {renderGroup('Lifestyle', lifeItems)}
+          {renderGroup('Overview', navItems)}
         </nav>
 
         {user && (

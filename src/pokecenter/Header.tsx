@@ -6,16 +6,7 @@ interface HeaderProps {
 
 const PAGE_TITLES: Record<string, string> = {
   dashboard: 'Dashboard',
-  tasks: 'Tasks',
-  calendar: 'Calendar',
-  notes: 'Notes',
-  twitter: 'Twitter Bot',
-  linkedin: 'LinkedIn Bot',
-  travel: 'Travel',
-  gym: 'Gym',
-  shopping: 'Shopping',
   notifications: 'Notifications',
-  knowledge: 'Knowledge Base',
 };
 
 export function Header({ onMenuToggle }: HeaderProps) {
