@@ -136,11 +136,18 @@ def tweet_to_row(tweet, collected_at: str) -> dict:
 async def twitter_login(client: Client):
     """Interactive Twitter login — saves cookies for reuse."""
     print("\n--- Twitter Login ---")
-    username = input("Twitter username or email: ").strip()
-    password = input("Twitter password: ").strip()
+    print("twikit requires your Twitter/X username, email, AND password.")
+    print("These are only used to generate session cookies (saved locally).\n")
+    username = input("Twitter username (without @): ").strip()
+    email = input("Email address on the account: ").strip()
+    password = input("Password: ").strip()
 
-    await client.login(auth_info_1=username, password=password)
-    client.save_cookies(str(COOKIES_FILE))
+    await client.login(
+        auth_info_1=username,
+        auth_info_2=email,
+        password=password,
+        cookies_file=str(COOKIES_FILE),
+    )
     print(f"Twitter cookies saved to {COOKIES_FILE}")
 
 
@@ -199,10 +206,10 @@ async def run_scrape(spreadsheet_id: str, dry_run: bool = False):
     print(f"\nConfig: {len(accounts)} accounts, {len(keywords)} keywords, "
           f"max {max_per}/account, min {min_likes} likes")
 
-    # 3. Twitter login
+    # 3. Twitter login via cookies
     client = Client("en-US")
     if COOKIES_FILE.exists():
-        client.load_cookies(str(COOKIES_FILE))
+        client.set_cookies(json.loads(COOKIES_FILE.read_text()))
         print("Loaded Twitter cookies.")
     else:
         print("No cookies found. Run `python scraper.py login` first.")
@@ -219,9 +226,6 @@ async def run_scrape(spreadsheet_id: str, dry_run: bool = False):
     if keywords:
         print("\nSearching keywords...")
         raw_tweets.extend(await scrape_keywords(client, keywords, min_likes))
-
-    # Save updated cookies
-    client.save_cookies(str(COOKIES_FILE))
 
     # 5. Deduplicate
     existing_ids = get_existing_tweet_ids(gc, spreadsheet_id)
