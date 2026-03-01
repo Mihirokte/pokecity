@@ -37,7 +37,7 @@ export const DEFAULT_AGENTS: Omit<PCAgent, 'createdAt' | 'updatedAt'>[] = [
     status: 'idle',
     progress: '0',
     isRunOnce: 'false',
-    description: 'Manages Twitter/X post queue, scheduling, and engagement tracking.',
+    description: 'Curates tweets from your feed, manages post queue, and tracks engagement.',
     configJson: '{}',
   },
   {

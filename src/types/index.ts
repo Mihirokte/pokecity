@@ -24,7 +24,8 @@ export type SheetName =
   | 'LinkedInBot'
   | 'CalendarSync'
   | 'Notifications'
-  | 'AgentOutputs';
+  | 'AgentOutputs'
+  | 'CuratedTweets';
 
 // ─── House Module Types ───
 export type HouseModuleType =
@@ -231,6 +232,31 @@ export interface LinkedInPost {
   engagementLikes: string;
   engagementComments: string;
   engagementShares: string;
+}
+
+export interface CuratedTweet {
+  id: string;
+  tweetId: string;
+  author: string;
+  authorHandle: string;
+  content: string;
+  mediaUrl: string;
+  tweetUrl: string;
+  likes: string;
+  retweets: string;
+  replies: string;
+  collectedAt: string;
+  tags: string;
+  starred: string;
+  category: string;
+  notes: string;
+}
+
+export interface TwitterConfig {
+  accounts: string[];
+  keywords: string[];
+  maxPerAccount: number;
+  minLikes: number;
 }
 
 export interface CachedCalendarEvent {

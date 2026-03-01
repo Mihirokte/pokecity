@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { PCAgent, AgentLog, SessionData, TwitterPost, LinkedInPost, CachedCalendarEvent, PCNotification, AgentOutput, AgentStatus } from '../types';
+import type { PCAgent, AgentLog, SessionData, TwitterPost, LinkedInPost, CachedCalendarEvent, PCNotification, AgentOutput, AgentStatus, CuratedTweet } from '../types';
 import { SheetsService } from '../services/sheetsService';
 import { DEFAULT_AGENTS } from './default-agents';
 
@@ -13,6 +13,7 @@ interface PokecenterState {
   cachedCalendarEvents: CachedCalendarEvent[];
   notifications: PCNotification[];
   agentOutputs: AgentOutput[];
+  curatedTweets: CuratedTweet[];
   pcDataLoaded: boolean;
 
   // Navigation
@@ -31,6 +32,13 @@ interface PokecenterState {
   // Twitter
   addTwitterPost: (content: string, status: string, scheduledAt: string) => void;
   updateTwitterPost: (id: string, updates: Partial<TwitterPost>) => void;
+
+  // Curated Tweets
+  updateCuratedTweet: (id: string, updates: Partial<CuratedTweet>) => void;
+  deleteCuratedTweet: (id: string) => void;
+
+  // Agent Config
+  updateAgentConfig: (agentId: string, configJson: string) => void;
 
   // LinkedIn
   addLinkedInPost: (content: string, status: string, scheduledAt: string) => void;
@@ -53,6 +61,7 @@ export const usePokecenterStore = create<PokecenterState>((set, get) => ({
   cachedCalendarEvents: [],
   notifications: [],
   agentOutputs: [],
+  curatedTweets: [],
   pcDataLoaded: false,
 
   currentPage: 'dashboard',
@@ -61,7 +70,7 @@ export const usePokecenterStore = create<PokecenterState>((set, get) => ({
 
   loadPCData: async () => {
     try {
-      const [agents, agentLogs, sessionRows, twitterPosts, linkedInPosts, cachedCalendarEvents, notifications, agentOutputs] =
+      const [agents, agentLogs, sessionRows, twitterPosts, linkedInPosts, cachedCalendarEvents, notifications, agentOutputs, curatedTweets] =
         await Promise.all([
           SheetsService.readAll<PCAgent>('Agents'),
           SheetsService.readAll<AgentLog>('AgentLogs'),
@@ -71,6 +80,7 @@ export const usePokecenterStore = create<PokecenterState>((set, get) => ({
           SheetsService.readAll<CachedCalendarEvent>('CalendarSync'),
           SheetsService.readAll<PCNotification>('Notifications'),
           SheetsService.readAll<AgentOutput>('AgentOutputs'),
+          SheetsService.readAll<CuratedTweet>('CuratedTweets'),
         ]);
 
       const session = sessionRows[0] || null;
@@ -84,6 +94,7 @@ export const usePokecenterStore = create<PokecenterState>((set, get) => ({
         cachedCalendarEvents,
         notifications,
         agentOutputs,
+        curatedTweets,
         pcDataLoaded: true,
       });
 
@@ -184,6 +195,31 @@ export const usePokecenterStore = create<PokecenterState>((set, get) => ({
     set({ twitterPosts: posts });
     const post = posts.find(p => p.id === id);
     if (post) SheetsService.update('TwitterBot', post).catch(() => {});
+  },
+
+  // ── Curated Tweets ──
+  updateCuratedTweet: (id, updates) => {
+    const tweets = get().curatedTweets.map(t =>
+      t.id === id ? { ...t, ...updates } : t
+    );
+    set({ curatedTweets: tweets });
+    const tweet = tweets.find(t => t.id === id);
+    if (tweet) SheetsService.update('CuratedTweets', tweet).catch(() => {});
+  },
+
+  deleteCuratedTweet: (id) => {
+    set({ curatedTweets: get().curatedTweets.filter(t => t.id !== id) });
+    SheetsService.deleteRow('CuratedTweets', id).catch(() => {});
+  },
+
+  // ── Agent Config ──
+  updateAgentConfig: (agentId, configJson) => {
+    const agents = get().agents.map(a =>
+      a.id === agentId ? { ...a, configJson, updatedAt: now() } : a
+    );
+    set({ agents });
+    const agent = agents.find(a => a.id === agentId);
+    if (agent) SheetsService.update('Agents', agent).catch(() => {});
   },
 
   // ── LinkedIn ──

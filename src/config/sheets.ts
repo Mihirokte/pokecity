@@ -18,6 +18,7 @@ export const SHEET_NAMES: SheetName[] = [
   'CalendarSync',
   'Notifications',
   'AgentOutputs',
+  'CuratedTweets',
 ];
 
 // Original 9 sheets — used to detect legacy spreadsheets that need migration
@@ -28,7 +29,7 @@ export const LEGACY_SHEET_NAMES: SheetName[] = [
 
 export const NEW_SHEET_NAMES: SheetName[] = [
   'Session', 'Agents', 'AgentLogs', 'TwitterBot', 'LinkedInBot',
-  'CalendarSync', 'Notifications', 'AgentOutputs',
+  'CalendarSync', 'Notifications', 'AgentOutputs', 'CuratedTweets',
 ];
 
 // Indexed tab names shown in Google Sheets for easy identification
@@ -50,6 +51,7 @@ export const TAB_NAMES: Record<SheetName, string> = {
   ShoppingItems:  '15_Shopping',
   Notifications:  '16_Notifications',
   CalendarSync:   '17_CalendarSync',
+  CuratedTweets:  '18_CuratedTweets',
 };
 
 // Reverse map: tab name → internal SheetName
@@ -120,5 +122,9 @@ export const SHEET_HEADERS: Record<SheetName, string[]> = {
   ],
   AgentOutputs: [
     'id', 'agentId', 'type', 'title', 'content', 'fileRef', 'createdAt',
+  ],
+  CuratedTweets: [
+    'id', 'tweetId', 'author', 'authorHandle', 'content', 'mediaUrl', 'tweetUrl',
+    'likes', 'retweets', 'replies', 'collectedAt', 'tags', 'starred', 'category', 'notes',
   ],
 };

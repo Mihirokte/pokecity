@@ -1335,4 +1335,218 @@
   .header__title {
     font-size: 16px;
   }
+
+  .tweet-filters {
+    flex-wrap: wrap;
+  }
+
+  .tweet-filters__search {
+    width: 100%;
+  }
+}
+
+/* ─── Twitter Curation ─── */
+
+.tweet-filters {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  align-items: center;
+}
+
+.tweet-filters__search {
+  flex: 1;
+  min-width: 160px;
+  padding: 8px 12px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-0);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-family: inherit;
+}
+
+.tweet-filters__search:focus {
+  outline: none;
+  border-color: var(--blue);
+}
+
+.tweet-filters__select {
+  padding: 8px 12px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-0);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.tweet-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.tweet-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-0);
+  border-radius: 10px;
+  padding: 16px;
+  transition: border-color 0.15s;
+}
+
+.tweet-card:hover {
+  border-color: var(--border-1);
+}
+
+.tweet-card--starred {
+  border-left: 3px solid var(--yellow, #f5c542);
+}
+
+.tweet-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 8px;
+}
+
+.tweet-card__author {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tweet-card__name {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.tweet-card__handle {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.tweet-card__content {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-primary);
+  margin-bottom: 10px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.tweet-card__stats {
+  display: flex;
+  gap: 14px;
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.tweet-card__date {
+  margin-left: auto;
+}
+
+.tweet-card__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.tweet-card__tag {
+  padding: 2px 8px;
+  background: var(--bg-tertiary);
+  border-radius: 10px;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.tweet-card__notes {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-style: italic;
+  padding: 8px;
+  background: var(--bg-tertiary);
+  border-radius: 6px;
+  margin-bottom: 8px;
+}
+
+.tweet-card__edit {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  background: var(--bg-tertiary);
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+
+.tweet-card__edit-input {
+  padding: 6px 10px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-0);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 12px;
+  font-family: inherit;
+  resize: vertical;
+}
+
+.tweet-card__edit-input:focus {
+  outline: none;
+  border-color: var(--blue);
+}
+
+.tweet-card__actions {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-0);
+}
+
+.tweet-card__actions-top {
+  display: flex;
+  gap: 4px;
+}
+
+/* Config form */
+.config-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.config-form__label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.config-form__input {
+  padding: 8px 12px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-0);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-family: inherit;
+  font-weight: 400;
+}
+
+.config-form__input:focus {
+  outline: none;
+  border-color: var(--blue);
+}
+
+.config-form__hint {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 400;
 }
