@@ -11,6 +11,7 @@ const DEFAULT_CONFIG: TwitterConfig = {
   keywords: [],
   maxPerAccount: 20,
   minLikes: 50,
+  githubToken: '',
 };
 
 function parseConfig(json: string): TwitterConfig {
@@ -55,6 +56,7 @@ export function TwitterBot() {
   const [cfgKeywords, setCfgKeywords] = useState(config.keywords.join(', '));
   const [cfgMaxPerAccount, setCfgMaxPerAccount] = useState(String(config.maxPerAccount));
   const [cfgMinLikes, setCfgMinLikes] = useState(String(config.minLikes));
+  const [cfgGithubToken, setCfgGithubToken] = useState(config.githubToken || '');
 
   // Editing state for inline tweet edits
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -132,11 +134,16 @@ export function TwitterBot() {
 
   // Trigger GitHub workflow manually (run once)
   const triggerScraper = useCallback(async () => {
+    if (!config.githubToken) {
+      setScrapeStatus('GitHub Personal Access Token required. Add it in the Config tab below.');
+      setTimeout(() => setScrapeStatus(''), 8000);
+      return;
+    }
+
     setScraping(true);
     setScrapeStatus('Triggering scraper...');
-    
+
     try {
-      // Use GitHub's workflow dispatch API
       const response = await fetch(
         `https://api.github.com/repos/${GITHUB_REPO}/actions/workflows/${WORKFLOW_ID}/dispatches`,
         {
@@ -144,29 +151,32 @@ export function TwitterBot() {
           headers: {
             'Accept': 'application/vnd.github+json',
             'X-GitHub-Api-Version': '2022-11-28',
-            // Note: This requires a GitHub token with repo permissions
-            // For now, we'll show instructions
+            'Authorization': `Bearer ${config.githubToken}`,
+            'Content-Type': 'application/json',
           },
+          body: JSON.stringify({ ref: 'main' }),
         }
       );
-      
+
       if (response.status === 204 || response.status === 200) {
         setScrapeStatus('Scraper triggered! It will run and update the feed automatically.');
+        setTimeout(() => syncFromGitHub(false), 15000);
+      } else if (response.status === 401) {
+        setScrapeStatus('Invalid GitHub token. Check the token in Config and make sure it has repo/workflow scope.');
       } else if (response.status === 403) {
-        setScrapeStatus('GitHub token required. Please add GH_TOKEN to secrets or run locally.');
+        setScrapeStatus('Token lacks permissions. Ensure the PAT has the "workflow" scope enabled.');
+      } else if (response.status === 404) {
+        setScrapeStatus('Workflow not found. Verify the repo and workflow file name are correct.');
       } else {
-        setScrapeStatus(`Triggered (status: ${response.status}). Check GitHub Actions tab.`);
+        setScrapeStatus(`Unexpected response (status: ${response.status}). Check GitHub Actions tab.`);
       }
-    } catch (err) {
+    } catch {
       setScrapeStatus('Failed to trigger. Run locally: python scripts/twitter-scraper/scraper.py scrape');
     }
-    
+
     setTimeout(() => setScrapeStatus(''), 8000);
     setScraping(false);
-    
-    // Also trigger a sync after a delay
-    setTimeout(() => syncFromGitHub(false), 15000);
-  }, [syncFromGitHub]);
+  }, [config.githubToken, syncFromGitHub]);
 
   // Auto-sync on first load
   useEffect(() => { syncFromGitHub(true); }, [syncFromGitHub]);
@@ -209,6 +219,7 @@ export function TwitterBot() {
       keywords: cfgKeywords.split(',').map(s => s.trim()).filter(Boolean),
       maxPerAccount: parseInt(cfgMaxPerAccount) || 20,
       minLikes: parseInt(cfgMinLikes) || 0,
+      githubToken: cfgGithubToken.trim(),
     };
     updateAgentConfig('agent_twitter', JSON.stringify(newConfig));
   };
@@ -614,6 +625,20 @@ export function TwitterBot() {
                 />
               </label>
             </div>
+
+            <label className="config-form__label" style={{ marginTop: 8 }}>
+              GitHub Personal Access Token
+              <input
+                type="password"
+                className="config-form__input"
+                placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
+                value={cfgGithubToken}
+                onChange={e => setCfgGithubToken(e.target.value)}
+              />
+              <span className="config-form__hint">
+                Required to trigger "Run Once" from the app. Create at GitHub → Settings → Developer settings → Personal access tokens. Needs <strong>workflow</strong> scope.
+              </span>
+            </label>
 
             <button className="btn btn--primary" onClick={saveConfig} style={{ marginTop: 16 }}>
               Save Configuration
