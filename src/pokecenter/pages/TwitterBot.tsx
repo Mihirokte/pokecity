@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { usePokecenterStore } from '../pokecenterStore';
 import { PageHeader } from '../components/PageHeader';
 import type { CuratedTweet, TwitterConfig } from '../../types';
@@ -27,11 +27,14 @@ export function TwitterBot() {
   const addTwitterPost = usePokecenterStore(s => s.addTwitterPost);
   const updateTwitterPost = usePokecenterStore(s => s.updateTwitterPost);
   const curatedTweets = usePokecenterStore(s => s.curatedTweets);
+  const importCuratedTweets = usePokecenterStore(s => s.importCuratedTweets);
   const updateCuratedTweet = usePokecenterStore(s => s.updateCuratedTweet);
   const deleteCuratedTweet = usePokecenterStore(s => s.deleteCuratedTweet);
   const agents = usePokecenterStore(s => s.agents);
   const updateAgentConfig = usePokecenterStore(s => s.updateAgentConfig);
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [importStatus, setImportStatus] = useState('');
   const [mainTab, setMainTab] = useState<MainTab>('feed');
   const [composeTab, setComposeTab] = useState<ComposeTab>('all');
   const [content, setContent] = useState('');
@@ -101,6 +104,25 @@ export function TwitterBot() {
     setMainTab('compose');
   };
 
+  // ── Import handler ──
+  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      setImportStatus('Importing...');
+      const text = await file.text();
+      const tweets: CuratedTweet[] = JSON.parse(text);
+      if (!Array.isArray(tweets)) throw new Error('Expected an array');
+      const count = await importCuratedTweets(tweets);
+      setImportStatus(count > 0 ? `Imported ${count} new tweets!` : 'No new tweets to import (all duplicates).');
+    } catch (err) {
+      setImportStatus(`Import failed: ${err instanceof Error ? err.message : 'Invalid file'}`);
+    }
+    // Reset file input so same file can be re-imported
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    setTimeout(() => setImportStatus(''), 5000);
+  };
+
   // ── Compose handlers ──
   const composeFiltered = twitterPosts.filter(p => composeTab === 'all' || p.status === composeTab);
   const posted = twitterPosts.filter(p => p.status === 'posted');
@@ -156,19 +178,41 @@ export function TwitterBot() {
       {/* ═══════ FEED TAB ═══════ */}
       {mainTab === 'feed' && (
         <>
-          {/* Stats */}
-          <div className="stat-row" style={{ marginBottom: 16 }}>
-            <div className="stat-card">
-              <div className="stat-card__value">{curatedTweets.length}</div>
-              <div className="stat-card__label">Collected</div>
+          {/* Stats + Import */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16, gap: 16, flexWrap: 'wrap' }}>
+            <div className="stat-row" style={{ flex: 1, marginBottom: 0 }}>
+              <div className="stat-card">
+                <div className="stat-card__value">{curatedTweets.length}</div>
+                <div className="stat-card__label">Collected</div>
+              </div>
+              <div className="stat-card">
+                <div className="stat-card__value">{starredCount}</div>
+                <div className="stat-card__label">Starred</div>
+              </div>
+              <div className="stat-card">
+                <div className="stat-card__value">{uniqueAuthors.length}</div>
+                <div className="stat-card__label">Authors</div>
+              </div>
             </div>
-            <div className="stat-card">
-              <div className="stat-card__value">{starredCount}</div>
-              <div className="stat-card__label">Starred</div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-card__value">{uniqueAuthors.length}</div>
-              <div className="stat-card__label">Authors</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-end' }}>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".json"
+                onChange={handleImport}
+                style={{ display: 'none' }}
+              />
+              <button
+                className="btn btn--primary"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                Import from scraper
+              </button>
+              {importStatus && (
+                <span style={{ fontSize: 12, color: importStatus.includes('failed') ? 'var(--red)' : 'var(--green)' }}>
+                  {importStatus}
+                </span>
+              )}
             </div>
           </div>
 

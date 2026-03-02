@@ -2,111 +2,60 @@
 """
 PokéCity Twitter Scraper — collects tweets without API keys.
 
-Uses twikit for Twitter scraping (cookie-based auth) and gspread for
-writing to the same Google Sheet that PokéCity uses.
+Uses twikit for Twitter scraping (cookie-based auth). Outputs a JSON file
+that you import into PokéCity via the website's Import button.
 
 Usage:
-  python scraper.py login          # One-time auth setup
-  python scraper.py scrape         # Run one scrape cycle
-  python scraper.py scrape --dry   # Preview without writing
+  python scraper.py login                        # One-time Twitter auth
+  python scraper.py scrape                       # Scrape with defaults
+  python scraper.py scrape -a naval,paulg        # Override accounts
+  python scraper.py scrape -k "startup advice"   # Override keywords
+  python scraper.py scrape --min-likes 100       # Min likes filter
 """
 
 import argparse
 import asyncio
 import json
-import os
-import sys
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
-import gspread
-from google.auth.transport.requests import Request
-from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
 from twikit import Client
 
 SCRIPT_DIR = Path(__file__).parent
 COOKIES_FILE = SCRIPT_DIR / "cookies.json"
-GSHEET_TOKEN = SCRIPT_DIR / "token.json"
-GSHEET_CREDS = SCRIPT_DIR / "credentials.json"
+OUTPUT_FILE = SCRIPT_DIR / "output.json"
 
-# Google Sheets scopes (read/write spreadsheets)
-SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
-
-CURATED_SHEET_TAB = "18_CuratedTweets"
-AGENTS_SHEET_TAB = "05_Agents"
-
-HEADERS = [
-    "id", "tweetId", "author", "authorHandle", "content", "mediaUrl",
-    "tweetUrl", "likes", "retweets", "replies", "collectedAt",
-    "tags", "starred", "category", "notes",
+# Default config — also configurable from PokéCity UI Config tab
+DEFAULT_ACCOUNTS = [
+    "naval", "paulg", "elaboratemark", "sama",
+    "patrickc", "levelsio", "paborenstein",
 ]
+DEFAULT_KEYWORDS = ["startup advice", "indie hacker", "build in public"]
+DEFAULT_MAX_PER = 20
+DEFAULT_MIN_LIKES = 50
 
 
-def get_gsheet_client() -> gspread.Client:
-    """Authenticate with Google Sheets using OAuth."""
-    creds = None
-    if GSHEET_TOKEN.exists():
-        creds = Credentials.from_authorized_user_file(str(GSHEET_TOKEN), SCOPES)
-    if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
-        else:
-            if not GSHEET_CREDS.exists():
-                print(f"ERROR: {GSHEET_CREDS} not found.")
-                print("Download OAuth client credentials from Google Cloud Console")
-                print("and save as credentials.json in this directory.")
-                sys.exit(1)
-            flow = InstalledAppFlow.from_client_secrets_file(str(GSHEET_CREDS), SCOPES)
-            creds = flow.run_local_server(port=0)
-        GSHEET_TOKEN.write_text(creds.to_json())
-        print("Google Sheets auth saved.")
-    return gspread.authorize(creds)
+def load_existing_output() -> list[dict]:
+    """Load previously collected tweets from output.json for dedup."""
+    if OUTPUT_FILE.exists():
+        try:
+            return json.loads(OUTPUT_FILE.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, KeyError):
+            return []
+    return []
 
 
-def read_config_from_sheet(gc: gspread.Client, spreadsheet_id: str) -> dict:
-    """Read Twitter scraper config from the agent_twitter row in Agents sheet."""
-    sh = gc.open_by_key(spreadsheet_id)
-    ws = sh.worksheet(AGENTS_SHEET_TAB)
-    rows = ws.get_all_records()
-    for row in rows:
-        if row.get("id") == "agent_twitter":
-            try:
-                return json.loads(row.get("configJson", "{}"))
-            except json.JSONDecodeError:
-                return {}
-    return {}
+def save_output(tweets: list[dict]):
+    """Save tweets to output.json (merged with existing)."""
+    OUTPUT_FILE.write_text(
+        json.dumps(tweets, indent=2, ensure_ascii=False),
+        encoding="utf-8",
+    )
 
 
-def get_existing_tweet_ids(gc: gspread.Client, spreadsheet_id: str) -> set[str]:
-    """Get all tweetId values already in CuratedTweets for dedup."""
-    sh = gc.open_by_key(spreadsheet_id)
-    try:
-        ws = sh.worksheet(CURATED_SHEET_TAB)
-    except gspread.WorksheetNotFound:
-        # Create the sheet with headers
-        ws = sh.add_worksheet(title=CURATED_SHEET_TAB, rows=1000, cols=len(HEADERS))
-        ws.append_row(HEADERS)
-        return set()
-
-    records = ws.get_all_records()
-    return {str(r.get("tweetId", "")) for r in records if r.get("tweetId")}
-
-
-def append_tweets(gc: gspread.Client, spreadsheet_id: str, tweets: list[dict]):
-    """Append new tweets to CuratedTweets sheet."""
-    sh = gc.open_by_key(spreadsheet_id)
-    ws = sh.worksheet(CURATED_SHEET_TAB)
-    rows = []
-    for t in tweets:
-        rows.append([t.get(h, "") for h in HEADERS])
-    if rows:
-        ws.append_rows(rows, value_input_option="USER_ENTERED")
-
-
-def tweet_to_row(tweet, collected_at: str) -> dict:
-    """Convert a twikit Tweet object to our row dict."""
+def tweet_to_dict(tweet, collected_at: str) -> dict:
+    """Convert a twikit Tweet object to our dict format."""
     media_urls = []
     if tweet.media:
         for m in tweet.media:
@@ -114,14 +63,15 @@ def tweet_to_row(tweet, collected_at: str) -> dict:
             if url:
                 media_urls.append(url)
 
+    handle = tweet.user.screen_name if tweet.user else ""
     return {
         "id": f"ct_{uuid.uuid4().hex[:12]}",
         "tweetId": str(tweet.id),
         "author": tweet.user.name if tweet.user else "",
-        "authorHandle": tweet.user.screen_name if tweet.user else "",
+        "authorHandle": handle,
         "content": tweet.text or "",
         "mediaUrl": ",".join(media_urls),
-        "tweetUrl": f"https://x.com/{tweet.user.screen_name}/status/{tweet.id}" if tweet.user else "",
+        "tweetUrl": f"https://x.com/{handle}/status/{tweet.id}" if handle else "",
         "likes": str(tweet.favorite_count or 0),
         "retweets": str(tweet.retweet_count or 0),
         "replies": str(tweet.reply_count or 0),
@@ -133,13 +83,14 @@ def tweet_to_row(tweet, collected_at: str) -> dict:
     }
 
 
-async def twitter_login(client: Client):
+async def twitter_login():
     """Interactive Twitter login — saves cookies for reuse."""
+    client = Client("en-US")
     print("\n--- Twitter Login ---")
-    print("twikit requires your Twitter/X username, email, AND password.")
-    print("These are only used to generate session cookies (saved locally).\n")
+    print("twikit needs your Twitter/X username, email, AND password.")
+    print("Credentials are NOT stored — only session cookies are saved locally.\n")
     username = input("Twitter username (without @): ").strip()
-    email = input("Email address on the account: ").strip()
+    email = input("Email on the account: ").strip()
     password = input("Password: ").strip()
 
     await client.login(
@@ -148,7 +99,8 @@ async def twitter_login(client: Client):
         password=password,
         cookies_file=str(COOKIES_FILE),
     )
-    print(f"Twitter cookies saved to {COOKIES_FILE}")
+    print(f"\nCookies saved to {COOKIES_FILE}")
+    print("You can now run: python scraper.py scrape")
 
 
 async def scrape_accounts(client: Client, accounts: list[str], max_per: int, min_likes: int) -> list:
@@ -156,16 +108,14 @@ async def scrape_accounts(client: Client, accounts: list[str], max_per: int, min
     all_tweets = []
     for handle in accounts:
         try:
-            print(f"  Scraping @{handle}...")
+            print(f"  @{handle}...", end=" ", flush=True)
             user = await client.get_user_by_screen_name(handle)
             tweets = await client.get_user_tweets(user.id, tweet_type="Tweets", count=max_per)
-            for t in tweets:
-                fav = t.favorite_count or 0
-                if fav >= min_likes:
-                    all_tweets.append(t)
-            print(f"    Found {len(tweets)} tweets, {sum(1 for t in tweets if (t.favorite_count or 0) >= min_likes)} above {min_likes} likes")
+            good = [t for t in tweets if (t.favorite_count or 0) >= min_likes]
+            all_tweets.extend(good)
+            print(f"{len(good)}/{len(tweets)} tweets above {min_likes} likes")
         except Exception as e:
-            print(f"    ERROR scraping @{handle}: {e}")
+            print(f"ERROR: {e}")
     return all_tweets
 
 
@@ -174,115 +124,90 @@ async def scrape_keywords(client: Client, keywords: list[str], min_likes: int) -
     all_tweets = []
     for kw in keywords:
         try:
-            print(f"  Searching \"{kw}\"...")
+            print(f'  "{kw}"...', end=" ", flush=True)
             results = await client.search_tweet(kw, product="Top", count=20)
-            for t in results:
-                fav = t.favorite_count or 0
-                if fav >= min_likes:
-                    all_tweets.append(t)
-            print(f"    Found {len(results)} results, {sum(1 for t in results if (t.favorite_count or 0) >= min_likes)} above {min_likes} likes")
+            good = [t for t in results if (t.favorite_count or 0) >= min_likes]
+            all_tweets.extend(good)
+            print(f"{len(good)}/{len(results)} above {min_likes} likes")
         except Exception as e:
-            print(f"    ERROR searching \"{kw}\": {e}")
+            print(f"ERROR: {e}")
     return all_tweets
 
 
-async def run_scrape(spreadsheet_id: str, dry_run: bool = False):
+async def run_scrape(accounts: list[str], keywords: list[str], max_per: int, min_likes: int):
     """Main scrape workflow."""
-    # 1. Google Sheets auth
-    gc = get_gsheet_client()
-
-    # 2. Read config from Sheets
-    config = read_config_from_sheet(gc, spreadsheet_id)
-    accounts = config.get("accounts", [])
-    keywords = config.get("keywords", [])
-    max_per = config.get("maxPerAccount", 20)
-    min_likes = config.get("minLikes", 50)
-
     if not accounts and not keywords:
-        print("No accounts or keywords configured.")
-        print("Set them in PokéCity → Twitter Bot → Config tab.")
+        print("No accounts or keywords specified. Use -a and/or -k flags.")
         return
 
     print(f"\nConfig: {len(accounts)} accounts, {len(keywords)} keywords, "
-          f"max {max_per}/account, min {min_likes} likes")
+          f"max {max_per}/account, min {min_likes} likes\n")
 
-    # 3. Twitter login via cookies
+    # Load Twitter cookies
     client = Client("en-US")
-    if COOKIES_FILE.exists():
-        client.set_cookies(json.loads(COOKIES_FILE.read_text()))
-        print("Loaded Twitter cookies.")
-    else:
+    if not COOKIES_FILE.exists():
         print("No cookies found. Run `python scraper.py login` first.")
         return
 
-    # 4. Scrape
+    cookies = json.loads(COOKIES_FILE.read_text(encoding="utf-8"))
+    client.set_cookies(cookies)
+    print("Loaded Twitter session.\n")
+
+    # Scrape
     collected_at = datetime.now(timezone.utc).isoformat()
     raw_tweets = []
 
     if accounts:
-        print("\nScraping accounts...")
+        print("Scraping accounts:")
         raw_tweets.extend(await scrape_accounts(client, accounts, max_per, min_likes))
 
     if keywords:
-        print("\nSearching keywords...")
+        print("\nSearching keywords:")
         raw_tweets.extend(await scrape_keywords(client, keywords, min_likes))
 
-    # 5. Deduplicate
-    existing_ids = get_existing_tweet_ids(gc, spreadsheet_id)
-    new_tweets = []
+    # Dedup against existing output
+    existing = load_existing_output()
+    existing_ids = {t["tweetId"] for t in existing}
     seen = set()
+    new_tweets = []
     for t in raw_tweets:
         tid = str(t.id)
         if tid not in existing_ids and tid not in seen:
-            new_tweets.append(tweet_to_row(t, collected_at))
+            new_tweets.append(tweet_to_dict(t, collected_at))
             seen.add(tid)
 
-    print(f"\n{len(raw_tweets)} total scraped, {len(new_tweets)} new (after dedup)")
+    print(f"\n{len(raw_tweets)} scraped, {len(new_tweets)} new (after dedup)")
 
-    if dry_run:
-        print("\n[DRY RUN] Would write these tweets:")
-        for t in new_tweets[:5]:
-            print(f"  @{t['authorHandle']}: {t['content'][:80]}... ({t['likes']} likes)")
-        if len(new_tweets) > 5:
-            print(f"  ... and {len(new_tweets) - 5} more")
-        return
-
-    # 6. Write to Sheets
     if new_tweets:
-        append_tweets(gc, spreadsheet_id, new_tweets)
-        print(f"Wrote {len(new_tweets)} tweets to CuratedTweets sheet.")
+        merged = existing + new_tweets
+        save_output(merged)
+        print(f"Saved {len(merged)} total tweets to {OUTPUT_FILE}")
+        print(f"\nNext step: Open PokéCity → Twitter Bot → Feed → Import")
     else:
-        print("No new tweets to write.")
-
-
-async def run_login():
-    """Login flow for Twitter."""
-    client = Client("en-US")
-    await twitter_login(client)
+        print("No new tweets to add.")
 
 
 def main():
     parser = argparse.ArgumentParser(description="PokéCity Twitter Scraper")
     sub = parser.add_subparsers(dest="command")
 
-    sub.add_parser("login", help="One-time Twitter + Google auth setup")
+    sub.add_parser("login", help="One-time Twitter auth setup")
 
-    scrape_p = sub.add_parser("scrape", help="Run one scrape cycle")
-    scrape_p.add_argument("--spreadsheet-id", required=True, help="Google Sheets spreadsheet ID")
-    scrape_p.add_argument("--dry", action="store_true", help="Preview without writing")
+    sp = sub.add_parser("scrape", help="Scrape tweets to output.json")
+    sp.add_argument("-a", "--accounts", help="Comma-separated handles (no @)")
+    sp.add_argument("-k", "--keywords", help="Comma-separated search terms")
+    sp.add_argument("--max-per", type=int, default=DEFAULT_MAX_PER, help=f"Max tweets per account (default: {DEFAULT_MAX_PER})")
+    sp.add_argument("--min-likes", type=int, default=DEFAULT_MIN_LIKES, help=f"Min likes threshold (default: {DEFAULT_MIN_LIKES})")
 
     args = parser.parse_args()
 
     if args.command == "login":
-        # Google auth
-        print("Setting up Google Sheets auth...")
-        get_gsheet_client()
-        # Twitter auth
-        asyncio.run(run_login())
-        print("\nAll set! You can now run: python scraper.py scrape --spreadsheet-id YOUR_ID")
+        asyncio.run(twitter_login())
 
     elif args.command == "scrape":
-        asyncio.run(run_scrape(args.spreadsheet_id, dry_run=args.dry))
+        accounts = [s.strip() for s in args.accounts.split(",")] if args.accounts else DEFAULT_ACCOUNTS
+        keywords = [s.strip() for s in args.keywords.split(",")] if args.keywords else DEFAULT_KEYWORDS
+        asyncio.run(run_scrape(accounts, keywords, args.max_per, args.min_likes))
 
     else:
         parser.print_help()

@@ -34,6 +34,7 @@ interface PokecenterState {
   updateTwitterPost: (id: string, updates: Partial<TwitterPost>) => void;
 
   // Curated Tweets
+  importCuratedTweets: (tweets: CuratedTweet[]) => Promise<number>;
   updateCuratedTweet: (id: string, updates: Partial<CuratedTweet>) => void;
   deleteCuratedTweet: (id: string) => void;
 
@@ -198,6 +199,18 @@ export const usePokecenterStore = create<PokecenterState>((set, get) => ({
   },
 
   // ── Curated Tweets ──
+  importCuratedTweets: async (tweets) => {
+    const existing = get().curatedTweets;
+    const existingIds = new Set(existing.map(t => t.tweetId));
+    const newTweets = tweets.filter(t => t.tweetId && !existingIds.has(t.tweetId));
+    if (newTweets.length === 0) return 0;
+    set({ curatedTweets: [...existing, ...newTweets] });
+    for (const tweet of newTweets) {
+      SheetsService.append('CuratedTweets', tweet).catch(() => {});
+    }
+    return newTweets.length;
+  },
+
   updateCuratedTweet: (id, updates) => {
     const tweets = get().curatedTweets.map(t =>
       t.id === id ? { ...t, ...updates } : t
