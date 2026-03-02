@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { usePokecenterStore } from '../pokecenterStore';
 import { PageHeader } from '../components/PageHeader';
 import type { CuratedTweet, TwitterConfig } from '../../types';
@@ -35,6 +35,7 @@ export function TwitterBot() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [importStatus, setImportStatus] = useState('');
+  const [syncing, setSyncing] = useState(false);
   const [mainTab, setMainTab] = useState<MainTab>('feed');
   const [composeTab, setComposeTab] = useState<ComposeTab>('all');
   const [content, setContent] = useState('');
@@ -103,6 +104,30 @@ export function TwitterBot() {
     setContent(tweet.content);
     setMainTab('compose');
   };
+
+  // ── Auto-sync from GitHub Actions output ──
+  const OUTPUT_URL = 'https://raw.githubusercontent.com/Mihirokte/pokecity/main/scripts/twitter-scraper/output.json';
+
+  const syncFromGitHub = useCallback(async (silent = false) => {
+    try {
+      if (!silent) setSyncing(true);
+      const res = await fetch(`${OUTPUT_URL}?t=${Date.now()}`);
+      if (!res.ok) return;
+      const tweets: CuratedTweet[] = await res.json();
+      const count = await importCuratedTweets(tweets);
+      if (count > 0) setImportStatus(`Synced ${count} new tweets`);
+      else if (!silent) setImportStatus('Already up to date');
+      setTimeout(() => setImportStatus(''), 4000);
+    } catch {
+      if (!silent) setImportStatus('Sync failed — check connection');
+      setTimeout(() => setImportStatus(''), 4000);
+    } finally {
+      setSyncing(false);
+    }
+  }, [importCuratedTweets]);
+
+  // Auto-sync on first load
+  useEffect(() => { syncFromGitHub(true); }, [syncFromGitHub]);
 
   // ── Import handler ──
   const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -195,19 +220,29 @@ export function TwitterBot() {
               </div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-end' }}>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".json"
-                onChange={handleImport}
-                style={{ display: 'none' }}
-              />
-              <button
-                className="btn btn--primary"
-                onClick={() => fileInputRef.current?.click()}
-              >
-                Import from scraper
-              </button>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  className="btn btn--primary"
+                  onClick={() => syncFromGitHub(false)}
+                  disabled={syncing}
+                >
+                  {syncing ? 'Syncing...' : '↻ Sync'}
+                </button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".json"
+                  onChange={handleImport}
+                  style={{ display: 'none' }}
+                />
+                <button
+                  className="btn btn--secondary"
+                  onClick={() => fileInputRef.current?.click()}
+                  title="Import output.json manually"
+                >
+                  Import file
+                </button>
+              </div>
               {importStatus && (
                 <span style={{ fontSize: 12, color: importStatus.includes('failed') ? 'var(--red)' : 'var(--green)' }}>
                   {importStatus}
