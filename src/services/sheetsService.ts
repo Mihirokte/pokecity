@@ -13,6 +13,24 @@ function getAuth() {
   return { token: accessToken, sheetId: spreadsheetId };
 }
 
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  retryCount = 0
+): Promise<T> {
+  try {
+    return await fn();
+  } catch (error) {
+    // If we get a 401, try silent refresh once
+    if (error instanceof Error && error.message.includes('401') && retryCount === 0) {
+      const refreshed = await useAuthStore.getState().refreshTokenSilently();
+      if (refreshed) {
+        return withRetry(fn, retryCount + 1);
+      }
+    }
+    throw error;
+  }
+}
+
 function headers(token: string) {
   return {
     Authorization: `Bearer ${token}`,
@@ -87,39 +105,49 @@ export const SheetsService = {
 
   // ── Read all rows from a sheet ──
   async readAll<T>(sheetName: SheetName): Promise<T[]> {
-    const { token, sheetId } = getAuth();
-    const tab = tabName(sheetName);
-    const res = await fetch(
-      `${SHEETS_API}/${sheetId}/values/${encodeURIComponent(tab)}`,
-      { headers: headers(token) },
-    );
-    if (!res.ok) {
-      const errBody = await res.text().catch(() => '');
-      throw new Error(`Failed to read ${sheetName} (${res.status}): ${errBody || res.statusText}`);
-    }
-    const data = await res.json();
-    const rows: string[][] = data.values ?? [];
-    // Skip header row
-    return rows.slice(1).map(row => rowToObject<T>(sheetName, row));
+    return withRetry(async () => {
+      const { token, sheetId } = getAuth();
+      const tab = tabName(sheetName);
+      const res = await fetch(
+        `${SHEETS_API}/${sheetId}/values/${encodeURIComponent(tab)}`,
+        { headers: headers(token) },
+      );
+      if (!res.ok) {
+        const errBody = await res.text().catch(() => '');
+        if (res.status === 401) {
+          throw new Error(`Failed to read ${sheetName} (401): Unauthorized`);
+        }
+        throw new Error(`Failed to read ${sheetName} (${res.status}): ${errBody || res.statusText}`);
+      }
+      const data = await res.json();
+      const rows: string[][] = data.values ?? [];
+      // Skip header row
+      return rows.slice(1).map(row => rowToObject<T>(sheetName, row));
+    });
   },
 
   // ── Append a new row ──
   async append(sheetName: SheetName, obj: AnyObject): Promise<void> {
-    const { token, sheetId } = getAuth();
-    const tab = tabName(sheetName);
-    const row = objectToRow(sheetName, obj);
-    const res = await fetch(
-      `${SHEETS_API}/${sheetId}/values/${encodeURIComponent(tab)}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`,
-      {
-        method: 'POST',
-        headers: headers(token),
-        body: JSON.stringify({ values: [row] }),
-      },
-    );
-    if (!res.ok) {
-      const errBody = await res.text().catch(() => '');
-      throw new Error(`Failed to append to ${sheetName} (${res.status}): ${errBody || res.statusText}`);
-    }
+    return withRetry(async () => {
+      const { token, sheetId } = getAuth();
+      const tab = tabName(sheetName);
+      const row = objectToRow(sheetName, obj);
+      const res = await fetch(
+        `${SHEETS_API}/${sheetId}/values/${encodeURIComponent(tab)}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`,
+        {
+          method: 'POST',
+          headers: headers(token),
+          body: JSON.stringify({ values: [row] }),
+        },
+      );
+      if (!res.ok) {
+        const errBody = await res.text().catch(() => '');
+        if (res.status === 401) {
+          throw new Error(`Failed to append to ${sheetName} (401): Unauthorized`);
+        }
+        throw new Error(`Failed to append to ${sheetName} (${res.status}): ${errBody || res.statusText}`);
+      }
+    });
   },
 
   // ── Update a specific row (find by lookup field, defaults to 'id') ──
@@ -128,31 +156,36 @@ export const SheetsService = {
     obj: AnyObject,
     lookupField = 'id'
   ): Promise<void> {
-    const { token, sheetId } = getAuth();
-    const tab = tabName(sheetName);
-    // First find the row index
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const all = await this.readAll<AnyObject>(sheetName);
-    const lookupValue = obj[lookupField];
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const idx = all.findIndex((r: AnyObject) => r[lookupField] === lookupValue);
-    if (idx === -1) throw new Error(`Row not found in ${sheetName}: ${lookupValue}`);
-    const rowNum = idx + 2; // 1-indexed, row 1 is header
+    return withRetry(async () => {
+      const { token, sheetId } = getAuth();
+      const tab = tabName(sheetName);
+      // First find the row index
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const all = await this.readAll<AnyObject>(sheetName);
+      const lookupValue = obj[lookupField];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const idx = all.findIndex((r: AnyObject) => r[lookupField] === lookupValue);
+      if (idx === -1) throw new Error(`Row not found in ${sheetName}: ${lookupValue}`);
+      const rowNum = idx + 2; // 1-indexed, row 1 is header
 
-    const row = objectToRow(sheetName, obj);
-    const range = `${tab}!A${rowNum}`;
-    const res = await fetch(
-      `${SHEETS_API}/${sheetId}/values/${encodeURIComponent(range)}?valueInputOption=RAW`,
-      {
-        method: 'PUT',
-        headers: headers(token),
-        body: JSON.stringify({ values: [row] }),
-      },
-    );
-    if (!res.ok) {
-      const errBody = await res.text().catch(() => '');
-      throw new Error(`Failed to update ${sheetName} (${res.status}): ${errBody || res.statusText}`);
-    }
+      const row = objectToRow(sheetName, obj);
+      const range = `${tab}!A${rowNum}`;
+      const res = await fetch(
+        `${SHEETS_API}/${sheetId}/values/${encodeURIComponent(range)}?valueInputOption=RAW`,
+        {
+          method: 'PUT',
+          headers: headers(token),
+          body: JSON.stringify({ values: [row] }),
+        },
+      );
+      if (!res.ok) {
+        const errBody = await res.text().catch(() => '');
+        if (res.status === 401) {
+          throw new Error(`Failed to update ${sheetName} (401): Unauthorized`);
+        }
+        throw new Error(`Failed to update ${sheetName} (${res.status}): ${errBody || res.statusText}`);
+      }
+    });
   },
 
   // ── Ensure new sheets exist on legacy spreadsheets ──

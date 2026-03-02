@@ -1278,7 +1278,131 @@
 }
 
 /* ─── Responsive ─── */
-@media (max-width: 768px) {
+
+/* Small phones (< 480px) */
+@media (max-width: 479px) {
+  .app-shell {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    position: fixed;
+    left: -240px;
+    top: 0;
+    bottom: 0;
+    width: 240px;
+    z-index: 50;
+    transition: left 0.2s ease;
+  }
+
+  .sidebar--open {
+    left: 0;
+  }
+
+  .sidebar-overlay--visible {
+    display: block;
+  }
+
+  .mobile-menu-toggle {
+    display: block;
+  }
+
+  .page {
+    padding: 12px;
+    gap: 12px;
+  }
+
+  .page-header {
+    flex-direction: column;
+    gap: 10px;
+    padding: 0;
+  }
+
+  .header__title {
+    font-size: 18px;
+    font-weight: 600;
+  }
+
+  .header__actions {
+    width: 100%;
+    gap: 8px;
+  }
+
+  /* Agent cards - single column on mobile */
+  .agent-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .agent-card {
+    padding: 12px;
+  }
+
+  /* Stat cards - single column on mobile */
+  .stat-row {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .stat-card {
+    padding: 12px;
+  }
+
+  /* Notes layout - stack vertically */
+  .notes-layout {
+    flex-direction: column;
+    height: auto;
+    gap: 12px;
+  }
+
+  .notes-list {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid var(--border-0);
+    padding-right: 0;
+    padding-bottom: 12px;
+    max-height: 180px;
+  }
+
+  .notes-editor {
+    width: 100%;
+  }
+
+  /* Forms and inputs */
+  button {
+    min-height: 44px;
+    padding: 12px 16px;
+    font-size: 13px;
+  }
+
+  /* Filters */
+  .tweet-filters {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .tweet-filters__search {
+    width: 100%;
+    min-width: unset;
+  }
+
+  .tweet-filters__select {
+    width: 100%;
+  }
+
+  /* Cards */
+  .card {
+    padding: 12px;
+  }
+
+  /* Spacing adjustments */
+  .section {
+    margin-bottom: 12px;
+  }
+}
+
+/* Medium phones and tablets (480px - 767px) */
+@media (min-width: 480px) and (max-width: 767px) {
   .sidebar {
     position: fixed;
     left: -240px;
@@ -1306,11 +1430,12 @@
 
   .stat-row {
     grid-template-columns: repeat(2, 1fr);
-    gap: 8px;
+    gap: 10px;
   }
 
   .agent-grid {
     grid-template-columns: 1fr;
+    gap: 12px;
   }
 
   .notes-layout {
@@ -1333,7 +1458,7 @@
   }
 
   .header__title {
-    font-size: 16px;
+    font-size: 18px;
   }
 
   .tweet-filters {
@@ -1341,7 +1466,18 @@
   }
 
   .tweet-filters__search {
-    width: 100%;
+    min-width: 200px;
+  }
+
+  button {
+    min-height: 44px;
+  }
+}
+
+/* Large screens (768px+) */
+@media (min-width: 768px) {
+  button {
+    min-height: auto;
   }
 }
 

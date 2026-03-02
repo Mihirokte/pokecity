@@ -1,0 +1,40 @@
+{
+  "name": "PokéCity",
+  "short_name": "PokéCity",
+  "description": "Gamified personal productivity suite styled as a Pokémon city",
+  "start_url": "/pokecity/",
+  "scope": "/pokecity/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "theme_color": "#FFD700",
+  "background_color": "#09090b",
+  "icons": [
+    {
+      "src": "/pokecity/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pokecity/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/pokecity/icons/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+  "categories": ["productivity"],
+  "screenshots": [
+    {
+      "src": "/pokecity/screenshots/mobile-1.png",
+      "sizes": "540x720",
+      "type": "image/png",
+      "form_factor": "narrow"
+    }
+  ]
+}
