@@ -8,3 +8,14 @@ createRoot(document.getElementById('root')!).render(
     <App />
   </StrictMode>,
 );
+
+// Register service worker for PWA/offline support
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/pokecity/service-worker.js')
+    .then(registration => {
+      console.log('[App] Service Worker registered:', registration);
+    })
+    .catch(error => {
+      console.warn('[App] Service Worker registration failed:', error);
+    });
+}

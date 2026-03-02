@@ -22,6 +22,8 @@ interface AuthState {
   spreadsheetId: string | null;
   sheetGids: Record<string, number>;
   isInitializing: boolean;
+  lastRefreshAt: number | null;
+  tokenRefreshTimer: NodeJS.Timeout | null;
 
   // Actions
   login: () => void;
@@ -30,6 +32,8 @@ interface AuthState {
   setSpreadsheet: (id: string, gids: Record<string, number>) => void;
   isTokenValid: () => boolean;
   restoreSession: () => boolean;
+  refreshTokenSilently: () => Promise<boolean>;
+  scheduleTokenRefresh: () => void;
 }
 
 function loadFromStorage(): Partial<AuthState> {
@@ -49,6 +53,7 @@ function saveToStorage(state: Partial<AuthState>) {
     tokenExpiresAt: state.tokenExpiresAt,
     spreadsheetId: state.spreadsheetId,
     sheetGids: state.sheetGids,
+    lastRefreshAt: state.lastRefreshAt,
   }));
 }
 
@@ -59,6 +64,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   spreadsheetId: null,
   sheetGids: {} as Record<SheetName, number>,
   isInitializing: false,
+  lastRefreshAt: null,
+  tokenRefreshTimer: null,
 
   login: () => {
     const redirectUri = window.location.origin + (import.meta.env.BASE_URL || '/');
@@ -116,17 +123,25 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       spreadsheetId: (stored as Partial<AuthState>).spreadsheetId ?? null,
       sheetGids: ((stored as Partial<AuthState>).sheetGids ?? {}) as Record<SheetName, number>,
       isInitializing: false,
+      lastRefreshAt: Date.now(),
     });
 
     // Mark scopes version as current
     localStorage.setItem(SCOPES_VERSION_KEY, String(SCOPES_VERSION));
     saveToStorage(get());
+    get().scheduleTokenRefresh();
     return true;
   },
 
   logout: () => {
     // Preserve spreadsheet link across logouts so sync isn't lost
-    const { spreadsheetId, sheetGids } = get();
+    const { spreadsheetId, sheetGids, tokenRefreshTimer } = get();
+
+    // Clear refresh timer
+    if (tokenRefreshTimer) {
+      clearTimeout(tokenRefreshTimer);
+    }
+
     localStorage.removeItem(LS_KEY);
     if (spreadsheetId) {
       localStorage.setItem(LS_KEY, JSON.stringify({ spreadsheetId, sheetGids }));
@@ -137,6 +152,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       tokenExpiresAt: null,
       spreadsheetId,
       sheetGids,
+      tokenRefreshTimer: null,
+      lastRefreshAt: null,
     });
   },
 
@@ -167,9 +184,105 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         tokenExpiresAt: stored.tokenExpiresAt as number,
         spreadsheetId: stored.spreadsheetId as string | null,
         sheetGids: (stored.sheetGids ?? {}) as Record<SheetName, number>,
+        lastRefreshAt: (stored as any).lastRefreshAt ?? null,
       });
+      get().scheduleTokenRefresh();
       return true;
     }
     return false;
+  },
+
+  refreshTokenSilently: async () => {
+    try {
+      const { accessToken } = get();
+      if (!accessToken) return false;
+
+      // Use hidden iframe to silently refresh token before expiration
+      const redirectUri = window.location.origin + (import.meta.env.BASE_URL || '/');
+      const url = new URL('https://accounts.google.com/o/oauth2/v2/auth');
+      url.searchParams.set('client_id', GOOGLE_CLIENT_ID);
+      url.searchParams.set('redirect_uri', redirectUri);
+      url.searchParams.set('response_type', 'token');
+      url.searchParams.set('scope', SCOPES);
+      url.searchParams.set('prompt', 'none'); // Silent - no user interaction
+      url.searchParams.set('access_type', 'offline');
+
+      const result = await new Promise<boolean>((resolve) => {
+        const iframe = document.createElement('iframe');
+        iframe.style.display = 'none';
+        iframe.src = url.toString();
+
+        const handleLoad = () => {
+          try {
+            const hash = iframe.contentWindow?.location.hash || '';
+            if (hash.includes('access_token')) {
+              const params = new URLSearchParams(hash.substring(1));
+              const newAccessToken = params.get('access_token');
+              const expiresIn = parseInt(params.get('expires_in') ?? '3600', 10);
+
+              if (newAccessToken) {
+                const tokenExpiresAt = Date.now() + expiresIn * 1000;
+                set({
+                  accessToken: newAccessToken,
+                  tokenExpiresAt,
+                  lastRefreshAt: Date.now(),
+                });
+                saveToStorage(get());
+                document.body.removeChild(iframe);
+                resolve(true);
+                return;
+              }
+            }
+          } catch {
+            // Silent failure - iframe origin isolation
+          }
+          document.body.removeChild(iframe);
+          resolve(false);
+        };
+
+        iframe.addEventListener('load', handleLoad);
+        iframe.addEventListener('error', () => {
+          document.body.removeChild(iframe);
+          resolve(false);
+        });
+
+        setTimeout(() => {
+          if (document.body.contains(iframe)) {
+            document.body.removeChild(iframe);
+            resolve(false);
+          }
+        }, 5000); // 5s timeout
+
+        document.body.appendChild(iframe);
+      });
+
+      if (result) {
+        get().scheduleTokenRefresh();
+      }
+      return result;
+    } catch {
+      return false;
+    }
+  },
+
+  scheduleTokenRefresh: () => {
+    const { tokenExpiresAt, tokenRefreshTimer } = get();
+
+    // Clear existing timer
+    if (tokenRefreshTimer) {
+      clearTimeout(tokenRefreshTimer);
+    }
+
+    if (!tokenExpiresAt) return;
+
+    // Schedule refresh 5 minutes before expiration
+    const timeUntilExpiry = tokenExpiresAt - Date.now();
+    const refreshIn = Math.max(0, timeUntilExpiry - 5 * 60 * 1000);
+
+    const timer = setTimeout(() => {
+      get().refreshTokenSilently();
+    }, refreshIn);
+
+    set({ tokenRefreshTimer: timer });
   },
 }));
