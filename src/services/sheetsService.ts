@@ -30,12 +30,14 @@ function rowToObject<T>(sheetName: SheetName, row: string[]): T {
   return obj as T;
 }
 
-// Map a typed object back to a row array
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function objectToRow(sheetName: SheetName, obj: any): string[] {
+// Map a typed object back to a row array - accepts any object with string values
+function objectToRow(sheetName: SheetName, obj: Record<string, unknown>): string[] {
   const cols = SHEET_HEADERS[sheetName];
   return cols.map(col => String(obj[col] ?? ''));
 }
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnyObject = Record<string, any>;
 
 export const SheetsService = {
   // ── Bootstrap: create spreadsheet with all sheets ──
@@ -102,8 +104,7 @@ export const SheetsService = {
   },
 
   // ── Append a new row ──
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  async append(sheetName: SheetName, obj: any): Promise<void> {
+  async append(sheetName: SheetName, obj: AnyObject): Promise<void> {
     const { token, sheetId } = getAuth();
     const tab = tabName(sheetName);
     const row = objectToRow(sheetName, obj);
@@ -122,15 +123,19 @@ export const SheetsService = {
   },
 
   // ── Update a specific row (find by lookup field, defaults to 'id') ──
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  async update(sheetName: SheetName, obj: any & { id: string }, lookupField = 'id'): Promise<void> {
+  async update(
+    sheetName: SheetName,
+    obj: AnyObject,
+    lookupField = 'id'
+  ): Promise<void> {
     const { token, sheetId } = getAuth();
     const tab = tabName(sheetName);
     // First find the row index
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const all = await this.readAll<any>(sheetName);
+    const all = await this.readAll<AnyObject>(sheetName);
     const lookupValue = obj[lookupField];
-    const idx = all.findIndex((r: any) => r[lookupField] === lookupValue); // eslint-disable-line @typescript-eslint/no-explicit-any
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const idx = all.findIndex((r: AnyObject) => r[lookupField] === lookupValue);
     if (idx === -1) throw new Error(`Row not found in ${sheetName}: ${lookupValue}`);
     const rowNum = idx + 2; // 1-indexed, row 1 is header
 

@@ -22,9 +22,23 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
   const unreadCount = notifications.filter(n => n.read !== 'true').length;
 
-  const navItems: NavItem[] = [
-    { id: 'dashboard', label: 'Dashboard', icon: '\u25A3' },
-    { id: 'notifications', label: 'Notifications', icon: '\uD83D\uDD14', badge: unreadCount || undefined },
+  const mainNavItems: NavItem[] = [
+    { id: 'dashboard', label: 'Dashboard', icon: '⬛' },
+    { id: 'notifications', label: 'Notifications', icon: '🔔', badge: unreadCount || undefined },
+  ];
+
+  const moduleNavItems: NavItem[] = [
+    { id: 'calendar', label: 'Calendar', icon: '📅' },
+    { id: 'tasks', label: 'Tasks', icon: '✅' },
+    { id: 'notes', label: 'Notes', icon: '📝' },
+    { id: 'travel', label: 'Travel', icon: '✈️' },
+    { id: 'gym', label: 'Gym', icon: '💪' },
+    { id: 'shopping', label: 'Shopping', icon: '🛒' },
+  ];
+
+  const botNavItems: NavItem[] = [
+    { id: 'twitter', label: 'Twitter Bot', icon: '🐦' },
+    { id: 'linkedin', label: 'LinkedIn Bot', icon: '💼' },
   ];
 
   const handleNav = (page: string) => {
@@ -66,7 +80,9 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         </div>
 
         <nav className="sidebar__nav">
-          {renderGroup('Overview', navItems)}
+          {renderGroup('Overview', mainNavItems)}
+          {renderGroup('Modules', moduleNavItems)}
+          {renderGroup('Bots', botNavItems)}
         </nav>
 
         {user && (
@@ -77,7 +93,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               <div className="sidebar__user-email">{user.email}</div>
             </div>
             <button className="sidebar__logout" onClick={logout} title="Logout">
-              &#x23FB;
+              ⏻
             </button>
           </div>
         )}
