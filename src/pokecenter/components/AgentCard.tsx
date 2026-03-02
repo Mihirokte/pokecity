@@ -12,26 +12,7 @@ export function AgentCard({ agent, onClick, onDelete }: AgentCardProps) {
   const spriteUrl = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${agent.pokemonId}.png`;
 
   return (
-    <div className="agent-card" style={{ position: 'relative' }} onClick={onClick}>
-      {onDelete && (
-        <button
-          title="Delete agent"
-          onClick={e => { e.stopPropagation(); onDelete(); }}
-          style={{
-            position: 'absolute', top: 8, right: 8,
-            width: 22, height: 22, borderRadius: '50%',
-            border: 'none', cursor: 'pointer',
-            background: 'rgba(239,68,68,0.12)', color: 'var(--red)',
-            fontSize: 13, lineHeight: 1,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            opacity: 0.6, transition: 'opacity 0.15s',
-          }}
-          onMouseEnter={e => (e.currentTarget.style.opacity = '1')}
-          onMouseLeave={e => (e.currentTarget.style.opacity = '0.6')}
-        >
-          ✕
-        </button>
-      )}
+    <div className="agent-card" onClick={onClick}>
       <div className="agent-card__top">
         <img className="agent-card__sprite" src={spriteUrl} alt={agent.pokemon} />
         <div className="agent-card__info">
@@ -52,6 +33,25 @@ export function AgentCard({ agent, onClick, onDelete }: AgentCardProps) {
             <span>Progress</span>
             <span>{Math.round(progress)}%</span>
           </div>
+        </div>
+      )}
+      {onDelete && (
+        <div
+          style={{ borderTop: '1px solid var(--border-0)', paddingTop: 10, marginTop: 4 }}
+          onClick={e => e.stopPropagation()}
+        >
+          <button
+            onClick={onDelete}
+            style={{
+              fontSize: 11, color: 'var(--red)', background: 'none',
+              border: 'none', cursor: 'pointer', padding: '2px 0',
+              opacity: 0.7,
+            }}
+            onMouseEnter={e => (e.currentTarget.style.opacity = '1')}
+            onMouseLeave={e => (e.currentTarget.style.opacity = '0.7')}
+          >
+            ✕ Delete agent
+          </button>
         </div>
       )}
     </div>
