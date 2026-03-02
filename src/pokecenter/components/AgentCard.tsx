@@ -4,9 +4,10 @@ import { StatusBadge } from './StatusBadge';
 interface AgentCardProps {
   agent: PCAgent;
   onClick: () => void;
+  onDelete?: () => void;
 }
 
-export function AgentCard({ agent, onClick }: AgentCardProps) {
+export function AgentCard({ agent, onClick, onDelete }: AgentCardProps) {
   const progress = parseFloat(agent.progress) || 0;
   const spriteUrl = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${agent.pokemonId}.png`;
 
@@ -32,6 +33,25 @@ export function AgentCard({ agent, onClick }: AgentCardProps) {
             <span>Progress</span>
             <span>{Math.round(progress)}%</span>
           </div>
+        </div>
+      )}
+      {onDelete && (
+        <div
+          style={{ borderTop: '1px solid var(--border-0)', paddingTop: 10, marginTop: 4 }}
+          onClick={e => e.stopPropagation()}
+        >
+          <button
+            onClick={onDelete}
+            style={{
+              fontSize: 11, color: 'var(--red)', background: 'none',
+              border: 'none', cursor: 'pointer', padding: '2px 0',
+              opacity: 0.7,
+            }}
+            onMouseEnter={e => (e.currentTarget.style.opacity = '1')}
+            onMouseLeave={e => (e.currentTarget.style.opacity = '0.7')}
+          >
+            ✕ Delete agent
+          </button>
         </div>
       )}
     </div>
