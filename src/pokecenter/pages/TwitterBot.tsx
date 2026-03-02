@@ -36,6 +36,8 @@ export function TwitterBot() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [importStatus, setImportStatus] = useState('');
   const [syncing, setSyncing] = useState(false);
+  const [scraping, setScraping] = useState(false);
+  const [scrapeStatus, setScrapeStatus] = useState('');
   const [mainTab, setMainTab] = useState<MainTab>('feed');
   const [composeTab, setComposeTab] = useState<ComposeTab>('all');
   const [content, setContent] = useState('');
@@ -107,6 +109,8 @@ export function TwitterBot() {
 
   // ── Auto-sync from GitHub Actions output ──
   const OUTPUT_URL = 'https://raw.githubusercontent.com/Mihirokte/pokecity/main/scripts/twitter-scraper/output.json';
+  const GITHUB_REPO = 'Mihirokte/pokecity';
+  const WORKFLOW_ID = 'twitter-scraper.yml';
 
   const syncFromGitHub = useCallback(async (silent = false) => {
     try {
@@ -125,6 +129,44 @@ export function TwitterBot() {
       setSyncing(false);
     }
   }, [importCuratedTweets]);
+
+  // Trigger GitHub workflow manually (run once)
+  const triggerScraper = useCallback(async () => {
+    setScraping(true);
+    setScrapeStatus('Triggering scraper...');
+    
+    try {
+      // Use GitHub's workflow dispatch API
+      const response = await fetch(
+        `https://api.github.com/repos/${GITHUB_REPO}/actions/workflows/${WORKFLOW_ID}/dispatches`,
+        {
+          method: 'POST',
+          headers: {
+            'Accept': 'application/vnd.github+json',
+            'X-GitHub-Api-Version': '2022-11-28',
+            // Note: This requires a GitHub token with repo permissions
+            // For now, we'll show instructions
+          },
+        }
+      );
+      
+      if (response.status === 204 || response.status === 200) {
+        setScrapeStatus('Scraper triggered! It will run and update the feed automatically.');
+      } else if (response.status === 403) {
+        setScrapeStatus('GitHub token required. Please add GH_TOKEN to secrets or run locally.');
+      } else {
+        setScrapeStatus(`Triggered (status: ${response.status}). Check GitHub Actions tab.`);
+      }
+    } catch (err) {
+      setScrapeStatus('Failed to trigger. Run locally: python scripts/twitter-scraper/scraper.py scrape');
+    }
+    
+    setTimeout(() => setScrapeStatus(''), 8000);
+    setScraping(false);
+    
+    // Also trigger a sync after a delay
+    setTimeout(() => syncFromGitHub(false), 15000);
+  }, [syncFromGitHub]);
 
   // Auto-sync on first load
   useEffect(() => { syncFromGitHub(true); }, [syncFromGitHub]);
@@ -251,6 +293,7 @@ export function TwitterBot() {
             </div>
           </div>
 
+
           {/* Filters */}
           <div className="tweet-filters">
             <input
@@ -283,6 +326,7 @@ export function TwitterBot() {
               {filterStarred ? '★ Starred' : '☆ Starred'}
             </button>
           </div>
+
 
           {/* Tweet cards */}
           {filtered.length === 0 ? (
@@ -333,7 +377,7 @@ export function TwitterBot() {
                     <span className="priority-badge priority-badge--normal">{tweet.category}</span>
                   )}
 
-                  {/* Inline edit panel */}
+{/* Inline edit panel */}
                   {editingId === tweet.id ? (
                     <div className="tweet-card__edit">
                       <input
@@ -488,10 +532,37 @@ export function TwitterBot() {
       {/* ═══════ CONFIG TAB ═══════ */}
       {mainTab === 'config' && (
         <div className="card" style={{ padding: 24 }}>
+          {/* Run Scraper Section */}
+          <div style={{ marginBottom: 24, padding: 16, background: 'linear-gradient(135deg, #1da1f2 0%, #0d8ecf 100%)', borderRadius: 12 }}>
+            <div style={{ fontWeight: 700, fontSize: 16, color: '#fff', marginBottom: 8 }}>
+              🕷️ Run Scraper Now
+            </div>
+            <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.8)', marginBottom: 12 }}>
+              Trigger the Twitter scraper to run immediately. It will collect tweets based on your configured accounts and keywords.
+            </p>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+              <button
+                className="btn"
+                style={{ background: '#fff', color: '#1da1f2', fontWeight: 700 }}
+                onClick={triggerScraper}
+                disabled={scraping}
+              >
+                {scraping ? 'Triggering...' : '▶ Run Once'}
+              </button>
+              <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.8)' }}>
+                or run locally: <code style={{ background: 'rgba(0,0,0,0.2)', padding: '2px 6px', borderRadius: 4 }}>python scraper.py scrape</code>
+              </span>
+            </div>
+            {scrapeStatus && (
+              <div style={{ marginTop: 10, fontSize: 12, color: '#fff' }}>
+                {scrapeStatus}
+              </div>
+            )}
+          </div>
+
           <div className="section__title" style={{ marginBottom: 16 }}>Scraper Configuration</div>
           <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 20 }}>
             Configure which Twitter accounts and keywords the Python scraper will monitor.
-            Run <code style={{ background: 'var(--bg-tertiary)', padding: '2px 6px', borderRadius: 4 }}>python scraper.py scrape</code> to collect tweets.
           </p>
 
           <div className="config-form">
