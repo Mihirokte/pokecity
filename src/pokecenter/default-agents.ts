@@ -39,7 +39,7 @@ export const DEFAULT_AGENTS: Omit<PCAgent, 'createdAt' | 'updatedAt'>[] = [
     isRunOnce: 'false',
     description: 'Curates tweets from your feed, manages post queue, and tracks engagement.',
     configJson: JSON.stringify({
-      accounts: ['naval', 'paulg', 'sama', 'patrickc', 'levelsio', 'elaboratemark', 'paborenstein'],
+      accounts: ['naval', 'paulg', 'sama', 'patrickc', 'levelsio'],
       keywords: ['startup advice', 'indie hacker', 'build in public'],
       maxPerAccount: 20,
       minLikes: 50,

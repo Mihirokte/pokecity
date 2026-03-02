@@ -2,11 +2,11 @@
 """
 PokéCity Twitter Scraper — collects tweets without API keys.
 
-Uses twikit for Twitter scraping (cookie-based auth). Outputs a JSON file
-that you import into PokéCity via the website's Import button.
+Uses twikit with browser cookies (no login needed — bypasses Cloudflare).
+Outputs a JSON file that you import into PokéCity via the Import button.
 
 Usage:
-  python scraper.py login                        # One-time Twitter auth
+  python scraper.py auth                         # One-time: paste browser cookies
   python scraper.py scrape                       # Scrape with defaults
   python scraper.py scrape -a naval,paulg        # Override accounts
   python scraper.py scrape -k "startup advice"   # Override keywords
@@ -26,7 +26,6 @@ SCRIPT_DIR = Path(__file__).parent
 COOKIES_FILE = SCRIPT_DIR / "cookies.json"
 OUTPUT_FILE = SCRIPT_DIR / "output.json"
 
-# Default config — also configurable from PokéCity UI Config tab
 DEFAULT_ACCOUNTS = [
     "naval", "paulg", "elaboratemark", "sama",
     "patrickc", "levelsio", "paborenstein",
@@ -37,7 +36,6 @@ DEFAULT_MIN_LIKES = 50
 
 
 def load_existing_output() -> list[dict]:
-    """Load previously collected tweets from output.json for dedup."""
     if OUTPUT_FILE.exists():
         try:
             return json.loads(OUTPUT_FILE.read_text(encoding="utf-8"))
@@ -47,7 +45,6 @@ def load_existing_output() -> list[dict]:
 
 
 def save_output(tweets: list[dict]):
-    """Save tweets to output.json (merged with existing)."""
     OUTPUT_FILE.write_text(
         json.dumps(tweets, indent=2, ensure_ascii=False),
         encoding="utf-8",
@@ -55,7 +52,6 @@ def save_output(tweets: list[dict]):
 
 
 def tweet_to_dict(tweet, collected_at: str) -> dict:
-    """Convert a twikit Tweet object to our dict format."""
     media_urls = []
     if tweet.media:
         for m in tweet.media:
@@ -83,28 +79,50 @@ def tweet_to_dict(tweet, collected_at: str) -> dict:
     }
 
 
-async def twitter_login():
-    """Interactive Twitter login — saves cookies for reuse."""
-    client = Client("en-US")
-    print("\n--- Twitter Login ---")
-    print("twikit needs your Twitter/X username, email, AND password.")
-    print("Credentials are NOT stored — only session cookies are saved locally.\n")
-    username = input("Twitter username (without @): ").strip()
-    email = input("Email on the account: ").strip()
-    password = input("Password: ").strip()
+def setup_auth():
+    """Get cookies from user's browser — just 2 values needed."""
+    print()
+    print("=" * 55)
+    print("  Twitter Cookie Auth Setup")
+    print("=" * 55)
+    print()
+    print("  1. Open x.com in Chrome (make sure you're logged in)")
+    print("  2. Press F12 to open DevTools")
+    print("  3. Go to Application tab -> Cookies -> https://x.com")
+    print("  4. Find and copy these 2 values:")
+    print()
 
-    await client.login(
-        auth_info_1=username,
-        auth_info_2=email,
-        password=password,
-        cookies_file=str(COOKIES_FILE),
-    )
-    print(f"\nCookies saved to {COOKIES_FILE}")
-    print("You can now run: python scraper.py scrape")
+    auth_token = input("  auth_token: ").strip()
+    ct0 = input("  ct0: ").strip()
+
+    if not auth_token or not ct0:
+        print("\n  Both values are required!")
+        return
+
+    cookies = {
+        "auth_token": auth_token,
+        "ct0": ct0,
+    }
+
+    COOKIES_FILE.write_text(json.dumps(cookies, indent=2), encoding="utf-8")
+    print(f"\n  Saved to {COOKIES_FILE}")
+    print("  You can now run: python scraper.py scrape")
+    print()
+
+
+def get_client() -> Client:
+    """Create twikit client with browser cookies."""
+    if not COOKIES_FILE.exists():
+        print("No cookies found. Run `python scraper.py auth` first.")
+        raise SystemExit(1)
+
+    cookies = json.loads(COOKIES_FILE.read_text(encoding="utf-8"))
+    client = Client("en-US")
+    client.set_cookies(cookies)
+    return client
 
 
 async def scrape_accounts(client: Client, accounts: list[str], max_per: int, min_likes: int) -> list:
-    """Scrape recent tweets from specified accounts."""
     all_tweets = []
     for handle in accounts:
         try:
@@ -113,14 +131,13 @@ async def scrape_accounts(client: Client, accounts: list[str], max_per: int, min
             tweets = await client.get_user_tweets(user.id, tweet_type="Tweets", count=max_per)
             good = [t for t in tweets if (t.favorite_count or 0) >= min_likes]
             all_tweets.extend(good)
-            print(f"{len(good)}/{len(tweets)} tweets above {min_likes} likes")
+            print(f"{len(good)}/{len(tweets)} tweets (>={min_likes} likes)")
         except Exception as e:
             print(f"ERROR: {e}")
     return all_tweets
 
 
 async def scrape_keywords(client: Client, keywords: list[str], min_likes: int) -> list:
-    """Search tweets by keywords."""
     all_tweets = []
     for kw in keywords:
         try:
@@ -128,32 +145,23 @@ async def scrape_keywords(client: Client, keywords: list[str], min_likes: int) -
             results = await client.search_tweet(kw, product="Top", count=20)
             good = [t for t in results if (t.favorite_count or 0) >= min_likes]
             all_tweets.extend(good)
-            print(f"{len(good)}/{len(results)} above {min_likes} likes")
+            print(f"{len(good)}/{len(results)} tweets (>={min_likes} likes)")
         except Exception as e:
             print(f"ERROR: {e}")
     return all_tweets
 
 
 async def run_scrape(accounts: list[str], keywords: list[str], max_per: int, min_likes: int):
-    """Main scrape workflow."""
     if not accounts and not keywords:
-        print("No accounts or keywords specified. Use -a and/or -k flags.")
+        print("No accounts or keywords. Use -a and/or -k flags.")
         return
 
     print(f"\nConfig: {len(accounts)} accounts, {len(keywords)} keywords, "
           f"max {max_per}/account, min {min_likes} likes\n")
 
-    # Load Twitter cookies
-    client = Client("en-US")
-    if not COOKIES_FILE.exists():
-        print("No cookies found. Run `python scraper.py login` first.")
-        return
+    client = get_client()
+    print("Loaded browser cookies.\n")
 
-    cookies = json.loads(COOKIES_FILE.read_text(encoding="utf-8"))
-    client.set_cookies(cookies)
-    print("Loaded Twitter session.\n")
-
-    # Scrape
     collected_at = datetime.now(timezone.utc).isoformat()
     raw_tweets = []
 
@@ -165,7 +173,7 @@ async def run_scrape(accounts: list[str], keywords: list[str], max_per: int, min
         print("\nSearching keywords:")
         raw_tweets.extend(await scrape_keywords(client, keywords, min_likes))
 
-    # Dedup against existing output
+    # Dedup
     existing = load_existing_output()
     existing_ids = {t["tweetId"] for t in existing}
     seen = set()
@@ -182,7 +190,7 @@ async def run_scrape(accounts: list[str], keywords: list[str], max_per: int, min
         merged = existing + new_tweets
         save_output(merged)
         print(f"Saved {len(merged)} total tweets to {OUTPUT_FILE}")
-        print(f"\nNext step: Open PokéCity → Twitter Bot → Feed → Import")
+        print(f"\nOpen PokéCity -> Twitter Bot -> Feed -> Import from scraper")
     else:
         print("No new tweets to add.")
 
@@ -191,18 +199,18 @@ def main():
     parser = argparse.ArgumentParser(description="PokéCity Twitter Scraper")
     sub = parser.add_subparsers(dest="command")
 
-    sub.add_parser("login", help="One-time Twitter auth setup")
+    sub.add_parser("auth", help="Set up browser cookies (one-time)")
 
     sp = sub.add_parser("scrape", help="Scrape tweets to output.json")
     sp.add_argument("-a", "--accounts", help="Comma-separated handles (no @)")
     sp.add_argument("-k", "--keywords", help="Comma-separated search terms")
-    sp.add_argument("--max-per", type=int, default=DEFAULT_MAX_PER, help=f"Max tweets per account (default: {DEFAULT_MAX_PER})")
-    sp.add_argument("--min-likes", type=int, default=DEFAULT_MIN_LIKES, help=f"Min likes threshold (default: {DEFAULT_MIN_LIKES})")
+    sp.add_argument("--max-per", type=int, default=DEFAULT_MAX_PER)
+    sp.add_argument("--min-likes", type=int, default=DEFAULT_MIN_LIKES)
 
     args = parser.parse_args()
 
-    if args.command == "login":
-        asyncio.run(twitter_login())
+    if args.command == "auth":
+        setup_auth()
 
     elif args.command == "scrape":
         accounts = [s.strip() for s in args.accounts.split(",")] if args.accounts else DEFAULT_ACCOUNTS
