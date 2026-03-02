@@ -23,7 +23,7 @@ interface AuthState {
   sheetGids: Record<string, number>;
   isInitializing: boolean;
   lastRefreshAt: number | null;
-  tokenRefreshTimer: NodeJS.Timeout | null;
+  tokenRefreshTimer: ReturnType<typeof setTimeout> | null;
 
   // Actions
   login: () => void;
