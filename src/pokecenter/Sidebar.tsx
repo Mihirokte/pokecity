@@ -39,6 +39,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const botNavItems: NavItem[] = [
     { id: 'twitter', label: 'Twitter Bot', icon: '🐦' },
     { id: 'linkedin', label: 'LinkedIn Bot', icon: '💼' },
+    { id: 'hallucination', label: 'Hallucination Detective', icon: '🕵️' },
   ];
 
   const handleNav = (page: string) => {
