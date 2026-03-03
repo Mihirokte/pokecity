@@ -3,10 +3,8 @@ import { useAuthStore } from './stores/authStore';
 import { useCityStore } from './stores/cityStore';
 import { useUIStore } from './stores/uiStore';
 import { SheetsService } from './services/sheetsService';
-import { usePokecenterStore } from './pokecenter/pokecenterStore';
 import { LandingPage } from './components/Landing/LandingPage';
 import { CityView } from './components/City/CityView';
-import { AppShell } from './pokecenter/AppShell';
 import { Toasts } from './components/Toasts';
 
 function LoadingScreen() {
@@ -44,11 +42,8 @@ export default function App() {
   const addToast = useUIStore(s => s.addToast);
   const loadAllData = useCityStore(s => s.loadAllData);
   const dataLoaded = useCityStore(s => s.dataLoaded);
-  const loadPCData = usePokecenterStore(s => s.loadPCData);
-  const pcDataLoaded = usePokecenterStore(s => s.pcDataLoaded);
 
   const [booting, setBooting] = useState(true);
-  const [showPokecenter, setShowPokecenter] = useState(false);
 
   // On mount: try restoring session or handling OAuth callback
   useEffect(() => {
@@ -97,11 +92,7 @@ export default function App() {
           if (cancelled) return;
           setSpreadsheet(spreadsheetId, updatedGids);
 
-          // Load legacy module data + new pokecenter data in parallel
-          await Promise.all([
-            loadAllData(),
-            loadPCData(),
-          ]);
+            await loadAllData();
         } catch (loadErr: unknown) {
           const msg = loadErr instanceof Error ? loadErr.message : String(loadErr);
           if (msg.includes('404') || msg.includes('Not Found')) {
@@ -131,12 +122,10 @@ export default function App() {
       <Toasts />
       {!isAuthed ? (
         <LandingPage />
-      ) : !(dataLoaded && pcDataLoaded) ? (
+      ) : !dataLoaded ? (
         <LoadingScreen />
-      ) : showPokecenter ? (
-        <AppShell onBack={() => setShowPokecenter(false)} />
       ) : (
-        <CityView onOpenPokecenter={() => setShowPokecenter(true)} />
+        <CityView />
       )}
     </>
   );
