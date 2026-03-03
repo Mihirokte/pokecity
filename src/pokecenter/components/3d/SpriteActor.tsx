@@ -1,8 +1,7 @@
-import { useRef, useState, useMemo, useEffect } from 'react';
-import { Html } from '@react-three/drei';
+import { useRef, useState, useEffect, useMemo } from 'react';
+import { Billboard, Html } from '@react-three/drei';
 import * as THREE from 'three';
-import type { Group, Texture } from 'three';
-import { spriteAnimatedUrl, spriteUrl } from '../../../config/pokemon';
+import type { Group } from 'three';
 
 interface SpriteActorProps {
   pokemonId: number;
@@ -15,9 +14,13 @@ interface SpriteActorProps {
   animated?: boolean;
 }
 
-// Sprite dimensions from PokeAPI - normalized
-const SPRITE_WIDTH = 96;
-const SPRITE_HEIGHT = 96;
+// Direct sprite URLs - use GitHub raw for reliability
+function getSpriteUrl(pokemonId: number, animated: boolean): string {
+  if (animated) {
+    return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/showdown/${pokemonId}.gif`;
+  }
+  return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${pokemonId}.png`;
+}
 
 export function SpriteActor({
   pokemonId,
@@ -31,38 +34,36 @@ export function SpriteActor({
 }: SpriteActorProps) {
   const groupRef = useRef<Group>(null);
   const [hovered, setHovered] = useState(false);
-  const [texture, setTexture] = useState<Texture | null>(null);
-  const [imageError, setImageError] = useState(false);
-
+  const [texture, setTexture] = useState<THREE.Texture | null>(null);
+  const [loading, setLoading] = useState(true);
+  
   const spriteUrlValue = useMemo(
-    () => {
-      if (animated && !imageError) {
-        return spriteAnimatedUrl(pokemonId);
-      }
-      return spriteUrl(pokemonId);
-    },
-    [pokemonId, animated, imageError]
+    () => getSpriteUrl(pokemonId, animated),
+    [pokemonId, animated]
   );
 
-  // Load texture on mount
+  // Load texture with more robust loading
   useEffect(() => {
-    setImageError(false);
+    setLoading(true);
     const loader = new THREE.TextureLoader();
+    
     loader.load(
       spriteUrlValue,
-      (loadedTexture) => {
-        loadedTexture.colorSpace = THREE.SRGBColorSpace;
-        loadedTexture.minFilter = THREE.NearestFilter;
-        loadedTexture.magFilter = THREE.NearestFilter;
-        loadedTexture.generateMipmaps = false;
-        setTexture(loadedTexture);
+      (tex) => {
+        tex.colorSpace = THREE.SRGBColorSpace;
+        tex.minFilter = THREE.NearestFilter;
+        tex.magFilter = THREE.NearestFilter;
+        tex.generateMipmaps = false;
+        setTexture(tex);
+        setLoading(false);
       },
       undefined,
-      () => {
-        setImageError(true);
+      (err) => {
+        console.warn('Failed to load sprite:', spriteUrlValue, err);
+        setLoading(false);
       }
     );
-  }, [spriteUrlValue, pokemonId]);
+  }, [spriteUrlValue]);
 
   const handlePointerOver = () => {
     setHovered(true);
@@ -82,13 +83,12 @@ export function SpriteActor({
     onDelete?.();
   };
 
-  // Calculate scale to normalize sprite to world units
-  // Sprites should be about 1.5 units tall in world space
-  const worldHeight = 1.5;
-  const worldWidth = worldHeight * (SPRITE_WIDTH / SPRITE_HEIGHT);
-  
-  // Current scale factor
+  // Scale
   const currentScale = scale * (hovered ? 1.15 : 1);
+  
+  // Sprite world size
+  const spriteWidth = 2;
+  const spriteHeight = 2;
 
   // Status color
   const statusColors = {
@@ -102,57 +102,62 @@ export function SpriteActor({
       ref={groupRef}
       position={position}
     >
-      {/* Shadow beneath sprite - larger and softer */}
+      {/* Shadow beneath sprite */}
       <mesh 
         position={[0, 0.01, 0]} 
         rotation={[-Math.PI / 2, 0, 0]}
-        scale={[currentScale, currentScale, 1]}
       >
-        <circleGeometry args={[0.5, 32]} />
+        <circleGeometry args={[0.6, 32]} />
         <meshBasicMaterial
           color="#000000"
           transparent
-          opacity={0.25}
+          opacity={0.3}
         />
       </mesh>
 
-      {/* Billboard sprite - pivot at bottom center so feet touch ground */}
-      <group 
-        position={[0, worldHeight * currentScale / 2, 0]}
-        onClick={handleClick}
-        onPointerOver={handlePointerOver}
-        onPointerOut={handlePointerOut}
+      {/* Billboard sprite - always faces camera */}
+      <Billboard
+        follow={true}
+        lockX={false}
+        lockY={false}
+        lockZ={false}
+        scale={currentScale}
+        position={[0, spriteHeight / 2, 0]}
       >
-        <mesh scale={[worldWidth * currentScale, worldHeight * currentScale, 1]}>
-          <planeGeometry args={[1, 1]} />
-          <meshBasicMaterial
-            map={texture}
-            transparent={true}
-            alphaTest={0.1}
-            side={THREE.FrontSide}
-            depthWrite={true}
-          />
+        <mesh 
+          onClick={handleClick}
+          onPointerOver={handlePointerOver}
+          onPointerOut={handlePointerOut}
+        >
+          <planeGeometry args={[spriteWidth, spriteHeight]} />
+          {loading ? (
+            <meshBasicMaterial color="#ffffff" transparent opacity={0.3} />
+          ) : texture ? (
+            <meshBasicMaterial
+              map={texture}
+              transparent={true}
+              alphaTest={0.1}
+              side={THREE.FrontSide}
+              depthWrite={true}
+            />
+          ) : (
+            <meshBasicMaterial color="#ff6b6b" transparent opacity={0.5} />
+          )}
         </mesh>
-      </group>
+      </Billboard>
 
       {/* Status indicator dot */}
-      <mesh 
-        position={[0.4, 0.1, 0.1]}
-        scale={0.12}
-      >
-        <sphereGeometry args={[1, 16, 16]} />
+      <mesh position={[0.5, 0.15, 0.1]}>
+        <sphereGeometry args={[0.12, 16, 16]} />
         <meshBasicMaterial color={statusColors[status]} />
       </mesh>
 
-      {/* Hover tooltip with details and delete */}
+      {/* Hover tooltip */}
       {hovered && (
         <Html
-          position={[0, worldHeight * scale + 0.4, 0]}
+          position={[0, spriteHeight * currentScale + 0.5, 0]}
           center
-          style={{
-            pointerEvents: 'none',
-            userSelect: 'none',
-          }}
+          style={{ pointerEvents: 'none', userSelect: 'none' }}
         >
           <div
             style={{
@@ -165,7 +170,6 @@ export function SpriteActor({
               backdropFilter: 'blur(8px)',
             }}
           >
-            {/* Agent name */}
             <div
               style={{
                 fontFamily: 'Dogica, sans-serif',
@@ -178,46 +182,14 @@ export function SpriteActor({
               {name || `Pokemon #${pokemonId}`}
             </div>
             
-            {/* Status */}
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '6px',
-                marginBottom: '10px',
-              }}
-            >
-              <span
-                style={{
-                  width: '8px',
-                  height: '8px',
-                  borderRadius: '50%',
-                  background: statusColors[status],
-                  display: 'inline-block',
-                }}
-              />
-              <span
-                style={{
-                  fontFamily: 'VT323, monospace',
-                  fontSize: '12px',
-                  color: '#94a3b8',
-                  textTransform: 'uppercase',
-                  letterSpacing: '1px',
-                }}
-              >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', marginBottom: '10px' }}>
+              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: statusColors[status], display: 'inline-block' }} />
+              <span style={{ fontFamily: 'VT323, monospace', fontSize: '12px', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '1px' }}>
                 {status}
               </span>
             </div>
 
-            {/* Action buttons */}
-            <div
-              style={{
-                display: 'flex',
-                gap: '8px',
-                pointerEvents: 'auto',
-              }}
-            >
+            <div style={{ display: 'flex', gap: '8px', pointerEvents: 'auto' }}>
               <button
                 onClick={handleClick}
                 style={{
@@ -230,10 +202,7 @@ export function SpriteActor({
                   fontFamily: 'Dogica, sans-serif',
                   fontSize: '11px',
                   cursor: 'pointer',
-                  transition: 'transform 0.1s',
                 }}
-                onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
-                onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
               >
                 View
               </button>
@@ -249,10 +218,7 @@ export function SpriteActor({
                   fontFamily: 'Dogica, sans-serif',
                   fontSize: '11px',
                   cursor: 'pointer',
-                  transition: 'transform 0.1s',
                 }}
-                onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
-                onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
               >
                 Delete
               </button>
