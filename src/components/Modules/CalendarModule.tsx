@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
 import type { Resident, CalendarEvent } from '../../types';
+import { badgeUrl, MODULE_BADGE_IDS } from '../../config/pokemon';
 import { useCityStore } from '../../stores/cityStore';
 import { useUIStore } from '../../stores/uiStore';
 import { useAuthStore } from '../../stores/authStore';
@@ -295,7 +296,10 @@ export function CalendarModule({ resident }: CalendarModuleProps) {
   return (
     <div>
       <div className="mod-header">
-        <span className="mod-title">Calendar</span>
+        <span className="mod-header__title-wrap">
+          <img src={badgeUrl(MODULE_BADGE_IDS.calendar)} alt="" className="pokecity-badge pokecity-badge--mod" />
+          <span className="mod-title">Calendar</span>
+        </span>
         <div style={{ display: 'flex', gap: 6 }}>
           <button className="mod-btn mod-btn--sm" onClick={handleGoogleSync} disabled={syncing}>
             {syncing ? 'Syncing...' : 'Google Sync'}

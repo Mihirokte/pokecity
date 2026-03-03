@@ -6,14 +6,12 @@ import {
   BOARD_HEXES,
   axialToWorld,
   HEX_SIZE,
-  getBoardEdges,
-  getPerimeterEdges,
-  getHomeSettlementPositions,
+  getAgentBuildingPositions,
 } from './hexUtils';
 import {
   getTileConfig,
+  getPastelColorForHex,
   TILE_TYPE_SEQUENCE,
-  HOME_TILE_INDICES,
 } from './catanData';
 import { spriteAnimatedUrl, spriteArtworkUrl, ELEMENT_SPRITE_IDS } from '../../config/pokemon';
 import type { House, Resident } from '../../types';
@@ -29,6 +27,8 @@ interface CatanCitySceneProps {
   entries: Array<{ resident: Resident; house: House }>;
   onSelectResident: (resident: Resident, house: House) => void;
   onAddAgent?: () => void;
+  /** When true, hide floating nameplates so they don't layer on top of the side panel */
+  panelOpen?: boolean;
 }
 
 // ============================================================================
@@ -73,19 +73,12 @@ function FloatingAgentName({
         style={{ pointerEvents: 'none' }}
       >
         <div
+          className="floating-nameplate"
           style={{
-            fontFamily: 'VT323, monospace',
-            fontSize: 'clamp(12px, 2vw, 18px)',
-            fontWeight: 'bold',
-            color: '#fff',
-            textAlign: 'center',
-            whiteSpace: 'nowrap',
-            padding: '4px 10px',
-            borderRadius: 4,
             background: `linear-gradient(180deg, ${glowRgba} 0%, rgba(0,0,0,0.4) 100%)`,
             boxShadow: `0 0 12px ${glowColor}44, 0 0 24px ${glowColor}22, inset 0 0 8px ${glowColor}33`,
             textShadow: `0 0 6px ${glowColor}, 0 0 12px ${glowColor}99, 0 0 4px rgba(0,0,0,0.9)`,
-            border: `1px solid ${glowColor}88`,
+            borderColor: `${glowColor}88`,
           }}
         >
           {name}
@@ -95,9 +88,22 @@ function FloatingAgentName({
   );
 }
 
-// Sprite: one size, clearly above the tile surface
+// Sprite: above hex top (extrusion top ≈ 0.65); bottom of plane must be ≥ hex top
 const SPRITE_SIZE = 2.8;
-const SPRITE_Y = 1.5;
+const HEX_TOP_Y = 0.65;
+const SPRITE_Y = HEX_TOP_Y + SPRITE_SIZE / 2 + 0.15;
+
+/** Wraps sprite in a group that bobs up/down to match panel's sprite-float animation */
+function SpriteWithFloat({ baseY, children }: { baseY: number; children: React.ReactNode }) {
+  const groupRef = useRef<THREE.Group>(null);
+  useFrame((state) => {
+    if (groupRef.current) {
+      const t = state.clock.elapsedTime * 1.8;
+      groupRef.current.position.y = baseY + Math.sin(t) * 0.18;
+    }
+  });
+  return <group ref={groupRef} position={[0, baseY, 0]}>{children}</group>;
+}
 
 // ============================================================================
 // HEX TILE COMPONENT
@@ -109,8 +115,12 @@ interface HexTileProps {
   bobOffset: number;
   typeLabel: string;
   residentName?: string;
+  /** When set, use this sprite on the board (matches panel / second-photo style) */
+  residentSpriteId?: number;
   spriteTextures: Map<number, THREE.Texture>;
   isHomeTile: boolean;
+  /** When true, hide floating nameplate (e.g. when side panel is open) */
+  hideNameplate?: boolean;
 }
 
 function HexTile({
@@ -119,20 +129,25 @@ function HexTile({
   bobOffset,
   typeLabel: _typeLabel,
   residentName,
+  residentSpriteId,
   spriteTextures,
   isHomeTile,
+  hideNameplate,
 }: HexTileProps) {
   const groupRef = useRef<THREE.Group>(null);
   const hexIndex = BOARD_HEXES.findIndex(([hq, hr]) => hq === q && hr === r);
   const tileType = TILE_TYPE_SEQUENCE[hexIndex];
   const config = getTileConfig(tileType);
 
-  // Only show pokemon if this is a home tile AND there's a resident
   const isOccupied = isHomeTile && !!residentName;
-  const pokemonId = isOccupied ? config.pokemonId : null;
+  const pokemonId = isOccupied
+    ? (residentSpriteId && Number.isInteger(residentSpriteId) ? residentSpriteId : config.pokemonId)
+    : null;
   const pokeTexture = pokemonId ? spriteTextures.get(pokemonId) || null : null;
 
-  // Catan-style: chunky hex with distinct top (resource color) and sloped sides
+  const pastel = useMemo(() => getPastelColorForHex(q, r), [q, r]);
+
+  // Catan-style: chunky hex with pastel VIBGYOR radial top and darker sides
   const geometry = useMemo(() => {
     const shape = new THREE.Shape();
     for (let i = 0; i < 6; i++) {
@@ -155,24 +170,24 @@ function HexTile({
 
   const materials = useMemo(() => {
     const top = new THREE.MeshStandardMaterial({
-      color: config.topColor,
-      emissive: config.emissiveColor,
-      emissiveIntensity: 0.18,
-      metalness: 0.6,
-      roughness: 0.35,
+      color: pastel.topColor,
+      emissive: pastel.topColor,
+      emissiveIntensity: 0.08,
+      metalness: 0.15,
+      roughness: 0.6,
     });
     const bottom = new THREE.MeshStandardMaterial({
-      color: config.sideColor,
-      metalness: 0.5,
-      roughness: 0.5,
+      color: pastel.sideColor,
+      metalness: 0.2,
+      roughness: 0.65,
     });
     const side = new THREE.MeshStandardMaterial({
-      color: config.sideColor,
-      metalness: 0.5,
-      roughness: 0.5,
+      color: pastel.sideColor,
+      metalness: 0.2,
+      roughness: 0.65,
     });
     return [top, bottom, side];
-  }, [config]);
+  }, [pastel]);
 
   useFrame((state) => {
     if (groupRef.current) {
@@ -191,7 +206,7 @@ function HexTile({
       <mesh position={[0, 0.68, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <ringGeometry args={[HEX_SIZE * 0.88, HEX_SIZE * 1.0, 6]} />
         <meshBasicMaterial
-          color={config.borderColor}
+          color={pastel.borderColor}
           transparent
           opacity={1}
           side={THREE.DoubleSide}
@@ -199,9 +214,9 @@ function HexTile({
         />
       </mesh>
 
-      {/* Sprite: one size, above surface */}
+      {/* Sprite: same as side panel (showdown GIF) with matching float/bob */}
       {pokemonId && pokeTexture && (
-        <group position={[0, SPRITE_Y, 0]}>
+        <SpriteWithFloat baseY={SPRITE_Y}>
           <Billboard follow={true}>
             <mesh renderOrder={1} castShadow={false}>
               <planeGeometry args={[SPRITE_SIZE, SPRITE_SIZE]} />
@@ -216,10 +231,10 @@ function HexTile({
               />
             </mesh>
           </Billboard>
-        </group>
+        </SpriteWithFloat>
       )}
 
-      {isOccupied && residentName && (
+      {isOccupied && residentName && !hideNameplate && (
         <FloatingAgentName
           name={residentName}
           glowColor={config.emissiveColor}
@@ -453,17 +468,21 @@ interface CatanSceneProps {
   entries: Array<{ resident: Resident; house: House }>;
   onSelectResident: (resident: Resident, house: House) => void;
   onAddAgent?: () => void;
+  panelOpen?: boolean;
 }
 
-function CatanScene({ entries, onSelectResident, onAddAgent }: CatanSceneProps) {
+function CatanScene({ entries, onSelectResident, onAddAgent, panelOpen }: CatanSceneProps) {
   const [spriteTextures, setSpriteTextures] = useState<Map<number, THREE.Texture>>(
     new Map()
   );
 
-  // Load sprites: same as panel (left/top) — showdown animated, fallback official artwork
+  // Load sprites: panel-style (showdown) for residents + element fallbacks for unoccupied tiles
   useEffect(() => {
     const textureLoader = new THREE.TextureLoader();
-    const pokemonIds = [...new Set(Object.values(ELEMENT_SPRITE_IDS))];
+    const residentIds = entries
+      .map((e) => parseInt(e.resident.emoji, 10))
+      .filter((n) => !Number.isNaN(n) && n > 0);
+    const pokemonIds = [...new Set([...Object.values(ELEMENT_SPRITE_IDS), ...residentIds])];
 
     pokemonIds.forEach((pokemonId) => {
       const primaryUrl = spriteAnimatedUrl(pokemonId);   // showdown — matches CityPanel
@@ -486,7 +505,7 @@ function CatanScene({ entries, onSelectResident, onAddAgent }: CatanSceneProps) 
         }
       );
     });
-  }, []);
+  }, [entries]);
 
   // Map of house type → resident (for highlighting occupied tiles)
   const occupiedTiles = useMemo(() => {
@@ -510,8 +529,8 @@ function CatanScene({ entries, onSelectResident, onAddAgent }: CatanSceneProps) 
       {/* Central pit replaces center hex when onAddAgent provided (Catan-style spawn) */}
       {onAddAgent && <CentralPit onAddAgent={onAddAgent} />}
 
-      {/* Catan-style settlements at home vertices + block roads along board perimeter */}
-      <SettlementsAndRoads />
+      {/* Per-agent: 2 settlements (houses) + 1 city (duplex), connected by smooth white roads */}
+      <SettlementsAndRoads entries={entries} />
 
       {/* Render hex tiles (skip center 0,0 when pit is shown) */}
       {BOARD_HEXES.map(([q, r], idx) => {
@@ -528,8 +547,10 @@ function CatanScene({ entries, onSelectResident, onAddAgent }: CatanSceneProps) 
               bobOffset={idx * 0.15}
               typeLabel={tileType === 'desert' ? 'DESERT' : tileType.toUpperCase()}
               residentName={resident?.name}
+              residentSpriteId={resident ? parseInt(resident.emoji, 10) : undefined}
               spriteTextures={spriteTextures}
               isHomeTile={isHomeTile}
+              hideNameplate={panelOpen}
             />
 
             {/* Post-login only: invisible clickable mesh for this resident (never on landing) */}
@@ -572,75 +593,266 @@ function CatanScene({ entries, onSelectResident, onAddAgent }: CatanSceneProps) 
 }
 
 // ============================================================================
-// SETTLEMENTS & ROADS (Catan-style: small 3D settlements at vertices, block roads along perimeter)
+// SETTLEMENTS & ROADS — per agent: 2 houses + 1 duplex, smooth white roads
 // ============================================================================
 
-const ROAD_HEIGHT = 0.18;
-const ROAD_WIDTH = 0.22;
-const SETTLEMENT_BASE_Y = 0.72;
+const BUILDING_BASE_Y = 0.72;
+const SCALE = 4; // 300% size increase
+// Settlement (house): base and roof
+const HOUSE_BASE_W = 0.48 * SCALE;
+const HOUSE_BASE_H = 0.4 * SCALE;
+const HOUSE_ROOF_W = 0.34 * SCALE;
+const HOUSE_ROOF_H = 0.24 * SCALE;
+// City (duplex): larger, two tiers
+const DUPLEX_BASE_W = 0.6 * SCALE;
+const DUPLEX_BASE_H = 0.5 * SCALE;
+const DUPLEX_MID_W = 0.5 * SCALE;
+const DUPLEX_MID_H = 0.4 * SCALE;
+const DUPLEX_ROOF_W = 0.42 * SCALE;
+const DUPLEX_ROOF_H = 0.25 * SCALE;
+// Roads
+const ROAD_RADIUS = 0.28;
+const ROAD_COLOR = '#f0f4f8';
+const ROAD_Y = BUILDING_BASE_Y + 0.1;
 
-function SettlementsAndRoads() {
-  const allEdges = useMemo(() => getBoardEdges(BOARD_HEXES), []);
-  const perimeterEdges = useMemo(() => getPerimeterEdges(BOARD_HEXES, allEdges), [allEdges]);
-  const homeIndices = useMemo(
-    () => Array.from(HOME_TILE_INDICES).sort((a, b) => a - b),
-    []
+/** Shared curve for road mesh and Pokéball path (identical geometry). */
+function createRoadCurve(x1: number, z1: number, x2: number, z2: number): THREE.QuadraticBezierCurve3 {
+  const y = ROAD_Y;
+  const A = new THREE.Vector3(x1, y, z1);
+  const B = new THREE.Vector3(x2, y, z2);
+  const mid = new THREE.Vector3((x1 + x2) / 2, y, (z1 + z2) / 2);
+  const perp = new THREE.Vector3(-(z2 - z1), 0, x2 - x1).normalize().multiplyScalar(0.9);
+  const control = mid.clone().add(perp);
+  return new THREE.QuadraticBezierCurve3(A, control, B);
+}
+
+/** Get position and tangent on the full agent path (forward 0→1→2→0, then back 0→2→1→0). t in [0,1]. */
+function getPointOnAgentPath(
+  positions: [number, number][],
+  t: number
+): { point: THREE.Vector3; tangent: THREE.Vector3 } {
+  const curves = [
+    createRoadCurve(positions[0][0], positions[0][1], positions[1][0], positions[1][1]),
+    createRoadCurve(positions[1][0], positions[1][1], positions[2][0], positions[2][1]),
+    createRoadCurve(positions[2][0], positions[2][1], positions[0][0], positions[0][1]),
+  ];
+  const seg = Math.floor(t * 6);
+  const localT = (t * 6) % 1;
+  const forward = seg < 3;
+  const curveIndex = forward ? seg : 5 - seg;
+  const u = forward ? localT : 1 - localT;
+  const curve = curves[curveIndex];
+  const point = curve.getPoint(u);
+  const tangent = curve.getTangent(u).normalize();
+  if (!forward) tangent.negate();
+  return { point, tangent };
+}
+
+const BUILDING_PALETTE = [
+  '#93c5fd', '#fde68a', '#fecaca', '#bbf7d0', '#e9d5ff', '#fed7aa',
+  '#a5f3fc', '#fbcfe8', '#d9f99d',
+];
+
+function hashId(id: string): number {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
+  return h;
+}
+
+function getColorsForAgent(residentId: string): [string, string, string] {
+  const h = hashId(residentId);
+  const i0 = h % BUILDING_PALETTE.length;
+  const i1 = (h + 3) % BUILDING_PALETTE.length;
+  const i2 = (h + 7) % BUILDING_PALETTE.length;
+  return [
+    BUILDING_PALETTE[i0],
+    BUILDING_PALETTE[i1],
+    BUILDING_PALETTE[i2],
+  ];
+}
+
+function SmoothRoad({ x1, z1, x2, z2 }: { x1: number; z1: number; x2: number; z2: number }) {
+  const curve = useMemo(() => createRoadCurve(x1, z1, x2, z2), [x1, z1, x2, z2]);
+  const tubeGeo = useMemo(
+    () => new THREE.TubeGeometry(curve, 20, ROAD_RADIUS, 10, false),
+    [curve]
   );
-  const settlementPositions = useMemo(
-    () => getHomeSettlementPositions(BOARD_HEXES, homeIndices),
-    [homeIndices]
+  return (
+    <mesh geometry={tubeGeo} castShadow receiveShadow>
+      <meshStandardMaterial color={ROAD_COLOR} roughness={0.7} metalness={0.1} />
+    </mesh>
   );
+}
+
+// Pokéball rolling along one agent's road loop (forward then trace back)
+const POKEBALL_RADIUS = 0.18;
+const POKEBALL_LOOP_DURATION = 14;
+const POKEBALL_TEXTURE = (() => {
+  const canvas = document.createElement('canvas');
+  canvas.width = 64;
+  canvas.height = 64;
+  const ctx = canvas.getContext('2d')!;
+  // Top half red, bottom half white, black band at equator, center button
+  ctx.fillStyle = '#e53935';
+  ctx.fillRect(0, 0, 64, 28);
+  ctx.fillStyle = '#1a1a1a';
+  ctx.fillRect(0, 28, 64, 8);
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 36, 64, 28);
+  ctx.fillStyle = '#1a1a1a';
+  ctx.beginPath();
+  ctx.arc(32, 32, 6, 0, Math.PI * 2);
+  ctx.fill();
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.needsUpdate = true;
+  return tex;
+})();
+
+function PokeballOnRoad({
+  positions,
+  phase = 0,
+}: {
+  positions: [number, number][];
+  phase?: number;
+}) {
+  const meshRef = useRef<THREE.Mesh>(null);
+  const prevPointRef = useRef(new THREE.Vector3());
+  const rollAngleRef = useRef(0);
+  const initializedRef = useRef(false);
+
+  useFrame((state) => {
+    if (!meshRef.current || positions.length !== 3) return;
+    const t = ((state.clock.elapsedTime + phase) / POKEBALL_LOOP_DURATION) % 1;
+    const { point, tangent } = getPointOnAgentPath(positions, t);
+    meshRef.current.position.copy(point);
+
+    if (!initializedRef.current) {
+      prevPointRef.current.copy(point);
+      initializedRef.current = true;
+    }
+    const dist = prevPointRef.current.distanceTo(point);
+    prevPointRef.current.copy(point);
+    // Roll: axis perpendicular to path (in horizontal plane); set rotation from angle to avoid drift
+    const up = new THREE.Vector3(0, 1, 0);
+    const axis = new THREE.Vector3().crossVectors(tangent, up).normalize();
+    if (axis.lengthSq() > 0.001) {
+      rollAngleRef.current += dist / POKEBALL_RADIUS;
+      meshRef.current.quaternion.setFromAxisAngle(axis, rollAngleRef.current);
+    }
+  });
+
+  return (
+    <mesh ref={meshRef} castShadow receiveShadow>
+      <sphereGeometry args={[POKEBALL_RADIUS, 24, 24]} />
+      <meshStandardMaterial
+        map={POKEBALL_TEXTURE}
+        roughness={0.5}
+        metalness={0.1}
+      />
+    </mesh>
+  );
+}
+
+function House({ x, z, baseColor }: { x: number; z: number; baseColor: string }) {
+  const roofColor = baseColor; // same or darken in CSS-style - use a lighter tint
+  const darker = (hex: string, f: number) => {
+    const n = parseInt(hex.slice(1), 16);
+    const r = Math.round(((n >> 16) & 255) * f);
+    const g = Math.round(((n >> 8) & 255) * f);
+    const b = Math.round((n & 255) * f);
+    return '#' + [r, g, b].map((c) => Math.min(255, c).toString(16).padStart(2, '0')).join('');
+  };
+  return (
+    <group position={[x, BUILDING_BASE_Y, z]}>
+      <mesh castShadow receiveShadow position={[0, HOUSE_BASE_H / 2, 0]}>
+        <boxGeometry args={[HOUSE_BASE_W, HOUSE_BASE_H, HOUSE_BASE_W]} />
+        <meshStandardMaterial color={baseColor} roughness={0.6} metalness={0.1} />
+      </mesh>
+      {/* Pointed roof (pyramid) */}
+      <mesh castShadow position={[0, HOUSE_BASE_H + HOUSE_ROOF_H / 2, 0]}>
+        <coneGeometry args={[HOUSE_ROOF_W / 2, HOUSE_ROOF_H, 4]} />
+        <meshStandardMaterial color={darker(baseColor, 0.85)} roughness={0.5} metalness={0.15} />
+      </mesh>
+    </group>
+  );
+}
+
+function Duplex({ x, z, baseColor }: { x: number; z: number; baseColor: string }) {
+  const darker = (hex: string, f: number) => {
+    const n = parseInt(hex.slice(1), 16);
+    const r = Math.round(((n >> 16) & 255) * f);
+    const g = Math.round(((n >> 8) & 255) * f);
+    const b = Math.round((n & 255) * f);
+    return '#' + [r, g, b].map((c) => Math.min(255, c).toString(16).padStart(2, '0')).join('');
+  };
+  return (
+    <group position={[x, BUILDING_BASE_Y, z]}>
+      <mesh castShadow receiveShadow position={[0, DUPLEX_BASE_H / 2, 0]}>
+        <boxGeometry args={[DUPLEX_BASE_W, DUPLEX_BASE_H, DUPLEX_BASE_W]} />
+        <meshStandardMaterial color={baseColor} roughness={0.6} metalness={0.1} />
+      </mesh>
+      <mesh castShadow receiveShadow position={[0, DUPLEX_BASE_H + DUPLEX_MID_H / 2, 0]}>
+        <boxGeometry args={[DUPLEX_MID_W, DUPLEX_MID_H, DUPLEX_MID_W]} />
+        <meshStandardMaterial color={darker(baseColor, 0.9)} roughness={0.55} metalness={0.1} />
+      </mesh>
+      {/* Pointed roof (pyramid) */}
+      <mesh castShadow position={[0, DUPLEX_BASE_H + DUPLEX_MID_H + DUPLEX_ROOF_H / 2, 0]}>
+        <coneGeometry args={[DUPLEX_ROOF_W / 2, DUPLEX_ROOF_H, 4]} />
+        <meshStandardMaterial color={darker(baseColor, 0.75)} roughness={0.5} metalness={0.15} />
+      </mesh>
+    </group>
+  );
+}
+
+interface SettlementsAndRoadsProps {
+  entries: Array<{ resident: Resident; house: House }>;
+}
+
+function SettlementsAndRoads({ entries }: SettlementsAndRoadsProps) {
+  const agentData = useMemo(() => {
+    return entries.map(({ resident, house }) => {
+      const homeIndex = TILE_TYPE_SEQUENCE.indexOf(house.type);
+      const [q, r] = BOARD_HEXES[homeIndex];
+      const positions = getAgentBuildingPositions(q, r);
+      const colors = getColorsForAgent(resident.id);
+      return {
+        resident,
+        positions,
+        colors,
+      };
+    });
+  }, [entries]);
 
   return (
     <group>
-      {/* Perimeter roads: 3D blocks along each edge */}
-      {perimeterEdges.map((edge, i) => {
-        const dx = edge.x2 - edge.x1;
-        const dz = edge.z2 - edge.z1;
-        const len = Math.sqrt(dx * dx + dz * dz);
-        const midX = (edge.x1 + edge.x2) / 2;
-        const midZ = (edge.z1 + edge.z2) / 2;
-        const rotY = Math.atan2(dx, dz);
-        return (
-          <mesh
-            key={`road-${i}`}
-            position={[midX, SETTLEMENT_BASE_Y + ROAD_HEIGHT / 2, midZ]}
-            rotation={[0, rotY, 0]}
-            castShadow
-            receiveShadow
-          >
-            <boxGeometry args={[ROAD_WIDTH, ROAD_HEIGHT, len]} />
-            <meshStandardMaterial
-              color="#2d3748"
-              roughness={0.85}
-              metalness={0.2}
-            />
-          </mesh>
-        );
-      })}
-
-      {/* Settlements: small 3D blocks beside each home tile vertex */}
-      {settlementPositions.map(([x, z], i) => (
-        <group key={`settlement-${i}`} position={[x, SETTLEMENT_BASE_Y, z]}>
-          {/* Base block */}
-          <mesh castShadow receiveShadow position={[0, 0.12, 0]}>
-            <boxGeometry args={[0.28, 0.24, 0.28]} />
-            <meshStandardMaterial
-              color="#4a5568"
-              roughness={0.7}
-              metalness={0.15}
-            />
-          </mesh>
-          {/* Roof / second tier (city-style for variety) */}
-          <mesh castShadow position={[0, 0.3, 0]}>
-            <boxGeometry args={[0.2, 0.14, 0.2]} />
-            <meshStandardMaterial
-              color="#718096"
-              roughness={0.6}
-              metalness={0.2}
-            />
-          </mesh>
-        </group>
+      {agentData.map((agent, ai) => (
+        <React.Fragment key={agent.resident.id}>
+          {/* Roads connecting the 3 buildings (smooth curve) */}
+          <SmoothRoad
+            x1={agent.positions[0][0]}
+            z1={agent.positions[0][1]}
+            x2={agent.positions[1][0]}
+            z2={agent.positions[1][1]}
+          />
+          <SmoothRoad
+            x1={agent.positions[1][0]}
+            z1={agent.positions[1][1]}
+            x2={agent.positions[2][0]}
+            z2={agent.positions[2][1]}
+          />
+          <SmoothRoad
+            x1={agent.positions[2][0]}
+            z1={agent.positions[2][1]}
+            x2={agent.positions[0][0]}
+            z2={agent.positions[0][1]}
+          />
+          {/* 2 settlements (houses) + 1 city (duplex) */}
+          <House x={agent.positions[0][0]} z={agent.positions[0][1]} baseColor={agent.colors[0]} />
+          <House x={agent.positions[1][0]} z={agent.positions[1][1]} baseColor={agent.colors[1]} />
+          <Duplex x={agent.positions[2][0]} z={agent.positions[2][1]} baseColor={agent.colors[2]} />
+          {/* Pokéball rolls along this agent's road loop (forward then trace back) */}
+          <PokeballOnRoad positions={agent.positions} phase={ai * 2.5} />
+        </React.Fragment>
       ))}
     </group>
   );
@@ -790,14 +1002,7 @@ function CentralPit({ onAddAgent }: { onAddAgent: () => void }) {
         />
       </mesh>
       <Html position={[0, 0.02, 0]} center distanceFactor={1.2} style={{ pointerEvents: 'none' }}>
-        <div style={{
-          fontFamily: 'Dogica, monospace',
-          fontSize: '10px',
-          fontWeight: 'bold',
-          color: '#FFD700',
-          textShadow: '0 0 8px rgba(0,0,0,0.9)',
-          whiteSpace: 'nowrap',
-        }}>
+        <div className="pit-label">
           + ADD RESIDENT
         </div>
       </Html>
@@ -823,6 +1028,7 @@ export function CatanCityScene({
   entries,
   onSelectResident,
   onAddAgent,
+  panelOpen,
 }: CatanCitySceneProps) {
   return (
     <Canvas
@@ -838,7 +1044,7 @@ export function CatanCityScene({
       }}
     >
       <React.Suspense fallback={null}>
-        <CatanScene entries={entries} onSelectResident={onSelectResident} onAddAgent={onAddAgent} />
+        <CatanScene entries={entries} onSelectResident={onSelectResident} onAddAgent={onAddAgent} panelOpen={panelOpen} />
       </React.Suspense>
     </Canvas>
   );

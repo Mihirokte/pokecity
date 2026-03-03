@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import { useCityStore } from '../../stores/cityStore';
 import { HOUSE_TYPES } from '../../config/houseTypes';
-import { spriteAnimatedUrl } from '../../config/pokemon';
+import { spriteAnimatedUrl, badgeUrl, MODULE_BADGE_IDS } from '../../config/pokemon';
 import type { Resident, House } from '../../types';
 
 interface AgentCardProps {
@@ -233,7 +233,10 @@ export function AgentCard({ resident, house, onClick }: AgentCardProps) {
         />
         <div className="dash-card__info">
           <div className="dash-card__name">{resident.name}</div>
-          <div className="dash-card__badge" style={{ background: ht.color }}>{ht.label}</div>
+          <div className="dash-card__meta">
+            <img src={badgeUrl(MODULE_BADGE_IDS[house.type] ?? 1)} alt="" className="pokecity-badge pokecity-badge--sm" />
+            <span className="dash-card__badge" style={{ background: ht.color }}>{ht.label}</span>
+          </div>
         </div>
       </div>
       <div className="dash-card__widget">

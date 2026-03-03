@@ -50,6 +50,33 @@
   to   { opacity: 1; }
 }
 
+/* ── Pokémon badges (PokeAPI/sprites/badges) ── */
+.pokecity-badge {
+  display: inline-block;
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+.pokecity-badge--sm {
+  width: 18px;
+  height: 18px;
+}
+.pokecity-badge--header {
+  width: 28px;
+  height: 28px;
+  margin-right: 6px;
+}
+.pokecity-badge--mod {
+  width: 22px;
+  height: 22px;
+  margin-right: 8px;
+}
+
 /* ── City View Root ── */
 .city-view {
   position: relative;
@@ -76,6 +103,12 @@
   top: 0;
   left: 0;
   right: 0;
+}
+.city-header__brand {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  min-width: 0;
 }
 .city-header__name {
   font-family: 'Dogica', monospace;
@@ -213,8 +246,8 @@
   display: flex;
   flex-direction: column;
   background: linear-gradient(180deg, #1a1a2e 0%, #0f0f1a 100%);
-  border: 3px solid #FFD700;
-  box-shadow: 0 0 0 1px rgba(0,0,0,0.5), 0 12px 32px rgba(0,0,0,0.6), 0 0 24px rgba(255,215,0,0.15);
+  border: 2px solid rgba(255,215,0,0.25);
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.4), 0 12px 32px rgba(0,0,0,0.5);
   border-radius: 0;
   animation: panel-slide-up 0.3s ease-out;
 }
@@ -243,52 +276,52 @@
 }
 .about-me-panel__hero {
   display: flex;
-  align-items: center;
-  gap: 20px;
-  padding: 20px 20px 16px;
-  border-bottom: 2px solid rgba(255,215,0,0.3);
+  align-items: stretch;
+  gap: 0;
+  min-height: min(42vh, 280px);
   flex-shrink: 0;
-}
-.about-me-panel__sprite-wrap {
-  width: 80px;
-  height: 80px;
-  flex-shrink: 0;
-  border: 2px solid #FFD700;
-  border-radius: 0;
-  overflow: hidden;
-  background: rgba(255,255,255,0.05);
-  box-shadow: inset 0 0 12px rgba(0,0,0,0.4);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 50%, #12121f 100%);
 }
 .about-me-panel__sprite {
-  width: 100%;
-  height: 100%;
+  width: 58%;
+  min-width: 200px;
   object-fit: cover;
-  object-position: center top;
+  object-position: center 15%;
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
+  display: block;
 }
 .about-me-panel__identity {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 20px 24px;
 }
 .about-me-panel__name {
   font-family: 'Dogica', monospace;
   font-size: clamp(14px, 3vw, 18px);
   font-weight: 700;
-  color: #FFD700;
-  text-shadow: 0 0 10px rgba(255,215,0,0.4);
-  margin: 0 0 4px 0;
+  color: rgba(255,215,0,0.92);
+  text-shadow: 0 0 6px rgba(255,215,0,0.12);
+  margin: 0 0 6px 0;
   letter-spacing: 0.02em;
 }
 .about-me-panel__tagline {
   font-family: 'VT323', monospace;
-  font-size: 18px;
-  color: rgba(255,255,255,0.9);
+  font-size: 17px;
+  color: rgba(255,255,255,0.88);
   margin: 0 0 2px 0;
+  line-height: 1.3;
 }
 .about-me-panel__location {
   font-family: 'VT323', monospace;
   font-size: 14px;
   color: rgba(255,255,255,0.5);
-  margin: 0 0 8px 0;
+  margin: 0 0 10px 0;
 }
 .about-me-panel__link {
   font-family: 'Dogica', monospace;
@@ -301,24 +334,39 @@
   text-decoration: underline;
   color: #bae6fd;
 }
+@media (max-width: 420px) {
+  .about-me-panel__hero {
+    flex-direction: column;
+    min-height: min(50vh, 320px);
+  }
+  .about-me-panel__sprite {
+    width: 100%;
+    min-width: 0;
+    height: 180px;
+    object-position: center 20%;
+  }
+  .about-me-panel__identity {
+    padding: 16px 20px;
+  }
+}
 .about-me-panel__body {
   overflow-y: auto;
-  padding: 16px 20px 24px;
+  padding: 14px 20px 20px;
   flex: 1;
   min-height: 0;
 }
 .about-me-panel__body::-webkit-scrollbar { width: 6px; }
 .about-me-panel__body::-webkit-scrollbar-track { background: rgba(0,0,0,0.3); }
-.about-me-panel__body::-webkit-scrollbar-thumb { background: rgba(255,215,0,0.3); border-radius: 3px; }
+.about-me-panel__body::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 3px; }
 .about-me-panel__section {
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 .about-me-panel__section:last-of-type { margin-bottom: 0; }
 .about-me-panel__section-title {
   font-family: 'Dogica', monospace;
   font-size: 10px;
   font-weight: 700;
-  color: #FFD700;
+  color: rgba(255,215,0,0.85);
   letter-spacing: 0.08em;
   margin: 0 0 6px 0;
   text-transform: uppercase;
@@ -360,26 +408,27 @@
   gap: 10px;
   margin-top: 20px;
   padding-top: 16px;
-  border-top: 2px solid rgba(255,215,0,0.2);
+  border-top: 1px solid rgba(255,255,255,0.08);
 }
 .about-me-panel__btn {
   font-family: 'Dogica', monospace;
   font-size: 10px;
   font-weight: 700;
   padding: 8px 14px;
-  border: 2px solid #FFD700;
-  background: rgba(255,215,0,0.1);
-  color: #FFD700;
+  border: 2px solid rgba(255,215,0,0.35);
+  background: rgba(255,215,0,0.06);
+  color: rgba(255,215,0,0.9);
   text-decoration: none;
   letter-spacing: 0.04em;
   border-radius: 0;
-  box-shadow: 2px 2px 0 rgba(0,0,0,0.3);
+  box-shadow: 2px 2px 0 rgba(0,0,0,0.25);
   transition: all 0.1s;
 }
 .about-me-panel__btn:hover {
-  background: rgba(255,215,0,0.2);
+  background: rgba(255,215,0,0.1);
+  border-color: rgba(255,215,0,0.5);
   transform: translate(-1px,-1px);
-  box-shadow: 3px 3px 0 rgba(0,0,0,0.3);
+  box-shadow: 3px 3px 0 rgba(0,0,0,0.25);
 }
 
 /* ── City Map ── */
@@ -720,6 +769,36 @@
   animation: sprite-float 2s ease-in-out infinite;
 }
 
+/* ── 3D overlay labels (nameplate + pit) — integrated with scene ── */
+.floating-nameplate {
+  font-family: 'VT323', monospace;
+  font-size: clamp(12px, 2vw, 18px);
+  font-weight: bold;
+  color: #fff;
+  text-align: center;
+  white-space: nowrap;
+  padding: 4px 10px;
+  border-radius: 0;
+  border: 2px solid;
+  image-rendering: pixelated;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+.pit-label {
+  font-family: 'Dogica', monospace;
+  font-size: 10px;
+  font-weight: bold;
+  color: #FFD700;
+  white-space: nowrap;
+  padding: 4px 8px;
+  border: 2px solid rgba(255,215,0,0.6);
+  background: rgba(0,0,0,0.5);
+  border-radius: 0;
+  text-shadow: 0 0 8px rgba(0,0,0,0.9), 0 0 12px rgba(255,215,0,0.4);
+  box-shadow: 0 0 10px rgba(255,215,0,0.2), inset 0 0 6px rgba(0,0,0,0.4);
+  image-rendering: pixelated;
+}
+
 /* ════════════════════════════════════════════
    City Panel (Full-screen module view)
    ════════════════════════════════════════════ */
@@ -730,12 +809,30 @@
   bottom: 0;
   width: 70%;
   max-width: 90vw;
-  z-index: 100;
+  z-index: 10000;
   display: flex;
   flex-direction: column;
-  background: #0c0c1e;
-  box-shadow: -8px 0 24px rgba(0,0,0,0.4);
+  background: linear-gradient(135deg, #0a0a18 0%, #0c0c1e 50%, #0a0a14 100%);
+  border-left: 4px solid #FFD700;
+  box-shadow: -12px 0 32px rgba(0,0,0,0.5), inset 1px 0 0 rgba(255,255,255,0.04);
   animation: panel-slide-in-right 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.city-panel::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0,0,0,0.03) 2px,
+    rgba(0,0,0,0.03) 4px
+  );
+  opacity: 0.2;
 }
 .city-panel--closing {
   animation: panel-slide-out-right 0.25s ease-in forwards;
@@ -754,8 +851,10 @@
   gap: 12px;
   padding: 10px 16px;
   background: rgba(0,0,0,0.5);
-  border-bottom: 2px solid rgba(255,255,255,0.08);
+  border-bottom: 3px solid rgba(255,215,0,0.35);
   flex-shrink: 0;
+  position: relative;
+  z-index: 1;
 }
 .city-panel__back {
   font-family: 'Dogica', monospace;
@@ -1005,6 +1104,11 @@
   margin-bottom: 16px;
   padding-bottom: 12px;
   border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.mod-header__title-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
 }
 
 .mod-title {
@@ -1444,13 +1548,18 @@
   text-overflow: ellipsis;
 }
 
+.dash-card__meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+}
 .dash-card__badge {
   font-family: 'VT323', monospace;
   font-size: 11px;
   color: #fff;
   padding: 2px 6px;
   border-radius: 2px;
-  margin-top: 2px;
   display: inline-block;
 }
 

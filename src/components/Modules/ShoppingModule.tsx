@@ -2,6 +2,7 @@ import { useState, useMemo, useCallback } from 'react';
 import { useCityStore } from '../../stores/cityStore';
 import { useUIStore } from '../../stores/uiStore';
 import { SheetsService } from '../../services/sheetsService';
+import { badgeUrl, MODULE_BADGE_IDS } from '../../config/pokemon';
 import type { Resident, ShoppingItem } from '../../types';
 
 const DEFAULT_LIST = 'Groceries';
@@ -219,7 +220,10 @@ export function ShoppingModule({ resident }: { resident: Resident }) {
     <div>
       {/* Header */}
       <div className="mod-header">
-        <span className="mod-title">Shopping Lists</span>
+        <span className="mod-header__title-wrap">
+          <img src={badgeUrl(MODULE_BADGE_IDS.shopping)} alt="" className="pokecity-badge pokecity-badge--mod" />
+          <span className="mod-title">Shopping Lists</span>
+        </span>
         <button
           className="mod-btn mod-btn--sm"
           onClick={() => setShowDetailForm(!showDetailForm)}

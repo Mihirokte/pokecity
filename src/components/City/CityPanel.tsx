@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { House, Resident } from '../../types';
 import { HOUSE_TYPES } from '../../config/houseTypes';
-import { spriteAnimatedUrl } from '../../config/pokemon';
+import { spriteAnimatedUrl, badgeUrl, MODULE_BADGE_IDS } from '../../config/pokemon';
 import { CalendarModule } from '../Modules/CalendarModule';
 import { TasksModule } from '../Modules/TasksModule';
 import { NotesModule } from '../Modules/NotesModule';
@@ -65,6 +65,7 @@ export function CityPanel({ resident, house, onClose }: CityPanelProps) {
           <div className="city-panel__role" style={{ color: ht.color }}>{resident.role}</div>
         </div>
         <div
+          className="city-panel__type-badge"
           style={{
             fontFamily: 'Dogica, monospace',
             fontSize: 8,
@@ -74,8 +75,12 @@ export function CityPanel({ resident, house, onClose }: CityPanelProps) {
             border: `1px solid ${ht.color}`,
             opacity: 0.8,
             flexShrink: 0,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 4,
           }}
         >
+          <img src={badgeUrl(MODULE_BADGE_IDS[house.type] ?? 1)} alt="" className="pokecity-badge pokecity-badge--sm" />
           {ht.label.toUpperCase()}
         </div>
       </div>

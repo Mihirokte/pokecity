@@ -2,6 +2,7 @@ import { useState, useMemo, useCallback } from 'react';
 import { useCityStore } from '../../stores/cityStore';
 import { useUIStore } from '../../stores/uiStore';
 import { SheetsService } from '../../services/sheetsService';
+import { badgeUrl, MODULE_BADGE_IDS } from '../../config/pokemon';
 import type { Resident, HealthMetric } from '../../types';
 
 const METRIC_TYPES = ['weight', 'reps', 'sets', 'duration', 'distance', 'calories', 'custom'] as const;
@@ -147,7 +148,10 @@ export function GymModule({ resident }: { resident: Resident }) {
     <div>
       {/* Header */}
       <div className="mod-header">
-        <span className="mod-title">Gym</span>
+        <span className="mod-header__title-wrap">
+          <img src={badgeUrl(MODULE_BADGE_IDS.gym)} alt="" className="pokecity-badge pokecity-badge--mod" />
+          <span className="mod-title">Gym</span>
+        </span>
         <button className="mod-btn mod-btn--sm" onClick={() => { setForm(emptyForm(activeType)); setShowForm(!showForm); }}>
           {showForm ? 'Cancel' : '+ Log'}
         </button>

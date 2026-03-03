@@ -3,7 +3,7 @@ import { useCityStore } from '../../stores/cityStore';
 import { useUIStore } from '../../stores/uiStore';
 import { useAuthStore } from '../../stores/authStore';
 import { HOUSE_TYPES, HOUSE_TYPE_LIST } from '../../config/houseTypes';
-import { spriteArtworkUrl, PLAYER_POKEMON_ID } from '../../config/pokemon';
+import { spriteArtworkUrl, PLAYER_POKEMON_ID, badgeUrl, HEADER_BADGE_ID, MODULE_BADGE_IDS } from '../../config/pokemon';
 import type { HouseModuleType, House, Resident } from '../../types';
 import { CityPanel } from './CityPanel';
 import { AboutMePanel } from './AboutMePanel';
@@ -59,7 +59,10 @@ export function CityView() {
     <div className="city-view">
       {/* ── Floating Header HUD ── */}
       <header className="city-header city-header--hud">
-        <div className="city-header__name">{cityName}</div>
+        <div className="city-header__brand">
+          <img src={badgeUrl(HEADER_BADGE_ID)} alt="" className="pokecity-badge pokecity-badge--header" />
+          <div className="city-header__name">{cityName}</div>
+        </div>
         <span className="city-header__sep">|</span>
         <div className="city-header__stats">
           {entries.length} resident{entries.length !== 1 ? 's' : ''}
@@ -124,6 +127,7 @@ export function CityView() {
         entries={entries}
         onSelectResident={(resident, house) => setSelected({ resident, house })}
         onAddAgent={() => setShowAddForm(true)}
+        panelOpen={selected !== null}
       />
 
       {/* ── Add Agent Modal ── */}
@@ -143,6 +147,7 @@ export function CityView() {
                   style={{ '--type-color': ht.color } as React.CSSProperties}
                   onClick={() => setNewAgentType(ht.type)}
                 >
+                  <img src={badgeUrl(MODULE_BADGE_IDS[ht.type] ?? 1)} alt="" className="pokecity-badge pokecity-badge--sm" />
                   <span className="city-type-btn__emoji">{ht.emoji}</span>
                   <span className="city-type-btn__label">{ht.label.toUpperCase()}</span>
                 </button>

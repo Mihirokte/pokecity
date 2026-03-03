@@ -2,6 +2,7 @@ import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useCityStore } from '../../stores/cityStore';
 import { useUIStore } from '../../stores/uiStore';
 import { SheetsService } from '../../services/sheetsService';
+import { badgeUrl, MODULE_BADGE_IDS } from '../../config/pokemon';
 import type { Resident, TripPlan, TripLeg, PackingItem } from '../../types';
 
 interface TravelModuleProps {
@@ -229,7 +230,10 @@ export function TravelModule({ resident }: TravelModuleProps) {
     <div>
       {/* Header */}
       <div className="mod-header">
-        <span className="mod-title">Travel</span>
+        <span className="mod-header__title-wrap">
+          <img src={badgeUrl(MODULE_BADGE_IDS.travel)} alt="" className="pokecity-badge pokecity-badge--mod" />
+          <span className="mod-title">Travel</span>
+        </span>
         <button className="mod-btn mod-btn--sm" onClick={() => setShowForm(f => !f)}>
           {showForm ? 'Cancel' : '+ New Trip'}
         </button>

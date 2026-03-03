@@ -1,14 +1,18 @@
 import { SHEET_HEADERS, SHEET_NAMES, NEW_SHEET_NAMES, tabName, TAB_TO_SHEET } from '../config/sheets';
 import type { SheetName } from '../types';
 import { useAuthStore } from '../stores/authStore';
+import { getSampleData, SAMPLE_SPREADSHEET_ID } from '../data/sampleData';
 
 const SHEETS_API = 'https://sheets.googleapis.com/v4/spreadsheets';
 const DRIVE_API = 'https://www.googleapis.com/drive/v3/files';
 
-function getAuth() {
+function getAuth(): { token: string; sheetId: string } {
   const state = useAuthStore.getState();
   const { accessToken, spreadsheetId } = state;
   if (!accessToken || !spreadsheetId) throw new Error('Not authenticated');
+  if (spreadsheetId === SAMPLE_SPREADSHEET_ID) {
+    return { token: accessToken, sheetId: SAMPLE_SPREADSHEET_ID };
+  }
   if (!state.isTokenValid()) throw new Error('Token expired');
   return { token: accessToken, sheetId: spreadsheetId };
 }
@@ -105,8 +109,12 @@ export const SheetsService = {
 
   // ── Read all rows from a sheet ──
   async readAll<T>(sheetName: SheetName): Promise<T[]> {
+    const { sheetId } = getAuth();
+    if (sheetId === SAMPLE_SPREADSHEET_ID) {
+      return Promise.resolve(getSampleData<T>(sheetName));
+    }
     return withRetry(async () => {
-      const { token, sheetId } = getAuth();
+      const { token } = getAuth();
       const tab = tabName(sheetName);
       const res = await fetch(
         `${SHEETS_API}/${sheetId}/values/${encodeURIComponent(tab)}`,
@@ -128,8 +136,10 @@ export const SheetsService = {
 
   // ── Append a new row ──
   async append(sheetName: SheetName, obj: AnyObject): Promise<void> {
+    const { sheetId } = getAuth();
+    if (sheetId === SAMPLE_SPREADSHEET_ID) return Promise.resolve();
     return withRetry(async () => {
-      const { token, sheetId } = getAuth();
+      const { token } = getAuth();
       const tab = tabName(sheetName);
       const row = objectToRow(sheetName, obj);
       const res = await fetch(
@@ -156,8 +166,10 @@ export const SheetsService = {
     obj: AnyObject,
     lookupField = 'id'
   ): Promise<void> {
+    const { sheetId } = getAuth();
+    if (sheetId === SAMPLE_SPREADSHEET_ID) return Promise.resolve();
     return withRetry(async () => {
-      const { token, sheetId } = getAuth();
+      const { token } = getAuth();
       const tab = tabName(sheetName);
       // First find the row index
       const all = await this.readAll<AnyObject>(sheetName);
@@ -328,7 +340,9 @@ export const SheetsService = {
 
   // ── Delete a row by ID ──
   async deleteRow(sheetName: SheetName, id: string): Promise<void> {
-    const { token, sheetId } = getAuth();
+    const auth = getAuth();
+    if (auth.sheetId === SAMPLE_SPREADSHEET_ID) return Promise.resolve();
+    const { token, sheetId } = auth;
     const { sheetGids } = useAuthStore.getState();
     const gid = sheetGids[sheetName];
     if (gid === undefined) throw new Error(`No GID for ${sheetName}`);

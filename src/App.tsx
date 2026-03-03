@@ -3,6 +3,7 @@ import { useAuthStore } from './stores/authStore';
 import { useCityStore } from './stores/cityStore';
 import { useUIStore } from './stores/uiStore';
 import { SheetsService } from './services/sheetsService';
+import { SAMPLE_SPREADSHEET_ID } from './data/sampleData';
 import { LandingPage } from './components/Landing/LandingPage';
 import { CityView } from './components/City/CityView';
 import { Toasts } from './components/Toasts';
@@ -104,6 +105,13 @@ export default function App() {
 
     (async () => {
       try {
+        if (spreadsheetId === SAMPLE_SPREADSHEET_ID) {
+          await loadAllData();
+          if (cancelled) return;
+          addToast('Sample data loaded (localhost mode)', 'info');
+          return;
+        }
+
         if (!spreadsheetId) {
           // First time: create spreadsheet with ALL sheets (legacy + new)
           const { spreadsheetId: newId, sheetGids } =

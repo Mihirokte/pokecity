@@ -1,7 +1,11 @@
 import { useState } from 'react';
 
-/** Ash Ketchum sprite - trainer style for About Me. Fallback to Pikachu if image fails. */
-const ASH_SPRITE_URL = 'https://www.pngarts.com/files/3/Ash-Ketchum-PNG-Image-with-Transparent-Background.png';
+/**
+ * Ash Ketchum — pixel-art trainer for About Me.
+ * Primary: Pixilart (adjust object-position in .about-me-panel__sprite for crop).
+ * Similar: search "ash ketchum pixel art" or "pokemon trainer sprite" on Pixilart / itch.io for matching style.
+ */
+const ASH_SPRITE_URL = 'https://art.pixilart.com/4050a5534d3fe2d.png';
 const FALLBACK_SPRITE_URL = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/25.png';
 
 /** LinkedIn-derived profile (https://www.linkedin.com/in/mihirokte/) */
@@ -48,14 +52,12 @@ export function AboutMePanel({ onClose }: AboutMePanelProps) {
         </button>
 
         <div className="about-me-panel__hero">
-          <div className="about-me-panel__sprite-wrap">
-            <img
-              src={spriteError ? FALLBACK_SPRITE_URL : ASH_SPRITE_URL}
-              alt="Ash Ketchum"
-              className="about-me-panel__sprite"
-              onError={() => setSpriteError(true)}
-            />
-          </div>
+          <img
+            src={spriteError ? FALLBACK_SPRITE_URL : ASH_SPRITE_URL}
+            alt=""
+            className="about-me-panel__sprite"
+            onError={() => setSpriteError(true)}
+          />
           <div className="about-me-panel__identity">
             <h1 className="about-me-panel__name">{ABOUT_PROFILE.name}</h1>
             <p className="about-me-panel__tagline">{ABOUT_PROFILE.tagline}</p>

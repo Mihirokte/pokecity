@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useCityStore } from '../../stores/cityStore';
 import { useUIStore } from '../../stores/uiStore';
 import { SheetsService } from '../../services/sheetsService';
+import { badgeUrl, MODULE_BADGE_IDS } from '../../config/pokemon';
 import type { Resident, Note } from '../../types';
 
 interface NotesModuleProps {
@@ -273,7 +274,10 @@ export function NotesModule({ resident }: NotesModuleProps) {
   return (
     <div>
       <div className="mod-header">
-        <span className="mod-title">Notes</span>
+        <span className="mod-header__title-wrap">
+          <img src={badgeUrl(MODULE_BADGE_IDS.notes)} alt="" className="pokecity-badge pokecity-badge--mod" />
+          <span className="mod-title">Notes</span>
+        </span>
         <button className="mod-btn mod-btn--sm" onClick={() => setCreating(true)}>
           + New Note
         </button>

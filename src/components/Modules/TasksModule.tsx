@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
 import type { Resident, Task } from '../../types';
+import { badgeUrl, MODULE_BADGE_IDS } from '../../config/pokemon';
 import { useCityStore } from '../../stores/cityStore';
 import { useUIStore } from '../../stores/uiStore';
 import { useAuthStore } from '../../stores/authStore';
@@ -628,7 +629,10 @@ export function TasksModule({ resident }: TasksModuleProps) {
   return (
     <div>
       <div className="mod-header">
-        <span className="mod-title">Tasks</span>
+        <span className="mod-header__title-wrap">
+          <img src={badgeUrl(MODULE_BADGE_IDS.tasks)} alt="" className="pokecity-badge pokecity-badge--mod" />
+          <span className="mod-title">Tasks</span>
+        </span>
         <div style={{ display: 'flex', gap: 6 }}>
           <button
             className="mod-btn"

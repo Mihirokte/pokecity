@@ -1,6 +1,8 @@
 // Pokemon sprite configuration using PokeAPI/sprites
+// Badges: https://github.com/PokeAPI/sprites/tree/master/sprites/badges
 
 const SPRITE_BASE = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon';
+const BADGE_BASE = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/badges';
 
 /** Get the front-facing sprite URL for a Pokemon by national dex ID */
 export function spriteUrl(id: number | string): string {
@@ -21,6 +23,24 @@ export function spriteArtworkUrl(id: number | string): string {
 export function spriteBackUrl(id: number | string): string {
   return `${SPRITE_BASE}/back/${id}.png`;
 }
+
+/** Get badge image URL by id (1–69, Kanto/Johto etc.) */
+export function badgeUrl(id: number | string): string {
+  return `${BADGE_BASE}/${id}.png`;
+}
+
+/** Badge id per module type (for headers, panels, UI accents) */
+export const MODULE_BADGE_IDS: Record<string, number> = {
+  calendar: 4,   // Rainbow
+  tasks: 1,      // Boulder
+  notes: 3,      // Thunder
+  travel: 5,     // Soul
+  gym: 2,        // Cascade
+  shopping: 6,   // Marsh
+};
+
+/** Badge shown in city header (generic PokéCity badge) */
+export const HEADER_BADGE_ID = 25;
 
 /** The player's Pokemon — Pikachu */
 export const PLAYER_POKEMON_ID = 25;

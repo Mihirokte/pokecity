@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { GoogleUser, SheetName } from '../types';
+import { isLocalhost, SAMPLE_SPREADSHEET_ID } from '../data/sampleData';
 
 const LS_KEY = 'pokecity_auth';
 const SCOPES_VERSION_KEY = 'pokecity_scopes_v';
@@ -68,6 +69,25 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   tokenRefreshTimer: null,
 
   login: () => {
+    if (isLocalhost()) {
+      set({
+        user: {
+          email: 'sample@localhost',
+          name: 'Sample User',
+          picture: '',
+          given_name: 'Sample',
+        },
+        accessToken: 'sample',
+        tokenExpiresAt: Date.now() + 365 * 24 * 60 * 60 * 1000,
+        spreadsheetId: SAMPLE_SPREADSHEET_ID,
+        sheetGids: {} as Record<SheetName, number>,
+        isInitializing: false,
+        lastRefreshAt: Date.now(),
+      });
+      localStorage.setItem(SCOPES_VERSION_KEY, String(SCOPES_VERSION));
+      saveToStorage(get());
+      return;
+    }
     const redirectUri = window.location.origin + (import.meta.env.BASE_URL || '/');
     const url = new URL('https://accounts.google.com/o/oauth2/v2/auth');
     url.searchParams.set('client_id', GOOGLE_CLIENT_ID);

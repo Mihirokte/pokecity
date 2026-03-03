@@ -130,3 +130,9 @@ export function getHomeSettlementPositions(
     return [x, z];
   });
 }
+
+/** Three building positions (x, z) per hex: triangle of corners 0, 2, 4 for settlements + city */
+export function getAgentBuildingPositions(q: number, r: number): [number, number][] {
+  const corners = hexCorners(q, r);
+  return [corners[0], corners[2], corners[4]].map(([x, z]) => [x, z]);
+}

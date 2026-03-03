@@ -95,7 +95,8 @@ function FloatingAgentName({
 
 // Sprite: one size, above surface (match CatanCityScene)
 const SPRITE_SIZE = 2.8;
-const SPRITE_Y = 1.5;
+const HEX_TOP_Y = 0.65;
+const SPRITE_Y = HEX_TOP_Y + SPRITE_SIZE / 2 + 0.15;
 
 // ============================================================================
 // HEX TILE COMPONENT
@@ -225,12 +226,15 @@ function HexTile({
 }
 
 // ============================================================================
-// SETTLEMENTS & ROADS (Catan-style: block roads along perimeter, settlements at home vertices)
+// SETTLEMENTS & ROADS (visible light blue settlements + white perimeter roads)
 // ============================================================================
 
-const ROAD_HEIGHT = 0.18;
-const ROAD_WIDTH = 0.22;
+const ROAD_HEIGHT = 0.36;
+const ROAD_WIDTH = 0.42;
 const SETTLEMENT_BASE_Y = 0.72;
+const ROAD_COLOR = '#f0f4f8';
+const SETTLEMENT_BASE_COLOR = '#93c5fd';
+const SETTLEMENT_ROOF_COLOR = '#bfdbfe';
 
 function SettlementsAndRoads() {
   const allEdges = useMemo(() => getBoardEdges(BOARD_HEXES), []);
@@ -263,22 +267,22 @@ function SettlementsAndRoads() {
           >
             <boxGeometry args={[ROAD_WIDTH, ROAD_HEIGHT, len]} />
             <meshStandardMaterial
-              color="#2d3748"
-              roughness={0.85}
-              metalness={0.2}
+              color={ROAD_COLOR}
+              roughness={0.7}
+              metalness={0.1}
             />
           </mesh>
         );
       })}
       {settlementPositions.map(([x, z], i) => (
         <group key={`settlement-${i}`} position={[x, SETTLEMENT_BASE_Y, z]}>
-          <mesh castShadow receiveShadow position={[0, 0.12, 0]}>
-            <boxGeometry args={[0.28, 0.24, 0.28]} />
-            <meshStandardMaterial color="#4a5568" roughness={0.7} metalness={0.15} />
+          <mesh castShadow receiveShadow position={[0, 0.2, 0]}>
+            <boxGeometry args={[0.48, 0.4, 0.48]} />
+            <meshStandardMaterial color={SETTLEMENT_BASE_COLOR} roughness={0.6} metalness={0.1} />
           </mesh>
-          <mesh castShadow position={[0, 0.3, 0]}>
-            <boxGeometry args={[0.2, 0.14, 0.2]} />
-            <meshStandardMaterial color="#718096" roughness={0.6} metalness={0.2} />
+          <mesh castShadow position={[0, 0.52, 0]}>
+            <boxGeometry args={[0.34, 0.24, 0.34]} />
+            <meshStandardMaterial color={SETTLEMENT_ROOF_COLOR} roughness={0.5} metalness={0.15} />
           </mesh>
         </group>
       ))}

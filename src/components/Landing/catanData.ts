@@ -1,6 +1,80 @@
 import type { HouseModuleType } from '../../types';
+import { axialToWorld } from './hexUtils';
 
 export type TileType = HouseModuleType | 'desert';
+
+/** Pastel VIBGYOR (Violet → Red) for radial hex coloring */
+export const PASTEL_VIBGYOR = [
+  '#E6D9F5', // Violet
+  '#C4B5FD', // Indigo
+  '#BFDBFE', // Blue
+  '#BBF7D0', // Green
+  '#FEF08A', // Yellow
+  '#FED7AA', // Orange
+  '#FECACA', // Red
+] as const;
+
+/** Boost saturation by factor (e.g. 1.3 = 30% more), in HSL */
+function boostSaturation(hex: string, factor: number): string {
+  const n = parseInt(hex.slice(1), 16);
+  const r = ((n >> 16) & 255) / 255;
+  const g = ((n >> 8) & 255) / 255;
+  const b = (n & 255) / 255;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  let h = 0;
+  let s = 0;
+  const l = (max + min) / 2;
+  if (max !== min) {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+    else if (max === g) h = ((b - r) / d + 2) / 6;
+    else h = ((r - g) / d + 4) / 6;
+  }
+  s = Math.min(1, s * factor);
+  const c = (1 - Math.abs(2 * l - 1)) * s;
+  const x = c * (1 - Math.abs(((h * 6) % 2) - 1));
+  const m = l - c / 2;
+  let r2 = 0, g2 = 0, b2 = 0;
+  if (h < 1/6) { r2 = c; g2 = x; b2 = 0; }
+  else if (h < 2/6) { r2 = x; g2 = c; b2 = 0; }
+  else if (h < 3/6) { r2 = 0; g2 = c; b2 = x; }
+  else if (h < 4/6) { r2 = 0; g2 = x; b2 = c; }
+  else if (h < 5/6) { r2 = x; g2 = 0; b2 = c; }
+  else { r2 = c; g2 = 0; b2 = x; }
+  const R = Math.round((r2 + m) * 255);
+  const G = Math.round((g2 + m) * 255);
+  const B = Math.round((b2 + m) * 255);
+  return '#' + [R, G, B].map((x) => Math.max(0, Math.min(255, x)).toString(16).padStart(2, '0')).join('');
+}
+
+/** Darker variant for hex sides (same hue, lower lightness) */
+function darkenPastel(hex: string, factor: number): string {
+  const n = parseInt(hex.slice(1), 16);
+  const r = Math.max(0, Math.round(((n >> 16) & 255) * factor));
+  const g = Math.max(0, Math.round(((n >> 8) & 255) * factor));
+  const b = Math.max(0, Math.round((n & 255) * factor));
+  return '#' + [r, g, b].map((x) => x.toString(16).padStart(2, '0')).join('');
+}
+
+const SATURATION_BOOST = 1.3;
+
+/** Radial pastel color for a hex by position (angle from center → VIBGYOR), ~30% more saturation */
+export function getPastelColorForHex(q: number, r: number): {
+  topColor: string;
+  sideColor: string;
+  borderColor: string;
+} {
+  const [x, z] = axialToWorld(q, r);
+  const angle = Math.atan2(z, x);
+  const norm = (angle + Math.PI) / (2 * Math.PI);
+  const index = Math.floor(norm * PASTEL_VIBGYOR.length) % PASTEL_VIBGYOR.length;
+  const topColor = boostSaturation(PASTEL_VIBGYOR[index], SATURATION_BOOST);
+  const sideColor = darkenPastel(topColor, 0.55);
+  const borderColor = darkenPastel(topColor, 0.75);
+  return { topColor, sideColor, borderColor };
+}
 
 /** 6 agent elements for surrounding effect (water, fire, wind, grass, lightning, rock) */
 export type TileElement = 'water' | 'fire' | 'wind' | 'grass' | 'lightning' | 'rock';
