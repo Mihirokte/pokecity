@@ -193,8 +193,8 @@ export function CalendarModule({ resident }: CalendarModuleProps) {
       const data = await res.json();
 
       const gcalEvents: CalendarEvent[] = (data.items ?? [])
-        .filter((item: any) => item.status !== 'cancelled')
-        .map((item: any) => {
+        .filter((item: { status?: string }) => item.status !== 'cancelled')
+        .map((item: { id?: string; start?: { dateTime?: string; date?: string }; end?: { dateTime?: string; date?: string }; summary?: string; location?: string; description?: string }) => {
           const start = item.start?.dateTime ?? item.start?.date ?? '';
           const end = item.end?.dateTime ?? item.end?.date ?? '';
           const isAllDay = !item.start?.dateTime;
@@ -227,7 +227,7 @@ export function CalendarModule({ resident }: CalendarModuleProps) {
       setModuleData('calendarEvents', [...otherEvents, ...myManualEvents, ...gcalEvents]);
 
       addToast(`Synced ${gcalEvents.length} events from Google Calendar`, 'success');
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error('Google Calendar sync error:', e);
       addToast('Failed to sync Google Calendar', 'error');
     } finally {

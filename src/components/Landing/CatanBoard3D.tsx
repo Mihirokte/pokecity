@@ -14,6 +14,7 @@ import {
   DEMO_AGENT_BY_TYPE,
 } from './catanData';
 import { spriteAnimatedUrl, spriteArtworkUrl } from '../../config/pokemon';
+import { POKEMON_TYPES } from '../../config/pokemonTypes';
 
 /**
  * PRE-LOGIN LANDING SCENE ONLY.
@@ -24,6 +25,70 @@ import { spriteAnimatedUrl, spriteArtworkUrl } from '../../config/pokemon';
  */
 interface CatanBoard3DProps {
   onLogin: () => void;
+}
+
+// ============================================================================
+// FLOATING AGENT NAME (above sprite, zoom-responsive, gentle float, glow)
+// ============================================================================
+
+function FloatingAgentName({
+  name,
+  glowColor,
+  baseY,
+}: {
+  name: string;
+  glowColor: string;
+  baseY: number;
+}) {
+  const groupRef = useRef<THREE.Group>(null);
+
+  useFrame((state) => {
+    if (groupRef.current) {
+      const t = state.clock.elapsedTime;
+      groupRef.current.position.y = baseY + Math.sin(t * 0.8) * 0.06;
+    }
+  });
+
+  const rgb = useMemo(() => {
+    const hex = glowColor.replace('#', '');
+    return [
+      parseInt(hex.slice(0, 2), 16),
+      parseInt(hex.slice(2, 4), 16),
+      parseInt(hex.slice(4, 6), 16),
+    ] as [number, number, number];
+  }, [glowColor]);
+  const glowRgba = `rgba(${rgb[0]},${rgb[1]},${rgb[2]},0.85)`;
+
+  return (
+    <group ref={groupRef} position={[0, 0, 0]}>
+      <Html
+        position={[0, 0, 0]}
+        distanceFactor={14}
+        transform
+        center
+        style={{ pointerEvents: 'none' }}
+      >
+        <div
+          style={{
+            fontFamily: 'VT323, monospace',
+            fontSize: 'clamp(12px, 2vw, 18px)',
+            fontWeight: 'bold',
+            color: '#fff',
+            textAlign: 'center',
+            whiteSpace: 'nowrap',
+            padding: '4px 10px',
+            borderRadius: 4,
+            background: `linear-gradient(180deg, ${glowRgba} 0%, rgba(0,0,0,0.4) 100%)`,
+            boxShadow: `0 0 12px ${glowColor}44, 0 0 24px ${glowColor}22, inset 0 0 8px ${glowColor}33`,
+            textShadow: `0 0 6px ${glowColor}, 0 0 12px ${glowColor}99, 0 0 4px rgba(0,0,0,0.9)`,
+            border: `1px solid ${glowColor}88`,
+          }}
+        >
+          {name}
+        </div>
+      </Html>
+    </group>
+  );
 }
 
 // ============================================================================
@@ -156,7 +221,7 @@ function HexTile({
     <group ref={groupRef} position={[x, 0, z]}>
       <mesh geometry={geometry} material={materials} castShadow receiveShadow />
 
-      {/* 3D token base for type label */}
+      {/* Catan-style token: hex base + type disc (Pokémon type = sprite) */}
       <mesh position={[0, 0.68, 0]} castShadow receiveShadow>
         <cylinderGeometry args={[0.9, 0.95, 0.12, 6]} />
         <meshStandardMaterial
@@ -165,31 +230,61 @@ function HexTile({
           roughness={0.7}
         />
       </mesh>
+      {config.tokenType && POKEMON_TYPES[config.tokenType] && (
+        <mesh position={[0, 0.75, 0]} rotation={[-Math.PI / 2, 0, 0]} castShadow receiveShadow>
+          <circleGeometry args={[0.72, 32]} />
+          <meshStandardMaterial
+            color={POKEMON_TYPES[config.tokenType].color}
+            metalness={0.15}
+            roughness={0.7}
+          />
+        </mesh>
+      )}
+      {!config.tokenType && (
+        <mesh position={[0, 0.75, 0]} rotation={[-Math.PI / 2, 0, 0]} castShadow receiveShadow>
+          <circleGeometry args={[0.72, 32]} />
+          <meshStandardMaterial color={config.sideColor} metalness={0.15} roughness={0.7} />
+        </mesh>
+      )}
 
-      <Html
-        position={[0, 0.72, 0]}
-        distanceFactor={1}
-        scale={0.8}
-        style={{ pointerEvents: 'none' }}
-      >
+      {/* Token face: type symbol + type name — scale with zoom for visibility */}
+      <Html position={[0, 0.78, 0]} distanceFactor={12} transform style={{ pointerEvents: 'none' }}>
         <div
           style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
             fontFamily: 'Dogica, monospace',
-            fontSize: '11px',
-            fontWeight: 'bold',
             color: '#fff',
-            textShadow: '0 0 8px rgba(0,0,0,0.9)',
+            textShadow: '0 0 6px rgba(0,0,0,0.95), 0 0 12px rgba(255,255,255,0.2)',
             textAlign: 'center',
-            whiteSpace: 'nowrap',
-            letterSpacing: '0.05em',
           }}
         >
-          {typeLabel}
+          {config.tokenType && POKEMON_TYPES[config.tokenType] ? (
+            <>
+              <span style={{ fontSize: '18px', lineHeight: 1 }}>{POKEMON_TYPES[config.tokenType].emoji}</span>
+              <span style={{ fontSize: '8px', fontWeight: 'bold', letterSpacing: '0.04em', marginTop: 2 }}>
+                {POKEMON_TYPES[config.tokenType].name.toUpperCase()}
+              </span>
+            </>
+          ) : (
+            <span style={{ fontSize: '11px', fontWeight: 'bold', letterSpacing: '0.05em' }}>{typeLabel}</span>
+          )}
         </div>
       </Html>
 
       {/* Agent base glow when demo agent on tile */}
       {pokemonId && <AgentBaseGlow emissiveColor={config.emissiveColor} />}
+
+      {/* Demo agent name floating above sprite — zoom-responsive, float, glow */}
+      {pokemonId && agentName && (
+        <FloatingAgentName
+          name={agentName}
+          glowColor={config.emissiveColor}
+          baseY={1.55}
+        />
+      )}
 
       {/* Pokemon sprite: 2D texture in 3D with correct depth/visibility */}
       {pokemonId && pokeTexture && (
@@ -220,21 +315,47 @@ function HexTile({
   );
 }
 
+// Ground and platform height (platform = board, ground = below)
+const GROUND_Y = -1.8;
+const PLATFORM_HEIGHT = 0.9;
+const PLATFORM_TOP_Y = 0;
+
 // ============================================================================
-// GRASSY GROUND
+// GRASSY GROUND (below platform)
 // ============================================================================
 
 function GrassyGround() {
   return (
     <mesh
       rotation={[-Math.PI / 2, 0, 0]}
-      position={[0, -0.5, 0]}
+      position={[0, GROUND_Y, 0]}
       receiveShadow
     >
       <circleGeometry args={[30, 64]} />
       <meshStandardMaterial
         color="#2d5a27"
         roughness={0.9}
+        metalness={0.1}
+      />
+    </mesh>
+  );
+}
+
+// ============================================================================
+// BOARD PLATFORM (raised stage the hexes sit on)
+// ============================================================================
+
+function BoardPlatform() {
+  return (
+    <mesh
+      position={[0, PLATFORM_TOP_Y - PLATFORM_HEIGHT / 2, 0]}
+      castShadow
+      receiveShadow
+    >
+      <cylinderGeometry args={[14, 14.5, PLATFORM_HEIGHT, 32]} />
+      <meshStandardMaterial
+        color="#3d5a3a"
+        roughness={0.85}
         metalness={0.1}
       />
     </mesh>
@@ -250,12 +371,15 @@ function Mountains() {
     const positions: { x: number; z: number; scale: number; height: number }[] = [];
     for (let i = 0; i < 12; i++) {
       const angle = (i / 12) * Math.PI * 2;
-      const distance = 18 + Math.random() * 8;
+      const seed = (i * 7 + 13) % 100;
+      const distance = 18 + (seed / 100) * 8;
+      const scale = 0.8 + ((seed * 3) % 100) / 100 * 1.2;
+      const height = 4 + ((seed * 11) % 100) / 100 * 6;
       positions.push({
         x: Math.cos(angle) * distance,
         z: Math.sin(angle) * distance,
-        scale: 0.8 + Math.random() * 1.2,
-        height: 4 + Math.random() * 6,
+        scale,
+        height,
       });
     }
     return positions;
@@ -266,7 +390,7 @@ function Mountains() {
       {mountains.map((mountain, i) => (
         <mesh
           key={i}
-          position={[mountain.x, mountain.height / 2 - 0.5, mountain.z]}
+          position={[mountain.x, mountain.height / 2 + GROUND_Y, mountain.z]}
           scale={[mountain.scale * 2, mountain.height, mountain.scale * 2]}
           castShadow
         >
@@ -411,7 +535,7 @@ function FloatingParticles() {
 // ============================================================================
 
 function CatanScene() {
-  const orbitControlsRef = useRef<any>(null);
+  const orbitControlsRef = useRef<React.ComponentRef<typeof OrbitControls> | null>(null);
   const [autoRotate, setAutoRotate] = useState(true);
   const [spriteTextures, setSpriteTextures] = useState<Map<number, THREE.Texture>>(
     new Map()
@@ -452,8 +576,10 @@ function CatanScene() {
   return (
     <>
       <CatanLighting />
+      {/* Do not remove: sky and mountains background must always be present */}
       <SkyGradient />
       <GrassyGround />
+      <BoardPlatform />
       <Mountains />
       <Sun />
 
@@ -485,6 +611,8 @@ function CatanScene() {
         enableDamping
         dampingFactor={0.08}
         onStart={handleOrbitStart}
+        maxPolarAngle={Math.PI * 0.82}
+        minPolarAngle={0.1}
       />
 
       <Preload all />

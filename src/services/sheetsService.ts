@@ -160,10 +160,8 @@ export const SheetsService = {
       const { token, sheetId } = getAuth();
       const tab = tabName(sheetName);
       // First find the row index
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const all = await this.readAll<AnyObject>(sheetName);
       const lookupValue = obj[lookupField];
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const idx = all.findIndex((r: AnyObject) => r[lookupField] === lookupValue);
       if (idx === -1) throw new Error(`Row not found in ${sheetName}: ${lookupValue}`);
       const rowNum = idx + 2; // 1-indexed, row 1 is header

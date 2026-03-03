@@ -2,12 +2,21 @@ import type { HouseModuleType } from '../../types';
 
 export type TileType = HouseModuleType | 'desert';
 
+/** Pokémon type key for Catan-style token (matches sprite's primary type) */
+export type TileTokenType =
+  | 'psychic'   // Celebi
+  | 'fighting'  // Machamp, Primeape
+  | 'normal'    // Smeargle, Meowth
+  | 'flying';   // Pidgeot
+
 export interface TileConfig {
   type: TileType;
   topColor: string;
   emissiveColor: string;
   sideColor: string;
   pokemonId: number | null;
+  /** Catan-style token: Pokémon type for symbol on tile (matches sprite) */
+  tokenType: TileTokenType | null;
 }
 
 export interface DemoSettlement {
@@ -21,49 +30,55 @@ export interface DemoSettlement {
   createdOrder: number;
 }
 
-// Tile type → color mapping
+// Tile type → color + Pokémon-type token (Catan-style: type matches sprite)
 const TILE_CONFIGS: Record<TileType, TileConfig> = {
   calendar: {
     type: 'calendar',
     topColor: '#9b59b6',
     emissiveColor: '#d7bde2',
     sideColor: '#6c3a73',
-    pokemonId: 251,
+    pokemonId: 251, // Celebi — Psychic/Grass
+    tokenType: 'psychic',
   },
   tasks: {
     type: 'tasks',
     topColor: '#c0392b',
     emissiveColor: '#f1948a',
     sideColor: '#7e2722',
-    pokemonId: 68,
+    pokemonId: 68, // Machamp
+    tokenType: 'fighting',
   },
   notes: {
     type: 'notes',
     topColor: '#d4c5a9',
     emissiveColor: '#f5e6c8',
     sideColor: '#8b7d6b',
-    pokemonId: 235,
+    pokemonId: 235, // Smeargle
+    tokenType: 'normal',
   },
   travel: {
     type: 'travel',
     topColor: '#2980b9',
     emissiveColor: '#aed6f1',
     sideColor: '#1b5170',
-    pokemonId: 18,
+    pokemonId: 18, // Pidgeot
+    tokenType: 'flying',
   },
   gym: {
     type: 'gym',
     topColor: '#7f8c8d',
     emissiveColor: '#d5dbdb',
     sideColor: '#566573',
-    pokemonId: 57,
+    pokemonId: 57, // Primeape
+    tokenType: 'fighting',
   },
   shopping: {
     type: 'shopping',
     topColor: '#e91e8c',
     emissiveColor: '#f9a8d4',
     sideColor: '#971a58',
-    pokemonId: 52,
+    pokemonId: 52, // Meowth
+    tokenType: 'normal',
   },
   desert: {
     type: 'desert',
@@ -71,6 +86,7 @@ const TILE_CONFIGS: Record<TileType, TileConfig> = {
     emissiveColor: '#f5deb3',
     sideColor: '#8b7340',
     pokemonId: null,
+    tokenType: null,
   },
 };
 

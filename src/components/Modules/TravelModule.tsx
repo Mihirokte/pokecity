@@ -73,6 +73,7 @@ export function TravelModule({ resident }: TravelModuleProps) {
   );
 
   // Reset leg/packing form when switching trips
+  /* eslint-disable react-hooks/set-state-in-effect -- reset form when selected trip changes */
   useEffect(() => {
     setLegFrom('');
     setLegTo('');
@@ -81,6 +82,7 @@ export function TravelModule({ resident }: TravelModuleProps) {
     setLegDetails('');
     setPackingInput('');
   }, [expandedId]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   // ── Helper to persist a trip update ──
   const updateTrip = useCallback(

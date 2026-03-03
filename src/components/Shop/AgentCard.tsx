@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useCityStore } from '../../stores/cityStore';
 import { HOUSE_TYPES } from '../../config/houseTypes';
 import { spriteAnimatedUrl } from '../../config/pokemon';
@@ -118,7 +118,12 @@ function TravelWidget({ residentId }: { residentId: string }) {
     .sort((a, b) => a.startDate.localeCompare(b.startDate));
   const next = upcoming[0] ?? null;
 
-  const daysUntil = next ? Math.ceil((new Date(next.startDate + 'T00:00:00').getTime() - Date.now()) / 86400000) : null;
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 60000);
+    return () => clearInterval(id);
+  }, []);
+  const daysUntil = next ? Math.ceil((new Date(next.startDate + 'T00:00:00').getTime() - now) / 86400000) : null;
 
   return (
     <div className="dash-widget dash-widget--travel">

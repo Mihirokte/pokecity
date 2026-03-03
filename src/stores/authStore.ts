@@ -74,7 +74,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     url.searchParams.set('redirect_uri', redirectUri);
     url.searchParams.set('response_type', 'token');
     url.searchParams.set('scope', SCOPES);
-    url.searchParams.set('prompt', 'consent');
+    url.searchParams.set('prompt', 'select_account'); // Quick sign-in after logout: account picker only, no consent screen
     window.location.href = url.toString();
   },
 
@@ -184,7 +184,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         tokenExpiresAt: stored.tokenExpiresAt as number,
         spreadsheetId: stored.spreadsheetId as string | null,
         sheetGids: (stored.sheetGids ?? {}) as Record<SheetName, number>,
-        lastRefreshAt: (stored as any).lastRefreshAt ?? null,
+        lastRefreshAt: (stored as Partial<AuthState>).lastRefreshAt ?? null,
       });
       get().scheduleTokenRefresh();
       return true;
