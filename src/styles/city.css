@@ -140,6 +140,21 @@
   letter-spacing: 0.05em;
   white-space: nowrap;
 }
+.city-header__resident-btn--sprite {
+  padding: 4px;
+  border: 2px solid rgba(255,255,255,0.2);
+  border-radius: 4px;
+  background: rgba(0,0,0,0.3);
+  line-height: 0;
+}
+.city-header__resident-btn--sprite:hover {
+  border-color: rgba(255,215,0,0.5);
+  background: rgba(255,215,0,0.1);
+}
+.city-header__resident-btn--sprite[aria-pressed="true"] {
+  border-color: #FFD700;
+  box-shadow: 0 0 8px rgba(255,215,0,0.4);
+}
 .city-header__spacer {
   flex: 1;
 }
@@ -2392,5 +2407,80 @@ color: #fff;
   .catan-landing-footer {
     flex-wrap: wrap;
     gap: 20px;
+  }
+}
+
+/* ═══════════════════════════════════════════
+   Mobile optimization (touch, safe-area, layout)
+   ═══════════════════════════════════════════ */
+@media (max-width: 768px) {
+  .city-view {
+    padding-top: env(safe-area-inset-top);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+  .city-header {
+    padding: 10px 12px 10px max(12px, env(safe-area-inset-left));
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .city-header--hud {
+    padding-right: max(12px, env(safe-area-inset-right));
+  }
+  .city-header__resident-btn,
+  .city-header__resident-btn--sprite,
+  .city-header__reset-btn,
+  .city-header__about-btn,
+  .city-header__auth-btn {
+    min-height: 44px;
+    min-width: 44px;
+    padding: 10px 12px;
+  }
+  .city-header__resident-btn--sprite {
+    padding: 8px;
+  }
+  .city-header__resident-btn--sprite img {
+    width: 32px;
+    height: 32px;
+  }
+  .city-panel {
+    width: 100%;
+    max-width: 100%;
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .city-panel__back {
+    min-height: 44px;
+    padding: 10px 14px;
+  }
+  .mod-btn {
+    min-height: 44px;
+    padding: 10px 14px;
+    font-size: 9px;
+  }
+  .mod-btn--sm {
+    min-height: 40px;
+    padding: 8px 12px;
+    font-size: 8px;
+  }
+  .mod-card {
+    padding: 12px;
+  }
+  .floating-nameplate {
+    font-size: clamp(11px, 3vw, 16px);
+    padding: 6px 12px;
+  }
+}
+@media (max-width: 480px) {
+  .city-header__name { max-width: 100px; }
+  .city-header__stats { font-size: 14px; }
+  .city-add-panel { max-width: 96vw; padding: 16px; }
+  .city-add-panel__types { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .city-type-btn { min-height: 80px; padding: 12px; }
+  .toast-container {
+    left: env(safe-area-inset-left);
+    right: env(safe-area-inset-right);
+    max-width: none;
   }
 }
