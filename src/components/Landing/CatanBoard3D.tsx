@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import {
   BOARD_HEXES,
   axialToWorld,
-  hexCorners,
+  HEX_SIZE,
 } from './hexUtils';
 import {
   getTileConfig,
@@ -48,25 +48,28 @@ function HexTile({
   const pokemonId = agentName ? config.pokemonId : null;
   const pokeTexture = pokemonId ? spriteTextures.get(pokemonId) || null : null;
 
-  // Create simple hex shape - flat top
+  // Create hex geometry: local shape at origin, rotated flat
   const geometry = useMemo(() => {
     const shape = new THREE.Shape();
-    const corners = hexCorners(q, r);
-    const [x0, z0] = corners[0];
-    shape.moveTo(x0, z0);
-    for (let i = 1; i < 6; i++) {
-      const [x, z] = corners[i];
-      shape.lineTo(x, z);
+    // Build hex centered at origin (local coordinates)
+    for (let i = 0; i < 6; i++) {
+      const ang = (Math.PI / 3) * i;
+      const lx = HEX_SIZE * Math.cos(ang);
+      const ly = HEX_SIZE * Math.sin(ang);
+      if (i === 0) shape.moveTo(lx, ly);
+      else shape.lineTo(lx, ly);
     }
-    shape.lineTo(x0, z0);
 
-    return new THREE.ExtrudeGeometry(shape, {
-      depth: 0.3,
+    const geo = new THREE.ExtrudeGeometry(shape, {
+      depth: 0.55,
       bevelEnabled: true,
-      bevelSize: 0.04,
-      bevelThickness: 0.02,
+      bevelSize: 0.06,
+      bevelThickness: 0.04,
+      bevelSegments: 2,
     });
-  }, [q, r]);
+    geo.rotateX(-Math.PI / 2); // lay flat: hex face → XZ plane, extrusion → Y up
+    return geo;
+  }, []);
 
   // Solid color material
   const material = useMemo(
@@ -98,7 +101,7 @@ function HexTile({
 
       {/* Type label centered on tile */}
       <Html
-        position={[0, 0.25, 0]}
+        position={[0, 0.65, 0]}
         distanceFactor={1}
         scale={0.8}
         style={{ pointerEvents: 'none' }}
@@ -121,7 +124,7 @@ function HexTile({
 
       {/* Pokemon sprite floating above tile */}
       {pokemonId && pokeTexture && (
-        <group position={[0, 1.2, 0]}>
+        <group position={[0, 1.3, 0]}>
           <Billboard>
             <mesh castShadow>
               <planeGeometry args={[1.4, 1.4]} />
@@ -144,7 +147,7 @@ function HexTile({
 
       {/* Glow circle under sprite */}
       {pokemonId && (
-        <mesh position={[0, 0.15, 0]}>
+        <mesh position={[0, 0.58, 0]}>
           <circleGeometry args={[0.5, 16]} />
           <meshBasicMaterial
             color={config.emissiveColor}
