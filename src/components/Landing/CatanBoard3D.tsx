@@ -13,6 +13,7 @@ import {
   HOME_TILE_INDICES,
   DEMO_AGENT_BY_TYPE,
 } from './catanData';
+import { spriteAnimatedUrl, spriteArtworkUrl } from '../../config/pokemon';
 
 /**
  * PRE-LOGIN LANDING SCENE ONLY.
@@ -26,7 +27,51 @@ interface CatanBoard3DProps {
 }
 
 // ============================================================================
-// HEX TILE COMPONENT (SOLID COLOR + TYPE LABEL)
+// AGENT BASE GLOW (3D glow under agent tile for distinction)
+// ============================================================================
+
+function AgentBaseGlow({ emissiveColor }: { emissiveColor: string }) {
+  const glowRef = useRef<THREE.Group>(null);
+  const ringRef = useRef<THREE.Mesh>(null);
+
+  useFrame((state) => {
+    const t = state.clock.elapsedTime;
+    if (glowRef.current) {
+      glowRef.current.scale.setScalar(1 + Math.sin(t * 1.2) * 0.08);
+    }
+    if (ringRef.current && ringRef.current.material instanceof THREE.MeshBasicMaterial) {
+      ringRef.current.material.opacity = Math.max(0.35, Math.min(0.7, 0.5 + Math.sin(t * 1.5) * 0.15));
+    }
+  });
+
+  return (
+    <group ref={glowRef} position={[0, 0.56, 0]}>
+      <mesh rotation={[-Math.PI / 2, 0, 0]}>
+        <coneGeometry args={[0.85, 0.35, 6]} />
+        <meshBasicMaterial
+          color={emissiveColor}
+          transparent
+          opacity={0.45}
+          side={THREE.DoubleSide}
+          depthWrite={false}
+        />
+      </mesh>
+      <mesh ref={ringRef} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[0.5, 0.75, 32]} />
+        <meshBasicMaterial
+          color={emissiveColor}
+          transparent
+          opacity={0.6}
+          side={THREE.DoubleSide}
+          depthWrite={false}
+        />
+      </mesh>
+    </group>
+  );
+}
+
+// ============================================================================
+// HEX TILE COMPONENT (max 3D: token, glow, sprite fix)
 // ============================================================================
 
 interface HexTileProps {
@@ -111,9 +156,18 @@ function HexTile({
     <group ref={groupRef} position={[x, 0, z]}>
       <mesh geometry={geometry} material={materials} castShadow receiveShadow />
 
-      {/* Type label centered on tile */}
+      {/* 3D token base for type label */}
+      <mesh position={[0, 0.68, 0]} castShadow receiveShadow>
+        <cylinderGeometry args={[0.9, 0.95, 0.12, 6]} />
+        <meshStandardMaterial
+          color={config.sideColor}
+          metalness={0.2}
+          roughness={0.7}
+        />
+      </mesh>
+
       <Html
-        position={[0, 0.65, 0]}
+        position={[0, 0.72, 0]}
         distanceFactor={1}
         scale={0.8}
         style={{ pointerEvents: 'none' }}
@@ -134,17 +188,23 @@ function HexTile({
         </div>
       </Html>
 
-      {/* Pokemon sprite floating above tile */}
+      {/* Agent base glow when demo agent on tile */}
+      {pokemonId && <AgentBaseGlow emissiveColor={config.emissiveColor} />}
+
+      {/* Pokemon sprite: 2D texture in 3D with correct depth/visibility */}
       {pokemonId && pokeTexture && (
         <group position={[0, 1.3, 0]}>
-          <Billboard>
-            <mesh castShadow>
-              <planeGeometry args={[1.4, 1.4]} />
+          <Billboard follow={true}>
+            <mesh renderOrder={1} castShadow={false}>
+              <planeGeometry args={[1.5, 1.5]} />
               <meshBasicMaterial
                 map={pokeTexture}
                 transparent
-                alphaTest={0.05}
+                alphaTest={0.02}
+                depthWrite={false}
+                side={THREE.DoubleSide}
                 color="#ffffff"
+                toneMapped={false}
               />
             </mesh>
           </Billboard>
@@ -155,18 +215,6 @@ function HexTile({
             color={config.emissiveColor}
           />
         </group>
-      )}
-
-      {/* Glow circle under sprite */}
-      {pokemonId && (
-        <mesh position={[0, 0.58, 0]}>
-          <circleGeometry args={[0.5, 16]} />
-          <meshBasicMaterial
-            color={config.emissiveColor}
-            transparent
-            opacity={0.3}
-          />
-        </mesh>
       )}
     </group>
   );
@@ -334,17 +382,23 @@ function FloatingParticles() {
 
   return (
     <group ref={groupRef}>
-      {Array.from({ length: 16 }).map((_, i) => {
-        const angle = (i / 16) * Math.PI * 2;
-        const radius = 12;
+      {Array.from({ length: 14 }).map((_, i) => {
+        const angle = (i / 14) * Math.PI * 2;
+        const radius = 10 + (i % 3) * 1.5;
         const x = Math.cos(angle) * radius;
         const z = Math.sin(angle) * radius;
-        const y = 4 + Math.sin(i * 0.4) * 2;
+        const y = 4 + Math.sin(i * 0.7) * 2;
 
         return (
-          <mesh key={i} position={[x, y, z]} scale={0.06}>
-            <octahedronGeometry args={[1, 0]} />
-            <meshBasicMaterial color="#FFD700" />
+          <mesh key={i} position={[x, y, z]} scale={0.06} castShadow>
+            <dodecahedronGeometry args={[1, 0]} />
+            <meshStandardMaterial
+              color="#FFD700"
+              emissive="#b8860b"
+              emissiveIntensity={0.25}
+              metalness={0.3}
+              roughness={0.6}
+            />
           </mesh>
         );
       })}
@@ -363,17 +417,17 @@ function CatanScene() {
     new Map()
   );
 
-  // Load all pokemon sprites
+  // Load sprites: same as panel (left/top) — showdown animated, fallback official artwork
   useEffect(() => {
     const textureLoader = new THREE.TextureLoader();
-    const pokemonIds = [251, 68, 235, 18, 57, 52]; // From catanData
+    const pokemonIds = [251, 68, 235, 18, 57, 52];
 
     pokemonIds.forEach((pokemonId) => {
-      const animatedUrl = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/${pokemonId}.gif`;
-      const fallbackUrl = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${pokemonId}.png`;
+      const primaryUrl = spriteAnimatedUrl(pokemonId);   // showdown — matches CityPanel
+      const fallbackUrl = spriteArtworkUrl(pokemonId);
 
       textureLoader.load(
-        animatedUrl,
+        primaryUrl,
         (texture) => {
           texture.magFilter = THREE.NearestFilter;
           texture.minFilter = THREE.NearestFilter;

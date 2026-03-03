@@ -12,6 +12,7 @@ import {
   TILE_TYPE_SEQUENCE,
   HOME_TILE_INDICES,
 } from './catanData';
+import { spriteAnimatedUrl, spriteArtworkUrl } from '../../config/pokemon';
 import type { House, Resident } from '../../types';
 
 /**
@@ -25,6 +26,54 @@ interface CatanCitySceneProps {
   entries: Array<{ resident: Resident; house: House }>;
   onSelectResident: (resident: Resident, house: House) => void;
   onAddAgent?: () => void;
+}
+
+// ============================================================================
+// AGENT BASE GLOW (3D glow under occupied tile for distinction)
+// ============================================================================
+
+function AgentBaseGlow({ emissiveColor }: { emissiveColor: string }) {
+  const glowRef = useRef<THREE.Group>(null);
+  const ringRef = useRef<THREE.Mesh>(null);
+
+  useFrame((state) => {
+    const t = state.clock.elapsedTime;
+    if (glowRef.current) {
+      const scale = 1 + Math.sin(t * 1.2) * 0.08;
+      glowRef.current.scale.setScalar(scale);
+    }
+    if (ringRef.current && ringRef.current.material instanceof THREE.MeshBasicMaterial) {
+      const opacity = 0.5 + Math.sin(t * 1.5) * 0.15;
+      ringRef.current.material.opacity = Math.max(0.35, Math.min(0.7, opacity));
+    }
+  });
+
+  return (
+    <group ref={glowRef} position={[0, 0.56, 0]}>
+      {/* Soft 3D cone of light (hexagonal base via 6 segments) */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]}>
+        <coneGeometry args={[0.85, 0.35, 6]} />
+        <meshBasicMaterial
+          color={emissiveColor}
+          transparent
+          opacity={0.45}
+          side={THREE.DoubleSide}
+          depthWrite={false}
+        />
+      </mesh>
+      {/* Emissive ring */}
+      <mesh ref={ringRef} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[0.5, 0.75, 32]} />
+        <meshBasicMaterial
+          color={emissiveColor}
+          transparent
+          opacity={0.6}
+          side={THREE.DoubleSide}
+          depthWrite={false}
+        />
+      </mesh>
+    </group>
+  );
 }
 
 // ============================================================================
@@ -115,9 +164,19 @@ function HexTile({
     <group ref={groupRef} position={[x, 0, z]}>
       <mesh geometry={geometry} material={materials} castShadow receiveShadow />
 
-      {/* Type label */}
+      {/* 3D token base for type label (Catan number-token style) */}
+      <mesh position={[0, 0.68, 0]} castShadow receiveShadow>
+        <cylinderGeometry args={[0.9, 0.95, 0.12, 6]} />
+        <meshStandardMaterial
+          color={config.sideColor}
+          metalness={0.2}
+          roughness={0.7}
+        />
+      </mesh>
+
+      {/* Type label on token */}
       <Html
-        position={[0, 0.65, 0]}
+        position={[0, 0.72, 0]}
         distanceFactor={1}
         scale={0.7}
         style={{ pointerEvents: 'none' }}
@@ -138,17 +197,25 @@ function HexTile({
         </div>
       </Html>
 
-      {/* Pokemon sprite (only shown if occupied home tile) */}
+      {/* Agent base glow: distinct 3D glow under occupied tiles */}
+      {isOccupied && pokemonId && (
+        <AgentBaseGlow emissiveColor={config.emissiveColor} />
+      )}
+
+      {/* Pokemon sprite: 2D texture in 3D with correct depth/visibility */}
       {pokemonId && pokeTexture && (
         <group position={[0, 1.3, 0]}>
-          <Billboard>
-            <mesh castShadow>
-              <planeGeometry args={[1.4, 1.4]} />
+          <Billboard follow={true}>
+            <mesh renderOrder={1} castShadow={false}>
+              <planeGeometry args={[1.5, 1.5]} />
               <meshBasicMaterial
                 map={pokeTexture}
                 transparent
-                alphaTest={0.05}
+                alphaTest={0.02}
+                depthWrite={false}
+                side={THREE.DoubleSide}
                 color="#ffffff"
+                toneMapped={false}
               />
             </mesh>
           </Billboard>
@@ -161,14 +228,15 @@ function HexTile({
         </group>
       )}
 
-      {/* Glow circle under sprite */}
-      {pokemonId && (
-        <mesh position={[0, 0.58, 0]}>
-          <circleGeometry args={[0.5, 16]} />
+      {/* Subtle glow for unoccupied home tiles (no agent yet) */}
+      {!isOccupied && pokemonId && (
+        <mesh position={[0, 0.58, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <ringGeometry args={[0.4, 0.55, 16]} />
           <meshBasicMaterial
             color={config.emissiveColor}
             transparent
-            opacity={isOccupied ? 0.5 : 0.2}
+            opacity={0.15}
+            side={THREE.DoubleSide}
           />
         </mesh>
       )}
@@ -361,17 +429,23 @@ function FloatingParticles() {
 
   return (
     <group ref={groupRef}>
-      {Array.from({ length: 12 }).map((_, i) => {
-        const angle = (i / 12) * Math.PI * 2;
-        const radius = 11;
+      {Array.from({ length: 14 }).map((_, i) => {
+        const angle = (i / 14) * Math.PI * 2;
+        const radius = 10 + (i % 3) * 1.5;
         const x = Math.cos(angle) * radius;
         const z = Math.sin(angle) * radius;
-        const y = 3 + Math.sin(i * 0.5) * 1.5;
+        const y = 3.5 + Math.sin(i * 0.7) * 2;
 
         return (
-          <mesh key={i} position={[x, y, z]} scale={0.05}>
-            <octahedronGeometry args={[1, 0]} />
-            <meshBasicMaterial color="#FFD700" />
+          <mesh key={i} position={[x, y, z]} scale={0.06} castShadow>
+            <dodecahedronGeometry args={[1, 0]} />
+            <meshStandardMaterial
+              color="#FFD700"
+              emissive="#b8860b"
+              emissiveIntensity={0.25}
+              metalness={0.3}
+              roughness={0.6}
+            />
           </mesh>
         );
       })}
@@ -394,17 +468,17 @@ function CatanScene({ entries, onSelectResident, onAddAgent }: CatanSceneProps) 
     new Map()
   );
 
-  // Load sprites for all house types
+  // Load sprites: same as panel (left/top) — showdown animated, fallback official artwork
   useEffect(() => {
     const textureLoader = new THREE.TextureLoader();
     const pokemonIds = [251, 68, 235, 18, 57, 52];
 
     pokemonIds.forEach((pokemonId) => {
-      const animatedUrl = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/${pokemonId}.gif`;
-      const fallbackUrl = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${pokemonId}.png`;
+      const primaryUrl = spriteAnimatedUrl(pokemonId);   // showdown — matches CityPanel
+      const fallbackUrl = spriteArtworkUrl(pokemonId);
 
       textureLoader.load(
-        animatedUrl,
+        primaryUrl,
         (texture) => {
           texture.magFilter = THREE.NearestFilter;
           texture.minFilter = THREE.NearestFilter;
@@ -499,44 +573,52 @@ function CatanScene({ entries, onSelectResident, onAddAgent }: CatanSceneProps) 
 }
 
 // ============================================================================
-// CENTRAL PIT (add-agent spawn point)
+// CENTRAL PIT (max 3D: stepped well, raised rim, harbor feel)
 // ============================================================================
-// Catan-style central depression: hexagonal pit at board center. Click to add resident.
 
 function CentralPit({ onAddAgent }: { onAddAgent: () => void }) {
   const pitRef = useRef<THREE.Group>(null);
-  const innerRadius = 1.4;
-  const depth = 0.5;
+  const innerRadius = 1.2;
+  const rimRadius = 1.6;
 
   const hexShape = useMemo(() => {
     const shape = new THREE.Shape();
     for (let i = 0; i < 6; i++) {
       const ang = (Math.PI / 3) * i;
-      const lx = innerRadius * Math.cos(ang);
-      const ly = innerRadius * Math.sin(ang);
+      const lx = rimRadius * Math.cos(ang);
+      const ly = rimRadius * Math.sin(ang);
       if (i === 0) shape.moveTo(lx, ly);
       else shape.lineTo(lx, ly);
     }
     return shape;
   }, []);
 
-  const pitGeometry = useMemo(() => {
+  const pitWallsGeometry = useMemo(() => {
     const geo = new THREE.ExtrudeGeometry(hexShape, {
-      depth: depth,
+      depth: 0.7,
       bevelEnabled: true,
-      bevelSize: 0.15,
-      bevelThickness: 0.08,
+      bevelSize: 0.12,
+      bevelThickness: 0.06,
       bevelSegments: 2,
     });
     geo.rotateX(-Math.PI / 2);
-    geo.translate(0, -depth / 2, 0); // so top is at y ≈ 0
+    geo.translate(0, -0.35, 0);
     return geo;
   }, [hexShape]);
 
   return (
     <group ref={pitRef} position={[0, 0, 0]}>
-      {/* Sunken pit mesh: dark stone / harbor feel */}
-      <mesh geometry={pitGeometry} position={[0, -0.35, 0]} castShadow receiveShadow>
+      {/* Raised hexagonal rim (stone edge) */}
+      <mesh position={[0, 0.08, 0]} castShadow receiveShadow>
+        <cylinderGeometry args={[rimRadius, rimRadius + 0.05, 0.15, 6]} />
+        <meshStandardMaterial
+          color="#4a5568"
+          roughness={0.8}
+          metalness={0.1}
+        />
+      </mesh>
+      {/* Stepped inner walls (two tiers) */}
+      <mesh position={[0, -0.22, 0]} geometry={pitWallsGeometry} castShadow receiveShadow>
         <meshStandardMaterial
           color="#3d4a5c"
           roughness={0.85}
@@ -544,31 +626,38 @@ function CentralPit({ onAddAgent }: { onAddAgent: () => void }) {
           emissive="#1a2332"
         />
       </mesh>
-      {/* Shallow inner floor */}
+      {/* Inner floor (deepest level) */}
       <mesh
-        position={[0, -0.08, 0]}
+        position={[0, -0.42, 0]}
         rotation={[-Math.PI / 2, 0, 0]}
         receiveShadow
       >
-        <circleGeometry args={[innerRadius * 0.92, 6]} />
+        <circleGeometry args={[innerRadius * 0.9, 6]} />
         <meshStandardMaterial
           color="#2a3544"
           roughness={0.9}
           metalness={0.05}
         />
       </mesh>
-      {/* Plus icon / add hint */}
-      <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[0.5, 0.7, 32]} />
-        <meshBasicMaterial color="#FFD700" side={THREE.DoubleSide} />
+      {/* Golden ring + label plane */}
+      <mesh position={[0, -0.05, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[0.55, 0.8, 32]} />
+        <meshStandardMaterial
+          color="#b8860b"
+          metalness={0.4}
+          roughness={0.5}
+          emissive="#FFD700"
+          emissiveIntensity={0.15}
+          side={THREE.DoubleSide}
+        />
       </mesh>
-      <Html position={[0, 0.15, 0]} center distanceFactor={1.2} style={{ pointerEvents: 'none' }}>
+      <Html position={[0, 0.02, 0]} center distanceFactor={1.2} style={{ pointerEvents: 'none' }}>
         <div style={{
           fontFamily: 'Dogica, monospace',
           fontSize: '10px',
           fontWeight: 'bold',
           color: '#FFD700',
-          textShadow: '0 0 6px rgba(0,0,0,0.9)',
+          textShadow: '0 0 8px rgba(0,0,0,0.9)',
           whiteSpace: 'nowrap',
         }}>
           + ADD RESIDENT
@@ -576,12 +665,12 @@ function CentralPit({ onAddAgent }: { onAddAgent: () => void }) {
       </Html>
       {/* Invisible clickable area */}
       <mesh
-        position={[0, 0.5, 0]}
+        position={[0, 0.3, 0]}
         onClick={(e) => { e.stopPropagation(); onAddAgent(); }}
         onPointerOver={() => { document.body.style.cursor = 'pointer'; }}
         onPointerOut={() => { document.body.style.cursor = 'default'; }}
       >
-        <cylinderGeometry args={[innerRadius, innerRadius, 1.2, 6]} />
+        <cylinderGeometry args={[rimRadius, rimRadius, 0.8, 6]} />
         <meshBasicMaterial visible={false} />
       </mesh>
     </group>
