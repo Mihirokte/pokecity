@@ -35,6 +35,8 @@ export function CityView() {
   const [moveTargetHex, setMoveTargetHex] = useState<number | null>(null);
 
   const updateHousePosition = useCityStore(s => s.updateHousePosition);
+  const loadAllData = useCityStore(s => s.loadAllData);
+  const [resettingAll, setResettingAll] = useState(false);
   const headerRef = useRef<HTMLDivElement>(null);
   const focusHeader = useCallback(() => {
     requestAnimationFrame(() => {
@@ -97,6 +99,30 @@ export function CityView() {
           </nav>
         )}
         <div className="city-header__spacer" />
+        <button
+          type="button"
+          className="city-header__reset-btn"
+          onClick={async () => {
+            if (resettingAll) return;
+            setResettingAll(true);
+            setSelected(null);
+            setShowAddForm(false);
+            setMoveTargetHex(null);
+            try {
+              await loadAllData();
+              addToast('Data reloaded. UI refreshed.', 'success');
+              focusHeader();
+            } catch {
+              addToast('Failed to reload data.', 'error');
+            } finally {
+              setResettingAll(false);
+            }
+          }}
+          disabled={resettingAll}
+          title="Reload all data from sheet and refresh UI"
+        >
+          {resettingAll ? '…' : 'RESET ALL'}
+        </button>
         <button
           type="button"
           className="city-header__reset-btn"
