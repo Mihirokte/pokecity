@@ -500,7 +500,7 @@ export function TasksModule({ resident }: TasksModuleProps) {
   }, []);
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { delay: 150, tolerance: 5 } }),
+    useSensor(PointerSensor, { activationConstraint: { delay: 100, tolerance: 8 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
@@ -645,14 +645,25 @@ export function TasksModule({ resident }: TasksModuleProps) {
   function SortableTaskRow({ task, isSubtask }: { task: Task; isSubtask: boolean }) {
     const { setNodeRef, transform, transition, attributes, listeners } = useSortable({ id: task.id });
     const handle = (
-      <span
+      <button
+        type="button"
+        className="mod-btn mod-btn--sm task-drag-handle"
         {...attributes}
         {...listeners}
-        style={{ cursor: 'grab', padding: '2px 4px', opacity: 0.7, touchAction: 'none' }}
         title="Drag to reorder"
+        style={{
+          cursor: 'grab',
+          touchAction: 'none',
+          flexShrink: 0,
+          padding: '4px 8px',
+          fontSize: 9,
+          lineHeight: 1,
+          minWidth: 48,
+        }}
+        onPointerDown={(e) => e.stopPropagation()}
       >
-        ⋮⋮
-      </span>
+        <span aria-hidden style={{ opacity: 0.9 }}>≡</span> Move
+      </button>
     );
     return (
       <div ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }}>

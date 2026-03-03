@@ -565,7 +565,7 @@ function CatanScene({ entries, onSelectResident, onAddAgent, onEmptyTileClick, p
         if (onAddAgent && q === 0 && r === 0) return null; // center = pit
         const tileType = TILE_TYPE_SEQUENCE[idx];
         const isHomeTile = HOME_TILE_INDICES.has(idx);
-        const entry = isHomeTile ? occupiedTiles.get(idx) : undefined;
+        const entry = occupiedTiles.get(idx);
         const resident = entry?.resident;
 
         return (

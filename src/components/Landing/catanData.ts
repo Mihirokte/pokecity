@@ -76,8 +76,8 @@ export function getPastelColorForHex(q: number, r: number): {
   return { topColor, sideColor, borderColor };
 }
 
-/** 6 agent elements for surrounding effect (water, fire, wind, grass, lightning, rock) */
-export type TileElement = 'water' | 'fire' | 'wind' | 'grass' | 'lightning' | 'rock';
+/** 6 agent elements: water, fire, lightning, grass, rock, ghost */
+export type TileElement = 'water' | 'fire' | 'grass' | 'lightning' | 'rock' | 'ghost';
 
 export interface TileConfig {
   type: TileType;
@@ -114,9 +114,9 @@ const TILE_CONFIGS: Record<TileType, TileConfig> = {
   calendar: { type: 'calendar', ...TILE_BASE, pokemonId: ELEMENT_SPRITE_IDS.grass, element: 'grass' },
   tasks:    { type: 'tasks',    ...TILE_BASE, pokemonId: ELEMENT_SPRITE_IDS.fire, element: 'fire' },
   notes:    { type: 'notes',    ...TILE_BASE, pokemonId: ELEMENT_SPRITE_IDS.lightning, element: 'lightning' },
-  travel:   { type: 'travel',   ...TILE_BASE, pokemonId: ELEMENT_SPRITE_IDS.wind, element: 'wind' },
+  travel:   { type: 'travel',   ...TILE_BASE, pokemonId: ELEMENT_SPRITE_IDS.water, element: 'water' },
   gym:      { type: 'gym',      ...TILE_BASE, pokemonId: ELEMENT_SPRITE_IDS.rock, element: 'rock' },
-  shopping: { type: 'shopping', ...TILE_BASE, pokemonId: ELEMENT_SPRITE_IDS.water, element: 'water' },
+  shopping: { type: 'shopping', ...TILE_BASE, pokemonId: ELEMENT_SPRITE_IDS.ghost, element: 'ghost' },
   desert:   { type: 'desert',   ...TILE_BASE, pokemonId: null, element: null },
 };
 
@@ -128,10 +128,10 @@ export function getTileConfig(type: TileType): TileConfig {
 export const ELEMENT_COLORS: Record<TileElement, string> = {
   water: '#3b82f6',
   fire: '#ef4444',
-  wind: '#94a3b8',
   grass: '#22c55e',
   lightning: '#eab308',
   rock: '#78716c',
+  ghost: '#a78bfa',
 };
 
 // 19-element sequence: 6 types × 3 tiles + 1 desert

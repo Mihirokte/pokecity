@@ -50,24 +50,24 @@ export const HEADER_BADGE_ID = 25;
 /** The player's Pokemon — Pikachu */
 export const PLAYER_POKEMON_ID = 25;
 
-/** 6 element sprites: one per element (water, fire, wind, grass, lightning, rock) */
+/** 6 element sprites: water, fire, lightning, grass, rock, ghost — mapped to canonical Pokémon */
 export const ELEMENT_SPRITE_IDS: Record<string, number> = {
   water: 7,      // Squirtle
   fire: 4,       // Charmander
-  wind: 18,      // Pidgeot
-  grass: 1,      // Bulbasaur
   lightning: 25, // Pikachu
-  rock: 74,      // Geodude
+  grass: 1,      // Bulbasaur
+  rock: 95,      // Onix
+  ghost: 94,     // Gengar
 };
 
-/** Pokemon assigned to each house/module type (uses element sprite for that type) */
+/** Pokemon assigned to each house/module type (one element per type) */
 export const MODULE_POKEMON: Record<string, number> = {
-  calendar: ELEMENT_SPRITE_IDS.grass,    // grass
-  tasks: ELEMENT_SPRITE_IDS.fire,       // fire
-  notes: ELEMENT_SPRITE_IDS.lightning,   // lightning
-  travel: ELEMENT_SPRITE_IDS.wind,      // wind
-  gym: ELEMENT_SPRITE_IDS.rock,         // rock
-  shopping: ELEMENT_SPRITE_IDS.water,   // water
+  calendar: ELEMENT_SPRITE_IDS.grass,    // grass — Bulbasaur
+  tasks: ELEMENT_SPRITE_IDS.fire,       // fire — Charmander
+  notes: ELEMENT_SPRITE_IDS.lightning,   // lightning — Pikachu
+  travel: ELEMENT_SPRITE_IDS.water,      // water — Squirtle
+  gym: ELEMENT_SPRITE_IDS.rock,          // rock — Onix
+  shopping: ELEMENT_SPRITE_IDS.ghost,    // ghost — Gengar
 };
 
 /** Most popular Pokémon (2024 polls: Pikachu, Charizard, Eevee, Umbreon, Gengar, Bulbasaur, Gardevoir, etc.) + varied pool */
