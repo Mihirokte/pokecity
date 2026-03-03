@@ -1,37 +1,52 @@
 import { useRef, useState, useMemo, useEffect } from 'react';
-import { Billboard, Html } from '@react-three/drei';
+import { Html } from '@react-three/drei';
 import * as THREE from 'three';
 import type { Group, Texture } from 'three';
-import { spriteAnimatedUrl } from '../../../config/pokemon';
+import { spriteAnimatedUrl, spriteUrl } from '../../../config/pokemon';
 
 interface SpriteActorProps {
   pokemonId: number;
   position: [number, number, number];
   name?: string;
+  status?: 'running' | 'idle' | 'error';
   onClick?: () => void;
+  onDelete?: () => void;
   scale?: number;
   animated?: boolean;
 }
+
+// Sprite dimensions from PokeAPI - normalized
+const SPRITE_WIDTH = 96;
+const SPRITE_HEIGHT = 96;
 
 export function SpriteActor({
   pokemonId,
   position,
   name,
+  status = 'idle',
   onClick,
+  onDelete,
   scale = 1,
   animated = true,
 }: SpriteActorProps) {
   const groupRef = useRef<Group>(null);
   const [hovered, setHovered] = useState(false);
   const [texture, setTexture] = useState<Texture | null>(null);
+  const [imageError, setImageError] = useState(false);
 
   const spriteUrlValue = useMemo(
-    () => animated ? spriteAnimatedUrl(pokemonId) : `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${pokemonId}.png`,
-    [pokemonId, animated]
+    () => {
+      if (animated && !imageError) {
+        return spriteAnimatedUrl(pokemonId);
+      }
+      return spriteUrl(pokemonId);
+    },
+    [pokemonId, animated, imageError]
   );
 
   // Load texture on mount
   useEffect(() => {
+    setImageError(false);
     const loader = new THREE.TextureLoader();
     loader.load(
       spriteUrlValue,
@@ -44,19 +59,7 @@ export function SpriteActor({
       },
       undefined,
       () => {
-        // Fallback: load static sprite on error
-        const fallbackUrl = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${pokemonId}.png`;
-        const fallbackLoader = new THREE.TextureLoader();
-        fallbackLoader.load(
-          fallbackUrl,
-          (loadedTexture) => {
-            loadedTexture.colorSpace = THREE.SRGBColorSpace;
-            loadedTexture.minFilter = THREE.NearestFilter;
-            loadedTexture.magFilter = THREE.NearestFilter;
-            loadedTexture.generateMipmaps = false;
-            setTexture(loadedTexture);
-          }
-        );
+        setImageError(true);
       }
     );
   }, [spriteUrlValue, pokemonId]);
@@ -71,47 +74,80 @@ export function SpriteActor({
     document.body.style.cursor = 'auto';
   };
 
+  const handleClick = () => {
+    onClick?.();
+  };
+
+  const handleDeleteClick = () => {
+    onDelete?.();
+  };
+
+  // Calculate scale to normalize sprite to world units
+  // Sprites should be about 1.5 units tall in world space
+  const worldHeight = 1.5;
+  const worldWidth = worldHeight * (SPRITE_WIDTH / SPRITE_HEIGHT);
+  
+  // Current scale factor
+  const currentScale = scale * (hovered ? 1.15 : 1);
+
+  // Status color
+  const statusColors = {
+    running: '#10b981',
+    idle: '#f59e0b',
+    error: '#ef4444',
+  };
+
   return (
     <group
       ref={groupRef}
       position={position}
-      onClick={onClick}
-      onPointerOver={handlePointerOver}
-      onPointerOut={handlePointerOut}
     >
-      {/* Billboard sprite that always faces camera */}
-      <Billboard
-        follow={true}
-        lockX={false}
-        lockY={false}
-        lockZ={false}
-        scale={scale * (hovered ? 1.1 : 1)}
+      {/* Shadow beneath sprite - larger and softer */}
+      <mesh 
+        position={[0, 0.01, 0]} 
+        rotation={[-Math.PI / 2, 0, 0]}
+        scale={[currentScale, currentScale, 1]}
       >
-        <mesh>
-          <planeGeometry args={[1.5, 1.5]} />
+        <circleGeometry args={[0.5, 32]} />
+        <meshBasicMaterial
+          color="#000000"
+          transparent
+          opacity={0.25}
+        />
+      </mesh>
+
+      {/* Billboard sprite - pivot at bottom center so feet touch ground */}
+      <group 
+        position={[0, worldHeight * currentScale / 2, 0]}
+        onClick={handleClick}
+        onPointerOver={handlePointerOver}
+        onPointerOut={handlePointerOut}
+      >
+        <mesh scale={[worldWidth * currentScale, worldHeight * currentScale, 1]}>
+          <planeGeometry args={[1, 1]} />
           <meshBasicMaterial
             map={texture}
             transparent={true}
             alphaTest={0.1}
-            side={THREE.DoubleSide}
+            side={THREE.FrontSide}
+            depthWrite={true}
           />
         </mesh>
-      </Billboard>
+      </group>
 
-      {/* Shadow beneath sprite */}
-      <mesh position={[0, -0.01, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <circleGeometry args={[0.4, 16]} />
-        <meshBasicMaterial
-          color="#000000"
-          transparent
-          opacity={0.3}
-        />
+      {/* Status indicator dot */}
+      <mesh 
+        position={[0.4, 0.1, 0.1]}
+        scale={0.12}
+      >
+        <sphereGeometry args={[1, 16, 16]} />
+        <meshBasicMaterial color={statusColors[status]} />
       </mesh>
 
-      {/* Name label on hover */}
-      {name && hovered && (
+      {/* Hover tooltip with details and delete */}
+      {hovered && (
         <Html
-          position={[0, 1.2, 0]}
+          position={[0, worldHeight * scale + 0.4, 0]}
           center
           style={{
             pointerEvents: 'none',
@@ -120,17 +156,107 @@ export function SpriteActor({
         >
           <div
             style={{
-              background: 'rgba(0, 0, 0, 0.8)',
-              color: '#fff',
-              padding: '4px 8px',
-              borderRadius: '4px',
-              fontFamily: 'Dogica, sans-serif',
-              fontSize: '12px',
-              whiteSpace: 'nowrap',
-              border: '2px solid #818cf8',
+              background: 'rgba(15, 23, 42, 0.95)',
+              border: `2px solid ${statusColors[status]}`,
+              borderRadius: '12px',
+              padding: '12px 16px',
+              minWidth: '160px',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+              backdropFilter: 'blur(8px)',
             }}
           >
-            {name}
+            {/* Agent name */}
+            <div
+              style={{
+                fontFamily: 'Dogica, sans-serif',
+                fontSize: '14px',
+                color: '#fff',
+                marginBottom: '8px',
+                textAlign: 'center',
+              }}
+            >
+              {name || `Pokemon #${pokemonId}`}
+            </div>
+            
+            {/* Status */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px',
+                marginBottom: '10px',
+              }}
+            >
+              <span
+                style={{
+                  width: '8px',
+                  height: '8px',
+                  borderRadius: '50%',
+                  background: statusColors[status],
+                  display: 'inline-block',
+                }}
+              />
+              <span
+                style={{
+                  fontFamily: 'VT323, monospace',
+                  fontSize: '12px',
+                  color: '#94a3b8',
+                  textTransform: 'uppercase',
+                  letterSpacing: '1px',
+                }}
+              >
+                {status}
+              </span>
+            </div>
+
+            {/* Action buttons */}
+            <div
+              style={{
+                display: 'flex',
+                gap: '8px',
+                pointerEvents: 'auto',
+              }}
+            >
+              <button
+                onClick={handleClick}
+                style={{
+                  flex: 1,
+                  background: 'linear-gradient(135deg, #6366f1 0%, #818cf8 100%)',
+                  border: 'none',
+                  borderRadius: '6px',
+                  padding: '6px 12px',
+                  color: '#fff',
+                  fontFamily: 'Dogica, sans-serif',
+                  fontSize: '11px',
+                  cursor: 'pointer',
+                  transition: 'transform 0.1s',
+                }}
+                onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
+                onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
+              >
+                View
+              </button>
+              <button
+                onClick={handleDeleteClick}
+                style={{
+                  flex: 1,
+                  background: 'linear-gradient(135deg, #dc2626 0%, #ef4444 100%)',
+                  border: 'none',
+                  borderRadius: '6px',
+                  padding: '6px 12px',
+                  color: '#fff',
+                  fontFamily: 'Dogica, sans-serif',
+                  fontSize: '11px',
+                  cursor: 'pointer',
+                  transition: 'transform 0.1s',
+                }}
+                onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
+                onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
+              >
+                Delete
+              </button>
+            </div>
           </div>
         </Html>
       )}

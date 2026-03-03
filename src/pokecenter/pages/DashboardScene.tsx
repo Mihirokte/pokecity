@@ -1,192 +1,316 @@
-import { Suspense, useMemo } from 'react';
-import { Canvas } from '@react-three/fiber';
+import { Suspense, useMemo, useRef } from 'react';
+import { Canvas, useFrame } from '@react-three/fiber';
 import { 
   MapControls, 
   Html,
   Preload,
   OrthographicCamera,
 } from '@react-three/drei';
+import * as THREE from 'three';
 import { usePokecenterStore } from '../pokecenterStore';
-import { useCityStore } from '../../stores/cityStore';
 import { SpriteActor } from '../components/3d/SpriteActor';
-import { CityBuilding, BUILDING_COLORS } from '../components/3d/CityBuilding';
-import { CityGround, Tree, LampPost } from '../components/3d/CityGround';
 import { RESIDENT_POKEMON_IDS } from '../../config/pokemon';
 import type { PCAgent } from '../../types';
 
-// Pre-generated random positions for agents
-const AGENT_POSITIONS: [number, number, number][] = [
-  [-2, 0, -1],
-  [1, 0, -2],
-  [3, 0, 0],
-  [0, 0, 2],
-  [-3, 0, 1],
-  [2, 0, -3],
-  [-1, 0, 3],
-  [3, 0, 2],
-];
+// Central Spawn Pit component
+interface SpawnPitProps {
+  onClick?: () => void;
+  agentCount: number;
+}
 
-type BuildingType = keyof typeof BUILDING_COLORS;
+function SpawnPit({ onClick, agentCount }: SpawnPitProps) {
+  const glowRef = useRef<THREE.Mesh>(null);
+  
+  useFrame((state) => {
+    if (glowRef.current) {
+      const material = glowRef.current.material as THREE.MeshBasicMaterial;
+      const pulse = Math.sin(state.clock.elapsedTime * 2) * 0.3 + 0.7;
+      material.opacity = pulse * 0.6;
+    }
+  });
+
+  return (
+    <group position={[0, 0, 0]}>
+      {/* Outer ring - dark slate */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
+        <ringGeometry args={[1.2, 1.8, 32]} />
+        <meshStandardMaterial 
+          color="#1e293b" 
+          roughness={0.8}
+          metalness={0.2}
+        />
+      </mesh>
+
+      {/* Inner glow */}
+      <mesh 
+        ref={glowRef}
+        rotation={[-Math.PI / 2, 0, 0]} 
+        position={[0, 0.03, 0]}
+      >
+        <circleGeometry args={[1.1, 32]} />
+        <meshBasicMaterial 
+          color="#a855f7"
+          transparent
+          opacity={0.5}
+        />
+      </mesh>
+
+      {/* Center pit - depth */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.1, 0]}>
+        <circleGeometry args={[1.0, 32]} />
+        <meshStandardMaterial 
+          color="#0f172a"
+          roughness={1}
+        />
+      </mesh>
+
+      {/* Pokeball-like ring detail */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.04, 0]}>
+        <ringGeometry args={[0.95, 1.05, 32]} />
+        <meshBasicMaterial color="#f43f5e" />
+      </mesh>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.04, 0]}>
+        <ringGeometry args={[0.45, 0.55, 32]} />
+        <meshBasicMaterial color="#f43f5e" />
+      </mesh>
+
+      {/* Center button */}
+      <mesh position={[0, 0.08, 0]}>
+        <cylinderGeometry args={[0.35, 0.35, 0.1, 32]} />
+        <meshStandardMaterial 
+          color="#ffffff"
+          roughness={0.3}
+          metalness={0.5}
+        />
+      </mesh>
+      <mesh position={[0, 0.14, 0]}>
+        <cylinderGeometry args={[0.25, 0.25, 0.05, 32]} />
+        <meshStandardMaterial 
+          color="#f43f5e"
+          roughness={0.4}
+          metalness={0.3}
+        />
+      </mesh>
+
+      {/* Click area */}
+      <mesh 
+        position={[0, 0.15, 0]}
+        onClick={onClick}
+        visible={false}
+      >
+        <cylinderGeometry args={[1.5, 1.5, 0.3, 16]} />
+        <meshBasicMaterial transparent opacity={0} />
+      </mesh>
+
+      {/* Agent count label */}
+      <Html
+        position={[0, 0.5, 0]}
+        center
+        style={{ pointerEvents: 'none' }}
+      >
+        <div
+          style={{
+            background: 'rgba(15, 23, 42, 0.9)',
+            border: '2px solid #a855f7',
+            borderRadius: '20px',
+            padding: '6px 14px',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          <span style={{ color: '#a855f7', fontFamily: 'VT323', fontSize: '14px' }}>
+            {agentCount} AGENTS
+          </span>
+        </div>
+      </Html>
+
+      {/* Hover instruction */}
+      <Html
+        position={[0, -0.8, 0]}
+        center
+        style={{ pointerEvents: 'none' }}
+      >
+        <div
+          style={{
+            fontFamily: 'VT323',
+            fontSize: '12px',
+            color: '#64748b',
+            textTransform: 'uppercase',
+            letterSpacing: '1px',
+          }}
+        >
+          Click to spawn
+        </div>
+      </Html>
+    </group>
+  );
+}
+
+// Ground with vibrant grass
+function Ground() {
+  return (
+    <group>
+      {/* Main circular platform */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.05, 0]} receiveShadow>
+        <circleGeometry args={[12, 64]} />
+        <meshStandardMaterial 
+          color="#22c55e"
+          roughness={0.9}
+        />
+      </mesh>
+
+      {/* Grass texture rings */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.04, 0]}>
+        <ringGeometry args={[0, 8, 64]} />
+        <meshStandardMaterial 
+          color="#16a34a"
+          roughness={0.85}
+        />
+      </mesh>
+
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.03, 0]}>
+        <ringGeometry args={[0, 5, 64]} />
+        <meshStandardMaterial 
+          color="#4ade80"
+          roughness={0.8}
+        />
+      </mesh>
+
+      {/* Outer edge of platform */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.06, 0]}>
+        <ringGeometry args={[11.5, 12, 64]} />
+        <meshStandardMaterial 
+          color="#166534"
+          roughness={0.9}
+        />
+      </mesh>
+
+      {/* Underneath (dark) */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -2, 0]}>
+        <circleGeometry args={[15, 64]} />
+        <meshStandardMaterial 
+          color="#0f172a"
+          roughness={1}
+        />
+      </mesh>
+    </group>
+  );
+}
+
+// Decorative floating particles
+function Particles() {
+  const count = 20;
+  const positions = useMemo(() => {
+    const pos = [];
+    for (let i = 0; i < count; i++) {
+      pos.push({
+        x: (Math.random() - 0.5) * 20,
+        y: Math.random() * 3 + 0.5,
+        z: (Math.random() - 0.5) * 20,
+        speed: Math.random() * 0.5 + 0.2,
+        offset: Math.random() * Math.PI * 2,
+      });
+    }
+    return pos;
+  }, []);
+
+  return (
+    <>
+      {positions.map((p, i) => (
+        <FloatingParticle key={i} {...p} />
+      ))}
+    </>
+  );
+}
+
+function FloatingParticle({ x, y, z, speed, offset }: { x: number; y: number; z: number; speed: number; offset: number }) {
+  const meshRef = useRef<THREE.Mesh>(null);
+  
+  useFrame((state) => {
+    if (meshRef.current) {
+      meshRef.current.position.y = y + Math.sin(state.clock.elapsedTime * speed + offset) * 0.3;
+      meshRef.current.rotation.y += 0.01;
+    }
+  });
+
+  return (
+    <mesh ref={meshRef} position={[x, y, z]}>
+      <octahedronGeometry args={[0.08, 0]} />
+      <meshBasicMaterial color="#fbbf24" transparent opacity={0.6} />
+    </mesh>
+  );
+}
 
 interface SceneProps {
   onAgentClick?: (agentId: string) => void;
-  onBuildingClick?: (type: BuildingType) => void;
+  onAgentDelete?: (agentId: string) => void;
+  onSpawnClick?: () => void;
 }
 
-function Scene({ onAgentClick, onBuildingClick }: SceneProps) {
+function Scene({ onAgentClick, onAgentDelete, onSpawnClick }: SceneProps) {
   const agents = usePokecenterStore((s) => s.agents);
-  const notifications = usePokecenterStore((s) => s.notifications);
-  const cityStore = useCityStore((s) => s.moduleData);
 
-  // Calculate stats from stores
-  const runningAgents = agents.filter((a: PCAgent) => a.status === 'running').length;
-  const activeTasks = cityStore.tasks.filter((t: { status: string }) => t.status !== 'done').length;
-  
-  // Today's events
-  const today = new Date().toISOString().split('T')[0];
-  const todayEvents = cityStore.calendarEvents.filter((e: { startDate: string }) => e.startDate === today);
-  
-  // Unread notifications
-  const unread = notifications.filter((n: { read: string }) => n.read !== 'true').length;
-
-  // Generate agent positions
+  // Generate positions for agents
   const agentPositions = useMemo(() => {
-    return agents.map((_agent: PCAgent, i: number) => {
-      const position = AGENT_POSITIONS[i % AGENT_POSITIONS.length];
-      // Add some randomness
+    return agents.map((agent: PCAgent) => {
+      // Use consistent hash based on agent ID for stable positions
+      const hash = agent.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+      const angle = (hash % 360) * (Math.PI / 180);
+      const radius = 2 + (hash % 5) * 0.8;
       return [
-        position[0] + (Math.random() - 0.5) * 1.5,
-        position[1],
-        position[2] + (Math.random() - 0.5) * 1.5,
+        Math.cos(angle) * radius,
+        0,
+        Math.sin(angle) * radius,
       ] as [number, number, number];
     });
   }, [agents.length]);
 
+  // Map status to allowed values
+  const getStatus = (agentStatus: string): 'running' | 'idle' | 'error' => {
+    if (agentStatus === 'running') return 'running';
+    if (agentStatus === 'error') return 'error';
+    return 'idle';
+  };
+
   return (
-    <>
-      {/* Lighting */}
-      <ambientLight intensity={0.6} color="#ffeedd" />
+<>
+      {/* Vibrant sky lighting */}
+      <ambientLight intensity={0.7} color="#e0f2fe" />
       <directionalLight
         position={[10, 15, 10]}
-        intensity={1.2}
-        color="#fff5e6"
+        intensity={1}
+        color="#fffbeb"
         castShadow
         shadow-mapSize={[2048, 2048]}
         shadow-camera-far={50}
-        shadow-camera-left={-20}
-        shadow-camera-right={20}
-        shadow-camera-top={20}
-        shadow-camera-bottom={-20}
+        shadow-camera-left={-15}
+        shadow-camera-right={15}
+        shadow-camera-top={15}
+        shadow-camera-bottom={-15}
       />
 
       {/* Ground */}
-      <CityGround size={40} />
+      <Ground />
 
-      {/* Decorative elements */}
-      <Tree position={[-8, 0, -8]} />
-      <Tree position={[-10, 0, -6]} />
-      <Tree position={[8, 0, -8]} />
-      <Tree position={[10, 0, -5]} />
-      <Tree position={[-8, 0, 8]} />
-      <Tree position={[9, 0, 7]} />
+      {/* Particles */}
+      <Particles />
 
-      {/* Lamp posts around the plaza */}
-      <LampPost position={[-6, 0, -6]} />
-      <LampPost position={[6, 0, -6]} />
-      <LampPost position={[-6, 0, 6]} />
-      <LampPost position={[6, 0, 6]} />
+      {/* Central Spawn Pit */}
+      <SpawnPit onClick={onSpawnClick} agentCount={agents.length} />
 
-      {/* Stat Buildings - arranged in a semi-circle */}
-      <CityBuilding
-        position={[-6, 0, -4]}
-        width={1.8}
-        height={2.5 + (runningAgents * 0.2)}
-        depth={1.8}
-        color={BUILDING_COLORS.agents}
-        label="Agents Running"
-        value={runningAgents}
-        icon="🤖"
-        onClick={() => onBuildingClick?.('agents')}
-      />
-      
-      <CityBuilding
-        position={[-3, 0, -5]}
-        width={1.8}
-        height={2 + (activeTasks * 0.15)}
-        depth={1.8}
-        color={BUILDING_COLORS.tasks}
-        label="Active Tasks"
-        value={activeTasks}
-        icon="✅"
-        onClick={() => onBuildingClick?.('tasks')}
-      />
-      
-      <CityBuilding
-        position={[0, 0, -5.5]}
-        width={1.8}
-        height={1.5 + (todayEvents.length * 0.3)}
-        depth={1.8}
-        color={BUILDING_COLORS.calendar}
-        label="Events Today"
-        value={todayEvents.length}
-        icon="📅"
-        onClick={() => onBuildingClick?.('calendar')}
-      />
-      
-      <CityBuilding
-        position={[3, 0, -5]}
-        width={1.8}
-        height={1.5 + (cityStore.notes.length * 0.1)}
-        depth={1.8}
-        color={BUILDING_COLORS.notes}
-        label="Notes"
-        value={cityStore.notes.length}
-        icon="📝"
-        onClick={() => onBuildingClick?.('notes')}
-      />
-      
-      <CityBuilding
-        position={[6, 0, -4]}
-        width={1.8}
-        height={1.5 + (unread * 0.4)}
-        depth={1.8}
-        color={BUILDING_COLORS.notifications}
-        label="Unread"
-        value={unread}
-        icon="🔔"
-        onClick={() => onBuildingClick?.('notifications')}
-      />
-
-      {/* Agent Sprites in the plaza area */}
+      {/* Agent Sprites */}
       {agents.map((agent: PCAgent, i: number) => (
         <SpriteActor
           key={agent.id}
           pokemonId={RESIDENT_POKEMON_IDS[i % RESIDENT_POKEMON_IDS.length]}
           position={agentPositions[i] || [0, 0, 0]}
           name={agent.name}
-          scale={1.2}
+          status={getStatus(agent.status || 'idle')}
+          scale={1.3}
           animated={true}
           onClick={() => onAgentClick?.(agent.id)}
+          onDelete={() => onAgentDelete?.(agent.id)}
         />
       ))}
-
-      {/* Bulletin Board for Events/Activity */}
-      <group position={[0, 0, 5]} rotation={[0, Math.PI, 0]}>
-        <mesh position={[0, 1.5, 0]} castShadow>
-          <boxGeometry args={[3, 2.5, 0.2]} />
-          <meshStandardMaterial color="#5a4a3a" roughness={0.9} />
-        </mesh>
-        {/* Board surface */}
-        <mesh position={[0,1.5, 0.11]}>
-          <boxGeometry args={[2.6, 2.1, 0.05]} />
-          <meshStandardMaterial color="#f5e6d3" roughness={0.8} />
-        </mesh>
-        {/* Title bar */}
-        <mesh position={[0, 2.4, 0.11]}>
-          <boxGeometry args={[2.6, 0.3, 0.05]} />
-          <meshStandardMaterial color="#818cf8" roughness={0.7} />
-        </mesh>
-      </group>
     </>
   );
 }
@@ -195,15 +319,15 @@ interface LoadingFallbackProps {
   message?: string;
 }
 
-function LoadingFallback({ message = 'Loading 3D Scene...' }: LoadingFallbackProps) {
+function LoadingFallback({ message = 'Loading Plaza...' }: LoadingFallbackProps) {
   return (
     <Html center>
       <div
         style={{
-          background: 'rgba(26, 26, 46, 0.9)',
-          padding: '20px 40px',
-          borderRadius: '12px',
-          border: '2px solid #818cf8',
+          background: 'rgba(15, 23, 42, 0.95)',
+          padding: '24px 40px',
+          borderRadius: '16px',
+          border: '2px solid #a855f7',
           fontFamily: 'Dogica, sans-serif',
           color: '#fff',
           fontSize: '16px',
@@ -211,18 +335,19 @@ function LoadingFallback({ message = 'Loading 3D Scene...' }: LoadingFallbackPro
           flexDirection: 'column',
           alignItems: 'center',
           gap: '12px',
+          boxShadow: '0 8px 32px rgba(168, 85, 247, 0.3)',
         }}
       >
-        <div style={{ fontSize: '32px' }}>🎮</div>
+        <div style={{ fontSize: '40px' }}>⚡</div>
         <div>{message}</div>
         <div
           style={{
             fontFamily: 'VT323, monospace',
             fontSize: '14px',
-            color: '#818cf8',
+            color: '#a855f7',
           }}
         >
-          Initializing PokéCity...
+          Entering PokéCity...
         </div>
       </div>
     </Html>
@@ -231,18 +356,20 @@ function LoadingFallback({ message = 'Loading 3D Scene...' }: LoadingFallbackPro
 
 interface DashboardSceneProps {
   onAgentClick?: (agentId: string) => void;
-  onBuildingClick?: (type: BuildingType) => void;
-  onBackClick?: () => void;
+  onAgentDelete?: (agentId: string) => void;
+  onSpawnClick?: () => void;
 }
 
 export function DashboardScene({ 
   onAgentClick, 
-  onBuildingClick,
-  onBackClick,
+  onAgentDelete,
+  onSpawnClick,
 }: DashboardSceneProps) {
+  const agents = usePokecenterStore((s) => s.agents);
+
   return (
-    <div style={{ width: '100%', height: '100%', position: 'relative' }}>
-      {/* 3D Canvas */}
+    <div style={{ width: '100%', height: '100%', position: 'relative', overflow: 'hidden' }}>
+      {/* 3D Canvas - full screen, no UI */}
       <Canvas
         shadows
         gl={{ 
@@ -250,127 +377,97 @@ export function DashboardScene({
           alpha: false,
           powerPreference: 'high-performance',
         }}
-        style={{ background: 'linear-gradient(180deg, #1a1a2e 0%, #0d0d1a 100%)' }}
+        style={{ 
+          background: 'linear-gradient(180deg, #0f172a 0%, #1e3a5f 50%, #0f172a 100%)',
+        }}
       >
         {/* Isometric orthographic camera */}
         <OrthographicCamera
           makeDefault
-          position={[20, 20, 20]}
-          zoom={35}
+          position={[15, 15, 15]}
+          zoom={45}
           near={0.1}
           far={1000}
         />
         
-        {/* Controls - pan only, no rotation to maintain isometric view */}
+        {/* Controls - pan and zoom, no rotation */}
         <MapControls
           enableRotate={false}
           enableZoom={true}
           enablePan={true}
-          minZoom={20}
-          maxZoom={80}
-          panSpeed={1}
+          minZoom={25}
+          maxZoom={100}
+          panSpeed={0.8}
           screenSpacePanning={true}
           dampingFactor={0.1}
         />
 
         <Suspense fallback={<LoadingFallback />}>
           <Scene 
-            onAgentClick={onAgentClick} 
-            onBuildingClick={onBuildingClick} 
+            onAgentClick={onAgentClick}
+            onAgentDelete={onAgentDelete}
+            onSpawnClick={onSpawnClick}
           />
         </Suspense>
         
         <Preload all />
       </Canvas>
 
-      {/* HUD Overlay */}
+      {/* Minimal HUD - just agent count in corner */}
       <div
         style={{
           position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          padding: '16px 24px',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
+          top: '20px',
+          right: '20px',
           pointerEvents: 'none',
         }}
       >
-        {/* Title */}
         <div
           style={{
-            background: 'rgba(26, 26, 46, 0.85)',
-            padding: '12px 24px',
-            borderRadius: '8px',
-            border: '2px solid #818cf8',
-            pointerEvents: 'auto',
+            background: 'rgba(15, 23, 42, 0.85)',
+            border: '2px solid #a855f7',
+            borderRadius: '12px',
+            padding: '10px 16px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            backdropFilter: 'blur(8px)',
           }}
         >
-          <h1
-            style={{
-              fontFamily: 'Dogica, sans-serif',
-              fontSize: '20px',
-              color: '#fff',
-              margin: 0,
-              letterSpacing: '1px',
-            }}
-          >
-            🏙️ PokéCity Plaza
-          </h1>
-          <p
-            style={{
-              fontFamily: 'VT323, monospace',
-              fontSize: '14px',
-              color: '#818cf8',
-              margin: '4px 0 0 0',
-              textTransform: 'uppercase',
-              letterSpacing: '2px',
-            }}
-          >
-            Your Dashboard in 3D
-          </p>
+          <span style={{ fontSize: '20px' }}>🤖</span>
+          <div>
+            <div
+              style={{
+                fontFamily: 'VT323',
+                fontSize: '10px',
+                color: '#94a3b8',
+                textTransform: 'uppercase',
+                letterSpacing: '1px',
+              }}
+            >
+              Active Agents
+            </div>
+            <div
+              style={{
+                fontFamily: 'Dogica',
+                fontSize: '18px',
+                color: '#fff',
+              }}
+            >
+              {agents.length}
+            </div>
+          </div>
         </div>
-
-        {/* Back button */}
-        {onBackClick && (
-          <button
-            onClick={onBackClick}
-            style={{
-              background: 'rgba(26, 26, 46, 0.85)',
-              border: '2px solid #818cf8',
-              borderRadius: '8px',
-              padding: '12px 20px',
-              color: '#fff',
-              fontFamily: 'Dogica, sans-serif',
-              fontSize: '14px',
-              cursor: 'pointer',
-              pointerEvents: 'auto',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              transition: 'all 0.2s',
-            }}
-            onMouseOver={(e) => {
-              e.currentTarget.style.background = '#818cf8';
-            }}
-            onMouseOut={(e) => {
-              e.currentTarget.style.background = 'rgba(26, 26, 46, 0.85)';
-            }}
-          >
-            ← Back to 2D
-          </button>
-        )}
       </div>
 
-      {/* Instructions */}
+      {/* Controls hint */}
       <div
         style={{
           position: 'absolute',
-          bottom: '16px',
+          bottom: '20px',
           left: '50%',
           transform: 'translateX(-50%)',
-          background: 'rgba(26, 26, 46, 0.85)',
+          background: 'rgba(15, 23, 42, 0.7)',
           padding: '8px 16px',
           borderRadius: '20px',
           border: '1px solid rgba(255,255,255,0.1)',
@@ -379,12 +476,12 @@ export function DashboardScene({
       >
         <span
           style={{
-            fontFamily: 'VT323, monospace',
-            fontSize: '14px',
-            color: '#aaa',
+            fontFamily: 'VT323',
+            fontSize: '13px',
+            color: '#64748b',
           }}
         >
-          🖱️ Scroll to zoom • Drag to pan • Click buildings/agents for details
+          🖱️ Scroll to zoom • Drag to pan • Click agents for details
         </span>
       </div>
     </div>

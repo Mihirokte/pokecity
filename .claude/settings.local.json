@@ -6,7 +6,10 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(npm install:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(xargs -I{} gh run watch {})",
+      "Bash(pip install:*)",
+      "Bash(python3:*)"
     ]
   }
 }
