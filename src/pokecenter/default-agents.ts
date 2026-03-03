@@ -123,6 +123,19 @@ export const DEFAULT_AGENTS: Omit<PCAgent, 'createdAt' | 'updatedAt'>[] = [
     description: 'Manages shopping lists with categories, quantities, and price tracking.',
     configJson: '{}',
   },
+  {
+    id: 'agent_hallucination',
+    name: 'Alakazam',
+    pokemon: 'Alakazam',
+    pokemonId: '65',
+    type: 'Hallucination Detective',
+    typeIcon: '🕵️',
+    status: 'idle',
+    progress: '0',
+    isRunOnce: 'false',
+    description: 'Trains your ability to spot AI hallucinations. Pick the false statement from real facts.',
+    configJson: '{}',
+  },
 ];
 
 export const DEFAULT_LOGS: { agentId: string; level: string; message: string }[] = [];

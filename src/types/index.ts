@@ -257,6 +257,7 @@ export interface TwitterConfig {
   keywords: string[];
   maxPerAccount: number;
   minLikes: number;
+  githubToken: string;
 }
 
 export interface CachedCalendarEvent {

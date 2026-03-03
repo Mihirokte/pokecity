@@ -13,6 +13,7 @@ import { Gym } from './pages/Gym';
 import { Shopping } from './pages/Shopping';
 import { TwitterBot } from './pages/TwitterBot';
 import { LinkedInBot } from './pages/LinkedInBot';
+import { HallucinationGame } from './pages/HallucinationGame';
 import './pokecenter.css';
 
 function getPageComponent(pageId: string) {
@@ -43,6 +44,8 @@ function getPageComponent(pageId: string) {
       return <TwitterBot />;
     case 'linkedin':
       return <LinkedInBot />;
+    case 'hallucination':
+      return <HallucinationGame />;
     default:
       return <Dashboard />;
   }

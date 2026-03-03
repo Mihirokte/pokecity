@@ -15,6 +15,7 @@ export function Dashboard() {
   const agents = usePokecenterStore(s => s.agents);
   const notifications = usePokecenterStore(s => s.notifications);
   const setCurrentPage = usePokecenterStore(s => s.setCurrentPage);
+  const deleteAgent = usePokecenterStore(s => s.deleteAgent);
   const { tasks, calendarEvents, notes } = useCityStore(s => s.moduleData);
 
   const runningAgents = agents.filter(a => a.status === 'running').length;
@@ -132,6 +133,7 @@ export function Dashboard() {
               key={agent.id}
               agent={agent}
               onClick={() => setCurrentPage(`agent:${agent.id}`)}
+              onDelete={() => deleteAgent(agent.id)}
             />
           ))}
         </div>

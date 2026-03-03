@@ -38,6 +38,9 @@ interface PokecenterState {
   updateCuratedTweet: (id: string, updates: Partial<CuratedTweet>) => void;
   deleteCuratedTweet: (id: string) => void;
 
+  // Agent CRUD (delete)
+  deleteAgent: (agentId: string) => void;
+
   // Agent Config
   updateAgentConfig: (agentId: string, configJson: string) => void;
 
@@ -223,6 +226,12 @@ export const usePokecenterStore = create<PokecenterState>((set, get) => ({
   deleteCuratedTweet: (id) => {
     set({ curatedTweets: get().curatedTweets.filter(t => t.id !== id) });
     SheetsService.deleteRow('CuratedTweets', id).catch(() => {});
+  },
+
+  // ── Agent Delete ──
+  deleteAgent: (agentId) => {
+    set({ agents: get().agents.filter(a => a.id !== agentId) });
+    SheetsService.deleteRow('Agents', agentId).catch(() => {});
   },
 
   // ── Agent Config ──
