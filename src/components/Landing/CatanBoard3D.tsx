@@ -1,6 +1,6 @@
 import React, { useRef, useMemo, useEffect, useState } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { OrbitControls, Stars, Preload, Billboard, Html } from '@react-three/drei';
+import { OrbitControls, Preload, Billboard, Html } from '@react-three/drei';
 import * as THREE from 'three';
 import {
   BOARD_HEXES,
@@ -14,6 +14,13 @@ import {
   DEMO_AGENT_BY_TYPE,
 } from './catanData';
 
+/**
+ * PRE-LOGIN LANDING SCENE ONLY.
+ * Used by LandingPage when user is not signed in.
+ * - Hex tiles are display-only (demo labels from DEMO_AGENT_BY_TYPE). No selection, no panel.
+ * - Only interactive element is the overlay "SIGN IN WITH GOOGLE" button.
+ * - Do not add onSelectResident or clickable resident meshes here; that belongs to CatanCityScene (post-login).
+ */
 interface CatanBoard3DProps {
   onLogin: () => void;
 }
@@ -161,49 +168,149 @@ function HexTile({
 }
 
 // ============================================================================
+// GRASSY GROUND
+// ============================================================================
+
+function GrassyGround() {
+  return (
+    <mesh
+      rotation={[-Math.PI / 2, 0, 0]}
+      position={[0, -0.5, 0]}
+      receiveShadow
+    >
+      <circleGeometry args={[30, 64]} />
+      <meshStandardMaterial
+        color="#2d5a27"
+        roughness={0.9}
+        metalness={0.1}
+      />
+    </mesh>
+  );
+}
+
+// ============================================================================
+// MOUNTAINS
+// ============================================================================
+
+function Mountains() {
+  const mountains = useMemo(() => {
+    const positions: { x: number; z: number; scale: number; height: number }[] = [];
+    for (let i = 0; i < 12; i++) {
+      const angle = (i / 12) * Math.PI * 2;
+      const distance = 18 + Math.random() * 8;
+      positions.push({
+        x: Math.cos(angle) * distance,
+        z: Math.sin(angle) * distance,
+        scale: 0.8 + Math.random() * 1.2,
+        height: 4 + Math.random() * 6,
+      });
+    }
+    return positions;
+  }, []);
+
+  return (
+    <group>
+      {mountains.map((mountain, i) => (
+        <mesh
+          key={i}
+          position={[mountain.x, mountain.height / 2 - 0.5, mountain.z]}
+          scale={[mountain.scale * 2, mountain.height, mountain.scale * 2]}
+          castShadow
+        >
+          <coneGeometry args={[1, 1, 6]} />
+          <meshStandardMaterial
+            color="#4a5568"
+            roughness={0.9}
+            metalness={0.1}
+          />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+// ============================================================================
+// SUN
+// ============================================================================
+
+function Sun() {
+  const sunRef = useRef<THREE.Mesh>(null);
+
+  useFrame((state) => {
+    if (sunRef.current) {
+      const scale = 1 + Math.sin(state.clock.elapsedTime * 0.3) * 0.05;
+      sunRef.current.scale.setScalar(scale);
+    }
+  });
+
+  return (
+    <group position={[8, 8, -15]}>
+      <mesh ref={sunRef}>
+        <sphereGeometry args={[2, 32, 32]} />
+        <meshBasicMaterial color="#fcd34d" />
+      </mesh>
+      <mesh scale={1.3}>
+        <sphereGeometry args={[2, 32, 32]} />
+        <meshBasicMaterial color="#fef08a" transparent opacity={0.3} />
+      </mesh>
+      <pointLight intensity={2} distance={50} color="#fef08a" />
+    </group>
+  );
+}
+
+// ============================================================================
+// SKY GRADIENT
+// ============================================================================
+
+function SkyGradient() {
+  return (
+    <mesh scale={[-1, 1, 1]}>
+      <sphereGeometry args={[50, 32, 32]} />
+      <meshBasicMaterial side={THREE.BackSide}>
+        <primitive
+          attach="map"
+          object={(() => {
+            const canvas = document.createElement('canvas');
+            canvas.width = 2;
+            canvas.height = 256;
+            const ctx = canvas.getContext('2d')!;
+            const gradient = ctx.createLinearGradient(0, 0, 0, 256);
+            gradient.addColorStop(0, '#0ea5e9');
+            gradient.addColorStop(0.4, '#7dd3fc');
+            gradient.addColorStop(0.7, '#bae6fd');
+            gradient.addColorStop(1, '#fcd34d');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, 2, 256);
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.needsUpdate = true;
+            return texture;
+          })()}
+        />
+      </meshBasicMaterial>
+    </mesh>
+  );
+}
+
+// ============================================================================
 // LIGHTING
 // ============================================================================
 
 function CatanLighting() {
   return (
     <>
-      <ambientLight intensity={0.6} color="#e8e8ff" />
+      <ambientLight intensity={0.4} color="#ffffff" />
+      <hemisphereLight args={['#7dd3fc', '#2d5a27', 0.5]} />
       <directionalLight
-        position={[10, 14, 10]}
-        intensity={1}
+        position={[8, 10, -10]}
+        intensity={1.5}
+        color="#fef08a"
         castShadow
         shadow-mapSize-width={2048}
         shadow-mapSize-height={2048}
       />
-      <pointLight position={[-6, 8, -6]} intensity={0.5} color="#ffd700" />
+      <pointLight position={[-6, 8, 6]} intensity={0.3} color="#7dd3fc" />
+      <fog attach="fog" args={['#bae6fd', 15, 45]} />
     </>
-  );
-}
-
-// ============================================================================
-// OCEAN PLANE
-// ============================================================================
-
-function OceanPlane() {
-  const meshRef = useRef<THREE.Mesh>(null);
-
-  useFrame((state) => {
-    if (meshRef.current && meshRef.current.material instanceof THREE.MeshBasicMaterial) {
-      const opacity = 0.15 + Math.sin(state.clock.elapsedTime * 0.7) * 0.05;
-      meshRef.current.material.opacity = opacity;
-    }
-  });
-
-  return (
-    <mesh
-      ref={meshRef}
-      rotation={[-Math.PI / 2, 0, 0]}
-      position={[0, -0.5, 0]}
-      receiveShadow
-    >
-      <circleGeometry args={[20, 64]} />
-      <meshBasicMaterial color="#0a3a52" transparent opacity={0.2} />
-    </mesh>
   );
 }
 
@@ -286,7 +393,10 @@ function CatanScene() {
   return (
     <>
       <CatanLighting />
-      <OceanPlane />
+      <SkyGradient />
+      <GrassyGround />
+      <Mountains />
+      <Sun />
 
       {/* Render all 19 hex tiles */}
       {BOARD_HEXES.map(([q, r], idx) => {
@@ -318,7 +428,6 @@ function CatanScene() {
         onStart={handleOrbitStart}
       />
 
-      <Stars radius={100} depth={50} count={4000} factor={4} />
       <Preload all />
     </>
   );
@@ -337,9 +446,6 @@ export function CatanBoard3D({ onLogin }: CatanBoard3DProps) {
         gl={{
           antialias: true,
           powerPreference: 'high-performance',
-        }}
-        style={{
-          background: 'linear-gradient(135deg, #1a2a4a 0%, #0a1a2e 60%, #050810 100%)',
         }}
       >
         <React.Suspense fallback={null}>
