@@ -3,7 +3,7 @@ import ReactMarkdown from 'react-markdown';
 import { useCityStore } from '../../stores/cityStore';
 import { useUIStore } from '../../stores/uiStore';
 import { SheetsService } from '../../services/sheetsService';
-import { badgeUrl, MODULE_BADGE_IDS } from '../../config/pokemon';
+import { ModuleHeader } from '../ui/ModuleHeader';
 import type { Resident, Note } from '../../types';
 
 interface NotesModuleProps {
@@ -35,9 +35,7 @@ export function NotesModule({ resident }: NotesModuleProps) {
     if (!searchQuery.trim()) return residentNotes;
     const q = searchQuery.toLowerCase();
     return residentNotes.filter(
-      n =>
-        n.title.toLowerCase().includes(q) ||
-        n.content.toLowerCase().includes(q),
+      n => n.title.toLowerCase().includes(q) || n.content.toLowerCase().includes(q),
     );
   }, [residentNotes, searchQuery]);
 
@@ -46,7 +44,6 @@ export function NotesModule({ resident }: NotesModuleProps) {
     [notes, activeNoteId],
   );
 
-  // Sync drafts when active note changes
   useEffect(() => {
     if (activeNote) {
       setDraftTitle(activeNote.title);
@@ -55,7 +52,6 @@ export function NotesModule({ resident }: NotesModuleProps) {
     }
   }, [activeNoteId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Cleanup debounce on unmount
   useEffect(() => {
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -65,13 +61,11 @@ export function NotesModule({ resident }: NotesModuleProps) {
   const saveNote = useCallback(
     async (noteId: string, title: string, content: string, tags: string) => {
       if (savingRef.current) {
-        // Reschedule instead of dropping
         setTimeout(() => saveNote(noteId, title, content, tags), 500);
         return;
       }
       savingRef.current = true;
 
-      // Read latest notes from store to avoid stale closure
       const currentNotes = useCityStore.getState().moduleData.notes;
       const existing = currentNotes.find(n => n.id === noteId);
       if (!existing) {
@@ -89,7 +83,6 @@ export function NotesModule({ resident }: NotesModuleProps) {
         updatedAt: new Date().toISOString(),
       };
 
-      // Optimistic update
       const updatedNotes = currentNotes.map(n => (n.id === noteId ? updated : n));
       setModuleData('notes', updatedNotes);
 
@@ -97,7 +90,6 @@ export function NotesModule({ resident }: NotesModuleProps) {
         await SheetsService.update('Notes', updated);
         addToast('Note saved', 'success');
       } catch {
-        // Revert on failure
         setModuleData('notes', currentNotes);
         addToast('Failed to save note', 'error');
       } finally {
@@ -163,7 +155,6 @@ export function NotesModule({ resident }: NotesModuleProps) {
       updatedAt: now,
     };
 
-    // Optimistic update
     const updatedNotes = [...notes, note];
     setModuleData('notes', updatedNotes);
     setNewTitle('');
@@ -186,12 +177,8 @@ export function NotesModule({ resident }: NotesModuleProps) {
   const handleDelete = useCallback(
     async (noteId: string) => {
       const prev = notes;
-      const updatedNotes = notes.filter(n => n.id !== noteId);
-      setModuleData('notes', updatedNotes);
-
-      if (activeNoteId === noteId) {
-        setActiveNoteId(null);
-      }
+      setModuleData('notes', notes.filter(n => n.id !== noteId));
+      if (activeNoteId === noteId) setActiveNoteId(null);
 
       try {
         await SheetsService.deleteRow('Notes', noteId);
@@ -205,7 +192,6 @@ export function NotesModule({ resident }: NotesModuleProps) {
   );
 
   const handleBack = useCallback(() => {
-    // Flush any pending autosave
     if (debounceRef.current) {
       clearTimeout(debounceRef.current);
       if (activeNoteId) {
@@ -264,13 +250,8 @@ export function NotesModule({ resident }: NotesModuleProps) {
           )}
 
           <div className="mod-form-actions">
-            <button className="mod-btn" onClick={handleManualSave}>
-              Save
-            </button>
-            <button
-              className="mod-btn mod-btn--danger"
-              onClick={() => handleDelete(activeNote.id)}
-            >
+            <button className="mod-btn" onClick={handleManualSave}>Save</button>
+            <button className="mod-btn mod-btn--danger" onClick={() => handleDelete(activeNote.id)}>
               Delete
             </button>
           </div>
@@ -282,17 +263,12 @@ export function NotesModule({ resident }: NotesModuleProps) {
   // ── List view ──
   return (
     <div>
-      <div className="mod-header">
-        <span className="mod-header__title-wrap">
-          <img src={badgeUrl(MODULE_BADGE_IDS.notes)} alt="" className="pokecity-badge pokecity-badge--mod" />
-          <span className="mod-title">Notes</span>
-        </span>
+      <ModuleHeader moduleType="notes" title="Notes">
         <button className="mod-btn mod-btn--sm" onClick={() => setCreating(true)}>
           + New Note
         </button>
-      </div>
+      </ModuleHeader>
 
-      {/* Search */}
       <div style={{ padding: '0 0 8px' }}>
         <input
           value={searchQuery}
@@ -302,7 +278,6 @@ export function NotesModule({ resident }: NotesModuleProps) {
         />
       </div>
 
-      {/* Create form */}
       {creating && (
         <div className="mod-form" style={{ marginBottom: 8 }}>
           <div className="mod-form-row">
@@ -316,15 +291,10 @@ export function NotesModule({ resident }: NotesModuleProps) {
             />
           </div>
           <div className="mod-form-actions">
-            <button className="mod-btn" onClick={handleCreate}>
-              Create
-            </button>
+            <button className="mod-btn" onClick={handleCreate}>Create</button>
             <button
               className="mod-btn mod-btn--danger"
-              onClick={() => {
-                setCreating(false);
-                setNewTitle('');
-              }}
+              onClick={() => { setCreating(false); setNewTitle(''); }}
             >
               Cancel
             </button>
@@ -332,7 +302,6 @@ export function NotesModule({ resident }: NotesModuleProps) {
         </div>
       )}
 
-      {/* Notes list */}
       {filteredNotes.length === 0 ? (
         <div className="mod-empty">
           {searchQuery ? 'No notes match your search.' : 'No notes yet. Create one!'}
@@ -356,19 +325,10 @@ export function NotesModule({ resident }: NotesModuleProps) {
             {note.tags && (
               <div style={{ fontSize: 8, color: '#ffcd75', marginTop: 4 }}>{note.tags}</div>
             )}
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'flex-end',
-                marginTop: 4,
-              }}
-            >
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 4 }}>
               <button
                 className="mod-btn mod-btn--danger mod-btn--sm"
-                onClick={e => {
-                  e.stopPropagation();
-                  handleDelete(note.id);
-                }}
+                onClick={e => { e.stopPropagation(); handleDelete(note.id); }}
               >
                 Delete
               </button>

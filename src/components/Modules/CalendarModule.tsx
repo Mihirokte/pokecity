@@ -1,10 +1,13 @@
 import { useState, useMemo, useCallback } from 'react';
 import type { Resident, CalendarEvent } from '../../types';
-import { badgeUrl, MODULE_BADGE_IDS } from '../../config/pokemon';
 import { useCityStore } from '../../stores/cityStore';
 import { useUIStore } from '../../stores/uiStore';
 import { useAuthStore } from '../../stores/authStore';
+import { useModuleSync } from '../../hooks/useModuleSync';
 import { SheetsService } from '../../services/sheetsService';
+import { ModuleHeader } from '../ui/ModuleHeader';
+import { Checkbox } from '../ui/Checkbox';
+import { getLocalDate } from '../../utils/dateUtils';
 
 interface CalendarModuleProps {
   resident: Resident;
@@ -36,14 +39,11 @@ function formatDate(dateStr: string): string {
   return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 }
 
-function getLocalDate(d = new Date()): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-
 export function CalendarModule({ resident }: CalendarModuleProps) {
   const moduleData = useCityStore(s => s.moduleData);
   const setModuleData = useCityStore(s => s.setModuleData);
   const addToast = useUIStore(s => s.addToast);
+  const sync = useModuleSync();
 
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -119,8 +119,6 @@ export function CalendarModule({ resident }: CalendarModuleProps) {
     const now = new Date().toISOString();
     const allEvents = moduleData.calendarEvents;
 
-    const prev = allEvents;
-
     if (editingId) {
       const updated: CalendarEvent = {
         id: editingId,
@@ -129,19 +127,11 @@ export function CalendarModule({ resident }: CalendarModuleProps) {
         createdAt: allEvents.find(e => e.id === editingId)?.createdAt ?? now,
         updatedAt: now,
       };
-
-      const next = allEvents.map(e => (e.id === editingId ? updated : e));
-      setModuleData('calendarEvents', next);
       setShowForm(false);
       setEditingId(null);
       addToast('Event updated', 'success');
-
-      try {
-        await SheetsService.update('CalendarEvents', updated);
-      } catch {
-        setModuleData('calendarEvents', prev);
-        addToast('Failed to sync update', 'error');
-      }
+      await sync('calendarEvents', allEvents, allEvents.map(e => (e.id === editingId ? updated : e)),
+        () => SheetsService.update('CalendarEvents', updated), 'Failed to sync update');
     } else {
       const newEvent: CalendarEvent = {
         id: `evt_${crypto.randomUUID()}`,
@@ -150,32 +140,19 @@ export function CalendarModule({ resident }: CalendarModuleProps) {
         createdAt: now,
         updatedAt: now,
       };
-
-      setModuleData('calendarEvents', [...allEvents, newEvent]);
       setShowForm(false);
       addToast('Event created', 'success');
-
-      try {
-        await SheetsService.append('CalendarEvents', newEvent);
-      } catch {
-        setModuleData('calendarEvents', prev);
-        addToast('Failed to sync event', 'error');
-      }
+      await sync('calendarEvents', allEvents, [...allEvents, newEvent],
+        () => SheetsService.append('CalendarEvents', newEvent), 'Failed to sync event');
     }
-  }, [form, editingId, moduleData.calendarEvents, resident.id, setModuleData, addToast]);
+  }, [form, editingId, moduleData.calendarEvents, resident.id, sync, addToast]);
 
   const handleDelete = useCallback(async (id: string) => {
-    const prev = moduleData.calendarEvents;
-    setModuleData('calendarEvents', prev.filter(e => e.id !== id));
     addToast('Event deleted', 'success');
-
-    try {
-      await SheetsService.deleteRow('CalendarEvents', id);
-    } catch {
-      setModuleData('calendarEvents', prev);
-      addToast('Failed to sync deletion', 'error');
-    }
-  }, [moduleData.calendarEvents, setModuleData, addToast]);
+    await sync('calendarEvents', moduleData.calendarEvents,
+      moduleData.calendarEvents.filter(e => e.id !== id),
+      () => SheetsService.deleteRow('CalendarEvents', id), 'Failed to sync deletion');
+  }, [moduleData.calendarEvents, sync, addToast]);
 
   const handleGoogleSync = useCallback(async () => {
     const token = useAuthStore.getState().accessToken;
@@ -183,7 +160,6 @@ export function CalendarModule({ resident }: CalendarModuleProps) {
 
     setSyncing(true);
     try {
-      // Fetch next 60 days of events from Google Calendar (primary calendar, no birthdays)
       const now = new Date();
       const timeMin = now.toISOString();
       const timeMax = new Date(now.getTime() + 60 * 86400000).toISOString();
@@ -222,7 +198,6 @@ export function CalendarModule({ resident }: CalendarModuleProps) {
           } as CalendarEvent;
         });
 
-      // Keep other residents' events + this resident's manual events, replace gcal events
       const otherEvents = moduleData.calendarEvents.filter(e => e.residentId !== resident.id);
       const myManualEvents = moduleData.calendarEvents.filter(e => e.residentId === resident.id && !e.id.startsWith('gcal_'));
       setModuleData('calendarEvents', [...otherEvents, ...myManualEvents, ...gcalEvents]);
@@ -295,18 +270,12 @@ export function CalendarModule({ resident }: CalendarModuleProps) {
 
   return (
     <div>
-      <div className="mod-header">
-        <span className="mod-header__title-wrap">
-          <img src={badgeUrl(MODULE_BADGE_IDS.calendar)} alt="" className="pokecity-badge pokecity-badge--mod" />
-          <span className="mod-title">Calendar</span>
-        </span>
-        <div style={{ display: 'flex', gap: 6 }}>
-          <button className="mod-btn mod-btn--sm" onClick={handleGoogleSync} disabled={syncing}>
-            {syncing ? 'Syncing...' : 'Google Sync'}
-          </button>
-          <button className="mod-btn" onClick={openCreate}>+ Event</button>
-        </div>
-      </div>
+      <ModuleHeader moduleType="calendar" title="Calendar">
+        <button className="mod-btn mod-btn--sm" onClick={handleGoogleSync} disabled={syncing}>
+          {syncing ? 'Syncing...' : 'Google Sync'}
+        </button>
+        <button className="mod-btn" onClick={openCreate}>+ Event</button>
+      </ModuleHeader>
 
       {showForm && (
         <div className="mod-form">
@@ -323,30 +292,20 @@ export function CalendarModule({ resident }: CalendarModuleProps) {
           <div className="mod-form-row">
             <label style={{ flex: 1 }}>
               Start Date
-              <input
-                type="date"
-                value={form.startDate}
-                onChange={e => updateField('startDate', e.target.value)}
-              />
+              <input type="date" value={form.startDate} onChange={e => updateField('startDate', e.target.value)} />
             </label>
             <label style={{ flex: 1 }}>
               End Date
-              <input
-                type="date"
-                value={form.endDate}
-                onChange={e => updateField('endDate', e.target.value)}
-              />
+              <input type="date" value={form.endDate} onChange={e => updateField('endDate', e.target.value)} />
             </label>
           </div>
 
           <div className="mod-form-row">
             <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
-              <div
-                className={`checkbox${form.allDay === 'true' ? ' checked' : ''}`}
-                onClick={() => updateField('allDay', form.allDay === 'true' ? 'false' : 'true')}
-              >
-                {form.allDay === 'true' && '\u2713'}
-              </div>
+              <Checkbox
+                checked={form.allDay === 'true'}
+                onChange={() => updateField('allDay', form.allDay === 'true' ? 'false' : 'true')}
+              />
               All Day
             </label>
           </div>
@@ -355,19 +314,11 @@ export function CalendarModule({ resident }: CalendarModuleProps) {
             <div className="mod-form-row">
               <label style={{ flex: 1 }}>
                 Start Time
-                <input
-                  type="time"
-                  value={form.startTime}
-                  onChange={e => updateField('startTime', e.target.value)}
-                />
+                <input type="time" value={form.startTime} onChange={e => updateField('startTime', e.target.value)} />
               </label>
               <label style={{ flex: 1 }}>
                 End Time
-                <input
-                  type="time"
-                  value={form.endTime}
-                  onChange={e => updateField('endTime', e.target.value)}
-                />
+                <input type="time" value={form.endTime} onChange={e => updateField('endTime', e.target.value)} />
               </label>
             </div>
           )}
@@ -394,10 +345,7 @@ export function CalendarModule({ resident }: CalendarModuleProps) {
 
           <label>
             Recurrence
-            <select
-              value={form.recurrence}
-              onChange={e => updateField('recurrence', e.target.value)}
-            >
+            <select value={form.recurrence} onChange={e => updateField('recurrence', e.target.value)}>
               {RECURRENCE_OPTIONS.map(opt => (
                 <option key={opt} value={opt}>
                   {opt.charAt(0).toUpperCase() + opt.slice(1)}
