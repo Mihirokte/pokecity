@@ -1,9 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
 import type { House, Resident } from '../../types';
 import { HOUSE_TYPES } from '../../config/houseTypes';
-import { spriteArtworkUrl, badgeUrl, MODULE_BADGE_IDS } from '../../config/pokemon';
+import { spriteArtworkUrl, badgeUrl, MODULE_BADGE_IDS, POKEMON_DIALOGUES, POKEMON_NAMES } from '../../config/pokemon';
 import { useCityStore } from '../../stores/cityStore';
-import { defaultSlotForType } from '../Landing/catanData';
+import { getHexIndexForHouse, BOARD_HEX_COUNT } from '../Landing/catanData';
 import { CalendarModule } from '../Modules/CalendarModule';
 import { TasksModule } from '../Modules/TasksModule';
 import { NotesModule } from '../Modules/NotesModule';
@@ -52,9 +52,10 @@ export function CityPanel({ resident, house, onClose }: CityPanelProps) {
   const updateHousePosition = useCityStore(s => s.updateHousePosition);
   const ht = HOUSE_TYPES[house.type];
   const ModuleComponent = MODULE_MAP[house.type];
-  const dialogue = DIALOGUES[house.type];
-  const effectiveSlot =
-    house.gridX >= 0 && house.gridX <= 5 ? house.gridX : defaultSlotForType(house.type);
+  const pokemonId = parseInt(resident.emoji, 10);
+  const dialogue = (Number.isNaN(pokemonId) ? null : POKEMON_DIALOGUES[pokemonId]) ?? DIALOGUES[house.type];
+  const pokemonName = Number.isNaN(pokemonId) ? null : (POKEMON_NAMES[pokemonId] ?? null);
+  const currentHexIndex = getHexIndexForHouse(house.gridX);
 
   useEffect(() => {
     const el = panelRef.current;
@@ -96,7 +97,9 @@ export function CityPanel({ resident, house, onClose }: CityPanelProps) {
         />
         <div className="city-panel__identity">
           <div className="city-panel__name">{resident.name}</div>
-          <div className="city-panel__role" style={{ color: ht.color }}>{resident.role}</div>
+          <div className="city-panel__role" style={{ color: ht.color }}>
+            {pokemonName ?? resident.role}
+          </div>
         </div>
         <div
           className="city-panel__type-badge"
@@ -119,14 +122,14 @@ export function CityPanel({ resident, house, onClose }: CityPanelProps) {
         </div>
       </div>
 
-      {/* Position on board — change which hex this agent sits on */}
+      {/* Position on board — move agent to any tile (0..18) */}
       <div className="city-panel__position-row">
         <label htmlFor="city-panel-position" style={{ fontFamily: 'Dogica, monospace', fontSize: 10 }}>
-          Position on board:
+          Tile:
         </label>
         <select
           id="city-panel-position"
-          value={effectiveSlot}
+          value={currentHexIndex}
           onChange={(e) => updateHousePosition(house.id, parseInt(e.target.value, 10))}
           style={{
             fontFamily: 'Dogica, monospace',
@@ -138,9 +141,9 @@ export function CityPanel({ resident, house, onClose }: CityPanelProps) {
             color: 'inherit',
           }}
         >
-          {[0, 1, 2, 3, 4, 5].map((s) => (
-            <option key={s} value={s}>
-              Spot {s + 1}
+          {Array.from({ length: BOARD_HEX_COUNT }, (_, i) => (
+            <option key={i} value={i}>
+              Tile {i + 1}
             </option>
           ))}
         </select>

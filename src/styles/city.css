@@ -86,6 +86,13 @@
   animation: city-fade-in 0.4s ease-out;
 }
 
+/* 3D canvas layer — must sit behind header and sidebar so sprites/nameplates don't overlap panel */
+.city-view__scene {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
 /* ── City Header (floating HUD over 3D canvas) ── */
 .city-header {
   display: flex;

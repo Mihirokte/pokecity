@@ -4,7 +4,7 @@ import { SheetsService } from '../services/sheetsService';
 import { useUIStore } from './uiStore';
 import { AVATAR_COLORS, HOUSE_TYPES, HOUSE_TYPE_LIST } from '../config/houseTypes';
 import { RESIDENT_POKEMON_IDS } from '../config/pokemon';
-import { defaultSlotForType } from '../components/Landing/catanData';
+import { getHexIndexForHouse, BOARD_HEX_COUNT, ORDERED_HOME_HEX_INDICES } from '../components/Landing/catanData';
 
 function syncFailedToast(message: string) {
   useUIStore.getState().addToast(message, 'error');
@@ -22,8 +22,8 @@ interface CityState {
   placeHouse: (type: HouseModuleType) => Promise<House>;
   removeHouse: (id: string) => Promise<void>;
   renameHouse: (id: string, name: string) => Promise<void>;
-  /** Set board slot (0..5) for a house for better space organization */
-  updateHousePosition: (houseId: string, slotIndex: number) => Promise<void>;
+  /** Set board hex index (0..BOARD_HEX_COUNT-1) for a house so the agent can be moved to any unoccupied tile */
+  updateHousePosition: (houseId: string, hexIndex: number) => Promise<void>;
   findOrCreateHouse: (type: HouseModuleType) => Promise<House>;
   addResident: (houseId: string, name: string) => Promise<void>;
   removeResident: (id: string) => Promise<void>;
@@ -58,12 +58,14 @@ export const useCityStore = create<CityState>((set, get) => ({
 
   placeHouse: async (type) => {
     const { houses } = get();
-    const slot = defaultSlotForType(type);
+    const occupied = new Set(houses.map(h => getHexIndexForHouse(h.gridX)));
+    const preferred = ORDERED_HOME_HEX_INDICES.find(i => !occupied.has(i));
+    const hexIndex = preferred ?? Array.from({ length: BOARD_HEX_COUNT }, (_, i) => i).find(i => !occupied.has(i)) ?? 0;
     const house: House = {
       id: `house_${crypto.randomUUID()}`,
       type,
       name: HOUSE_TYPES[type].label,
-      gridX: slot,
+      gridX: hexIndex,
       gridY: 0,
       createdAt: new Date().toISOString(),
     };
@@ -92,8 +94,8 @@ export const useCityStore = create<CityState>((set, get) => ({
     if (house) SheetsService.update('Houses', house).catch(() => syncFailedToast('Failed to rename house'));
   },
 
-  updateHousePosition: async (houseId, slotIndex) => {
-    const clamped = Math.max(0, Math.min(5, Math.floor(slotIndex)));
+  updateHousePosition: async (houseId, hexIndex) => {
+    const clamped = Math.max(0, Math.min(BOARD_HEX_COUNT - 1, Math.floor(hexIndex)));
     const houses = get().houses.map(h =>
       h.id === houseId ? { ...h, gridX: clamped } : h
     );

@@ -32,7 +32,9 @@ export function CityView() {
   const [newAgentType, setNewAgentType] = useState<HouseModuleType>('tasks');
   const [adding, setAdding] = useState(false);
   const [resetting, setResetting] = useState(false);
+  const [moveTargetHex, setMoveTargetHex] = useState<number | null>(null);
 
+  const updateHousePosition = useCityStore(s => s.updateHousePosition);
   const headerRef = useRef<HTMLDivElement>(null);
   const focusHeader = useCallback(() => {
     requestAnimationFrame(() => {
@@ -149,13 +151,56 @@ export function CityView() {
         </div>
       )}
 
-      {/* ── 3D Catan City (always mounted, behind everything) ── */}
-      <CatanCityScene
-        entries={entries}
-        onSelectResident={(resident, house) => setSelected({ resident, house })}
-        onAddAgent={() => setShowAddForm(true)}
-        panelOpen={selected !== null}
-      />
+      {/* ── 3D Catan City (behind header and sidebar; z-index kept low so panel stays on top) ── */}
+      <div className="city-view__scene">
+        <CatanCityScene
+          entries={entries}
+          onSelectResident={(resident, house) => setSelected({ resident, house })}
+          onAddAgent={() => setShowAddForm(true)}
+          onEmptyTileClick={(hexIndex) => setMoveTargetHex(hexIndex)}
+          panelOpen={selected !== null}
+        />
+      </div>
+
+      {/* ── Move agent to tile (after clicking empty hex) ── */}
+      {moveTargetHex !== null && (
+        <div
+          className="city-add-overlay"
+          onClick={e => { if (e.target === e.currentTarget) setMoveTargetHex(null); }}
+        >
+          <div className="city-add-panel" onClick={e => e.stopPropagation()}>
+            <div className="city-add-panel__title">Move agent to tile {moveTargetHex + 1}</div>
+            <p style={{ fontFamily: 'Dogica, monospace', fontSize: 10, color: 'rgba(255,255,255,0.8)', marginBottom: 8 }}>
+              Choose which resident to move here:
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {entries.map(({ resident, house }) => (
+                <button
+                  key={resident.id}
+                  type="button"
+                  className="city-btn city-btn--secondary"
+                  style={{ justifyContent: 'flex-start' }}
+                  onClick={() => {
+                    updateHousePosition(house.id, moveTargetHex);
+                    setMoveTargetHex(null);
+                    addToast(`${resident.name} moved to tile ${moveTargetHex + 1}`, 'success');
+                  }}
+                >
+                  Move {resident.name} here
+                </button>
+              ))}
+            </div>
+            <button
+              type="button"
+              className="city-btn city-btn--secondary"
+              style={{ marginTop: 12 }}
+              onClick={() => setMoveTargetHex(null)}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ── Add Agent Modal ── */}
       {showAddForm && (

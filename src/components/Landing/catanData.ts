@@ -154,6 +154,16 @@ export const HOME_TILE_INDICES: Set<number> = new Set(
 /** Ordered list of the 6 home hex board indices (slot 0..5 → hex index) */
 export const ORDERED_HOME_HEX_INDICES: number[] = Array.from(HOME_TILE_INDICES).sort((a, b) => a - b);
 
+/** Number of hexes on the board (e.g. 19 for Catan) */
+export const BOARD_HEX_COUNT = TILE_TYPE_SEQUENCE.length;
+
+/** Resolve house position to board hex index. Handles legacy gridX 0..5 (slot) and direct hex index 0..BOARD_HEX_COUNT-1. */
+export function getHexIndexForHouse(gridX: number, boardLength: number = BOARD_HEX_COUNT): number {
+  if (gridX >= 0 && gridX < boardLength) return gridX;
+  const slot = Math.max(0, Math.min(5, Math.floor(gridX)));
+  return ORDERED_HOME_HEX_INDICES[slot] ?? ORDERED_HOME_HEX_INDICES[0];
+}
+
 /** Default board slot (0..5) for a house type — used when gridX is unset or invalid */
 export function defaultSlotForType(type: TileType): number {
   const hexIdx = TILE_TYPE_SEQUENCE.indexOf(type);

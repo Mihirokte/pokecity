@@ -13,8 +13,7 @@ import {
   getPastelColorForHex,
   TILE_TYPE_SEQUENCE,
   HOME_TILE_INDICES,
-  ORDERED_HOME_HEX_INDICES,
-  defaultSlotForType,
+  getHexIndexForHouse,
 } from './catanData';
 import { spriteAnimatedUrl, ELEMENT_SPRITE_IDS } from '../../config/pokemon';
 import type { House, Resident } from '../../types';
@@ -30,6 +29,8 @@ interface CatanCitySceneProps {
   entries: Array<{ resident: Resident; house: House }>;
   onSelectResident: (resident: Resident, house: House) => void;
   onAddAgent?: () => void;
+  /** When user clicks an unoccupied tile, call with that hex index so they can move an agent there */
+  onEmptyTileClick?: (hexIndex: number) => void;
   /** When true, hide floating nameplates so they don't layer on top of the side panel */
   panelOpen?: boolean;
 }
@@ -498,10 +499,13 @@ interface CatanSceneProps {
   entries: Array<{ resident: Resident; house: House }>;
   onSelectResident: (resident: Resident, house: House) => void;
   onAddAgent?: () => void;
+  onEmptyTileClick?: (hexIndex: number) => void;
   panelOpen?: boolean;
 }
 
-function CatanScene({ entries, onSelectResident, onAddAgent, panelOpen }: CatanSceneProps) {
+const CENTER_HEX_INDEX = 10; // [0,0] in BOARD_HEXES
+
+function CatanScene({ entries, onSelectResident, onAddAgent, onEmptyTileClick, panelOpen }: CatanSceneProps) {
   const [spriteTextures, setSpriteTextures] = useState<Map<number, THREE.Texture>>(
     new Map()
   );
@@ -530,15 +534,11 @@ function CatanScene({ entries, onSelectResident, onAddAgent, panelOpen }: CatanS
     };
   }, [entries]);
 
-  // Map of hex index → resident+house (placement by slot; slot 0..5 from house.gridX)
+  // Map of hex index → resident+house (gridX is hex index 0..18 or legacy slot 0..5)
   const occupiedTiles = useMemo(() => {
     const map = new Map<number, { resident: Resident; house: House }>();
     entries.forEach(({ resident, house }) => {
-      const effectiveSlot =
-        house.gridX >= 0 && house.gridX <= 5
-          ? house.gridX
-          : defaultSlotForType(house.type);
-      const hexIndex = ORDERED_HOME_HEX_INDICES[effectiveSlot] ?? ORDERED_HOME_HEX_INDICES[0];
+      const hexIndex = getHexIndexForHouse(house.gridX);
       map.set(hexIndex, { resident, house });
     });
     return map;
@@ -585,25 +585,45 @@ function CatanScene({ entries, onSelectResident, onAddAgent, panelOpen }: CatanS
               hideNameplate={panelOpen}
             />
 
-            {/* Post-login only: invisible clickable mesh for this resident (never on landing) */}
-            {resident && entry && (() => {
+            {/* Post-login: click occupied tile → open panel; click unoccupied → move agent here */}
+            {(() => {
               const [wx, wz] = axialToWorld(q, r);
-              const house = entry.house;
-              if (!house) return null; // no panel without a house
-              return (
-                <mesh
-                  position={[wx, 1.35, wz]}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onSelectResident(resident, house);
-                  }}
-                  onPointerOver={() => { document.body.style.cursor = 'pointer'; }}
-                  onPointerOut={() => { document.body.style.cursor = 'default'; }}
-                >
-                  <cylinderGeometry args={[1.85, 1.85, 2.4, 6]} />
-                  <meshBasicMaterial visible={false} />
-                </mesh>
-              );
+              if (resident && entry) {
+                const house = entry.house;
+                if (!house) return null;
+                return (
+                  <mesh
+                    position={[wx, 1.35, wz]}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onSelectResident(resident, house);
+                    }}
+                    onPointerOver={() => { document.body.style.cursor = 'pointer'; }}
+                    onPointerOut={() => { document.body.style.cursor = 'default'; }}
+                  >
+                    <cylinderGeometry args={[1.85, 1.85, 2.4, 6]} />
+                    <meshBasicMaterial visible={false} />
+                  </mesh>
+                );
+              }
+              const isCenterWithPit = onAddAgent && idx === CENTER_HEX_INDEX;
+              if (onEmptyTileClick && !isCenterWithPit) {
+                return (
+                  <mesh
+                    position={[wx, 1.35, wz]}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onEmptyTileClick(idx);
+                    }}
+                    onPointerOver={() => { document.body.style.cursor = 'pointer'; }}
+                    onPointerOut={() => { document.body.style.cursor = 'default'; }}
+                  >
+                    <cylinderGeometry args={[1.85, 1.85, 2.4, 6]} />
+                    <meshBasicMaterial visible={false} />
+                  </mesh>
+                );
+              }
+              return null;
             })()}
           </group>
         );
@@ -911,11 +931,7 @@ interface SettlementsAndRoadsProps {
 function SettlementsAndRoads({ entries }: SettlementsAndRoadsProps) {
   const agentData = useMemo(() => {
     return entries.map(({ resident, house }) => {
-      const effectiveSlot =
-        house.gridX >= 0 && house.gridX <= 5
-          ? house.gridX
-          : defaultSlotForType(house.type);
-      const homeIndex = ORDERED_HOME_HEX_INDICES[effectiveSlot] ?? ORDERED_HOME_HEX_INDICES[0];
+      const homeIndex = getHexIndexForHouse(house.gridX);
       const [q, r] = BOARD_HEXES[homeIndex];
       const positions = getAgentBuildingPositions(q, r);
       const colors = getColorsForAgent(resident.id);
@@ -1143,6 +1159,7 @@ export function CatanCityScene({
   entries,
   onSelectResident,
   onAddAgent,
+  onEmptyTileClick,
   panelOpen,
 }: CatanCitySceneProps) {
   return (
@@ -1159,7 +1176,7 @@ export function CatanCityScene({
       }}
     >
       <React.Suspense fallback={null}>
-        <CatanScene entries={entries} onSelectResident={onSelectResident} onAddAgent={onAddAgent} panelOpen={panelOpen} />
+        <CatanScene entries={entries} onSelectResident={onSelectResident} onAddAgent={onAddAgent} onEmptyTileClick={onEmptyTileClick} panelOpen={panelOpen} />
       </React.Suspense>
     </Canvas>
   );
