@@ -17,7 +17,7 @@ import { HallucinationGame } from './pages/HallucinationGame';
 import './pokecenter.css';
 
 function getPageComponent(pageId: string) {
-  // Handle agent detail pages
+  // Handle agent detail pages - but we'll show as sidepane instead
   if (pageId.startsWith('agent:')) {
     const agentId = pageId.split(':')[1];
     return <AgentDetail agentId={agentId} />;
@@ -57,7 +57,16 @@ interface AppShellProps {
 
 export function AppShell({ onBack }: AppShellProps) {
   const currentPage = usePokecenterStore(s => s.currentPage);
+  const setCurrentPage = usePokecenterStore(s => s.setCurrentPage);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Check if we're showing an agent detail (sidepane mode)
+  const isAgentDetail = currentPage.startsWith('agent:');
+  const agentId = isAgentDetail ? currentPage.split(':')[1] : null;
+
+  const handleCloseAgentDetail = () => {
+    setCurrentPage('dashboard');
+  };
 
   return (
     <div className="app-shell">
@@ -65,8 +74,19 @@ export function AppShell({ onBack }: AppShellProps) {
       <div className="main-content">
         <Header onMenuToggle={() => setSidebarOpen(o => !o)} onBack={onBack} />
         <div className="page">
-          {getPageComponent(currentPage)}
+          {/* Always show the base page */}
+          {getPageComponent(isAgentDetail ? 'dashboard' : currentPage)}
         </div>
+        
+        {/* Agent Detail Sidepane Overlay */}
+        {isAgentDetail && agentId && (
+          <>
+            <div className="agent-sidepane-overlay" onClick={handleCloseAgentDetail} />
+            <div className="agent-sidepane">
+              <AgentDetail agentId={agentId} onClose={handleCloseAgentDetail} />
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

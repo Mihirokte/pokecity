@@ -12,6 +12,7 @@ import { Shopping } from './Shopping';
 import type { AgentStatus } from '../../types';
 import type { ComponentType } from 'react';
 
+
 const AGENT_MODULE_MAP: Record<string, ComponentType> = {
   agent_taskmaster: Tasks,
   agent_twitter: TwitterBot,
@@ -25,14 +26,16 @@ const AGENT_MODULE_MAP: Record<string, ComponentType> = {
 
 interface AgentDetailProps {
   agentId: string;
+  onClose?: () => void;
 }
 
-export function AgentDetail({ agentId }: AgentDetailProps) {
+export function AgentDetail({ agentId, onClose }: AgentDetailProps) {
   const agents = usePokecenterStore(s => s.agents);
   const agentLogs = usePokecenterStore(s => s.agentLogs);
   const updateAgentStatus = usePokecenterStore(s => s.updateAgentStatus);
   const setCurrentPage = usePokecenterStore(s => s.setCurrentPage);
   const [activeTab, setActiveTab] = useState<'module' | 'logs'>('module');
+
 
   const agent = agents.find(a => a.id === agentId);
   const logs = agentLogs
@@ -51,6 +54,7 @@ export function AgentDetail({ agentId }: AgentDetailProps) {
     );
   }
 
+
   const spriteUrl = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${agent.pokemonId}.png`;
   const progress = parseFloat(agent.progress) || 0;
   const ModuleComponent = AGENT_MODULE_MAP[agent.id];
@@ -65,12 +69,20 @@ export function AgentDetail({ agentId }: AgentDetailProps) {
     updateAgentStatus(agent.id, status);
   };
 
+  const handleBack = () => {
+    if (onClose) {
+      onClose();
+    } else {
+      setCurrentPage('dashboard');
+    }
+  };
+
   return (
     <>
       {/* Compact agent header */}
       <div className="agent-detail__top-bar">
-        <button className="btn btn--secondary btn--sm" onClick={() => setCurrentPage('dashboard')}>
-          &larr; Back
+        <button className="btn btn--secondary btn--sm" onClick={handleBack}>
+          ✕ Close
         </button>
         <img className="agent-detail__top-sprite" src={spriteUrl} alt={agent.pokemon} />
         <div className="agent-detail__top-info">
@@ -95,6 +107,7 @@ export function AgentDetail({ agentId }: AgentDetailProps) {
           📜 Logs
         </button>
       </div>
+
 
       {/* Tab content */}
       {activeTab === 'module' ? (
@@ -150,6 +163,7 @@ export function AgentDetail({ agentId }: AgentDetailProps) {
               </div>
             )}
           </div>
+
 
           {/* Logs */}
           <div className="section">
