@@ -1,28 +1,15 @@
-import { useState } from 'react';
-import { DEFAULT_AGENTS } from '../../pokecenter/default-agents';
 import { CatanBoard3D } from './CatanBoard3D';
-import { AgentDetail } from '../../pokecenter/pages/AgentDetail';
 import type { PCAgent } from '../../types';
 import './LandingPage.css';
 
-export function LandingPage() {
-  const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
-  const [showLoginModal, setShowLoginModal] = useState(false);
+interface LandingPageProps {
+  agents?: PCAgent[];
+}
 
-  const agents: PCAgent[] = DEFAULT_AGENTS.map(agent => ({
-    ...agent,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  }));
-
-  const handleAgentClick = (agentId: string) => {
-    setSelectedAgentId(agentId);
-  };
-
-  const handleCloseAgent = () => {
-    setSelectedAgentId(null);
-  };
-
+export function LandingPage({ agents }: LandingPageProps) {
+  // If we have agents (after login), show them in a sidepane
+  const hasAgents = agents && agents.length > 0;
+  
   const handleLoginClick = () => {
     // Trigger Google OAuth login
     const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
@@ -34,87 +21,16 @@ export function LandingPage() {
 
   return (
     <div className="landing-root">
-      {/* 3D Catan Board Background */}
-      <div className="landing-3d-container">
-        <CatanBoard3D onLogin={handleLoginClick} />
-      </div>
-
-      {/* Agents Overlay */}
-      <div className="landing-agents-overlay">
-        <div className="landing-agents-header">
-          <div className="landing-logo">
-            <img 
-              src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/25.png" 
-              alt="Pikachu" 
-              className="landing-logo-img"
-            />
-            <span className="landing-logo-text">POKÉCITY</span>
+      {/* 3D Background with original overlay (title, info panel, yellow SIGN IN button) */}
+      <CatanBoard3D onLogin={handleLoginClick} />
+      
+      {/* After login, agents can be clicked - show first agent as example */}
+      {hasAgents && agents.length > 0 && (
+        <div className="landing-post-login">
+          <div className="landing-post-login-hint">
+            Click on an agent in the dashboard to view details
           </div>
-          <button className="landing-login-btn" onClick={() => setShowLoginModal(true)}>
-            Sign In
-          </button>
         </div>
-
-        <div className="landing-agents-grid">
-          {agents.map(agent => (
-            <div 
-              key={agent.id} 
-              className="landing-agent-card-wrapper"
-              onClick={() => handleAgentClick(agent.id)}
-            >
-              <div className="landing-agent-card">
-                <img 
-                  src={`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${agent.pokemonId}.png`}
-                  alt={agent.pokemon}
-                  className="landing-agent-sprite"
-                />
-                <div className="landing-agent-info">
-                  <div className="landing-agent-name">{agent.name}</div>
-                  <div className="landing-agent-type">
-                    {agent.typeIcon} {agent.type}
-                  </div>
-                </div>
-                <div className="landing-agent-status" data-status={agent.status}>
-                  {agent.status}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div className="landing-footer">
-          <p>Built with love by Mihir</p>
-        </div>
-      </div>
-
-      {/* Agent Sidepane */}
-      {selectedAgentId && (
-        <>
-          <div className="landing-sidepane-overlay" onClick={handleCloseAgent} />
-          <div className="landing-sidepane">
-            <AgentDetail agentId={selectedAgentId} onClose={handleCloseAgent} />
-          </div>
-        </>
-      )}
-
-      {/* Login Modal */}
-      {showLoginModal && (
-        <>
-          <div className="landing-modal-overlay" onClick={() => setShowLoginModal(false)} />
-          <div className="landing-modal">
-            <div className="landing-modal-header">
-              <h2>Welcome to PokéCity</h2>
-              <button className="landing-modal-close" onClick={() => setShowLoginModal(false)}>×</button>
-            </div>
-            <div className="landing-modal-body">
-              <p>Sign in with your Google account to access your personal agent city.</p>
-              <button className="landing-modal-btn" onClick={handleLoginClick}>
-                <img src="https://www.google.com/favicon.ico" alt="Google" className="landing-modal-google-icon" />
-                Sign in with Google
-              </button>
-            </div>
-          </div>
-        </>
       )}
     </div>
   );
