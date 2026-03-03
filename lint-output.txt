@@ -1,0 +1,55 @@
+
+> pokecity@0.0.0 lint
+> eslint .
+
+
+C:\Users\rentk\mihir\pokecity\src\components\Landing\CatanBoard3D.tsx
+  248:35  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\rentk\mihir\pokecity\src\components\Modules\CalendarModule.tsx
+  196:24  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  197:21  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  230:17  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\rentk\mihir\pokecity\src\components\Modules\TravelModule.tsx
+  77:5  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+C:\Users\rentk\mihir\pokecity\src\components\Modules\TravelModule.tsx:77:5
+  75 |   // Reset leg/packing form when switching trips
+  76 |   useEffect(() => {
+> 77 |     setLegFrom('');
+     |     ^^^^^^^^^^ Avoid calling setState() directly within an effect
+  78 |     setLegTo('');
+  79 |     setLegDate('');
+  80 |     setLegTransport('flight');  react-hooks/set-state-in-effect
+
+C:\Users\rentk\mihir\pokecity\src\components\Shop\AgentCard.tsx
+  121:90  error  Error: Cannot call impure function during render
+
+`Date.now` is an impure function. Calling an impure function can produce unstable results that update unpredictably when the component happens to re-render. (https://react.dev/reference/rules/components-and-hooks-must-be-pure#components-and-hooks-must-be-idempotent).
+
+C:\Users\rentk\mihir\pokecity\src\components\Shop\AgentCard.tsx:121:90
+  119 |   const next = upcoming[0] ?? null;
+  120 |
+> 121 |   const daysUntil = next ? Math.ceil((new Date(next.startDate + 'T00:00:00').getTime() - Date.now()) / 86400000) : null;
+      |                                                                                          ^^^^^^^^^^ Cannot call impure function
+  122 |
+  123 |   return (
+  124 |     <div className="dash-widget dash-widget--travel">  react-hooks/purity
+
+C:\Users\rentk\mihir\pokecity\src\services\sheetsService.ts
+  163:7  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+  166:7  warning  Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-explicit-any')
+
+C:\Users\rentk\mihir\pokecity\src\stores\authStore.ts
+  187:35  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+✖ 9 problems (7 errors, 2 warnings)
+  0 errors and 2 warnings potentially fixable with the `--fix` option.
+

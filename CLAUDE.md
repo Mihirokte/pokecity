@@ -40,13 +40,13 @@ User → React UI → Zustand Store → SheetsService → Google Sheets (9 sheet
 
 ### Zustand Stores (`src/stores/`)
 
-- **authStore** — OAuth token, user profile, spreadsheet ID, sheet GIDs. Persists to localStorage. Handles login/logout/callback/session restore. Scopes versioned (v4) to force re-login on change.
+- **authStore** — OAuth token, user profile, spreadsheet ID, sheet GIDs. Persists to localStorage. Handles login/logout/callback/session restore. Scopes versioned (v6) to force re-login on scope changes.
 - **cityStore** — Houses (module instances), residents (agents), all module data. Each mutation does optimistic local update then syncs to Sheets.
 - **uiStore** — Selected agent ID, toast notifications (auto-dismiss 3.5s).
 
 ### Google Sheets Schema (`src/config/sheets.ts`)
 
-9 sheets auto-created on first login via `sheetsService.createSpreadsheet()`:
+**Core 9 sheets** auto-created on first login (actively used by UI):
 
 | Sheet | Purpose |
 |---|---|
@@ -60,6 +60,9 @@ User → React UI → Zustand Store → SheetsService → Google Sheets (9 sheet
 | HealthMetrics | Gym tracking — multiple metric types (weight, reps, duration, distance) |
 | ShoppingItems | Lists with categories, quantities, estimated prices |
 
+**Additional sheets** (future PokéCenter agent features, not yet in UI):
+Session, Agents, AgentLogs, TwitterBot, LinkedInBot, CalendarSync, Notifications, AgentOutputs, CuratedTweets
+
 ### SheetsService (`src/services/sheetsService.ts`)
 
 All CRUD goes through this single service. Key methods: `createSpreadsheet()`, `readAll<T>()`, `append()`, `update()`, `deleteRow()`. Maps objects ↔ row arrays via `SHEET_HEADERS`. Uses Bearer token auth. `update()` does a read-then-write (finds row by ID).
@@ -68,11 +71,12 @@ All CRUD goes through this single service. Key methods: `createSpreadsheet()`, `
 
 ```
 App.tsx (auth flow, bootstrap, routing by state)
-├── LandingPage (OAuth login, Pikachu + speech bubble)
+├── LandingPage (OAuth login, agents carousel, join instructions)
 ├── LoadingScreen (data fetch from Sheets)
-└── ShopView (main hub)
-    ├── AgentCard (resident card with mini-widget per module type)
-    └── Modules/ (full expanded views)
+└── CityView (main hub)
+    ├── CatanCityScene (3D hexagonal board with residents)
+    ├── CityPanel (module expanded view, slides up over 3D scene)
+    └── Modules/ (full content displays)
         ├── CalendarModule (Google Calendar import, recurrence, color-coding)
         ├── TasksModule (priority, status cycling, project grouping, overdue highlighting)
         ├── NotesModule (markdown, auto-save debounce, search, versioning)
@@ -94,9 +98,20 @@ App.tsx (auth flow, bootstrap, routing by state)
 
 Pokemon sprites fetched from PokeAPI CDN. 46 Pokemon in the resident pool.
 
+### 3D City Scene (`src/components/Landing/CatanCityScene.tsx`)
+
+The main CityView uses a Three.js hexagonal board (Catan-style) with:
+- Hex tiles indexed in axial coordinates
+- Resident Pokémon sprites rendered on assigned home tiles
+- Click to select resident and open module view
+- OrbitControls for camera panning/zooming
+- Stars + fog for ambiance
+
+Sprite textures preloaded from PokeAPI. Each resident has a home tile; unoccupied tiles available for new residents.
+
 ### Cross-Device Sync
 
-Manual spreadsheet ID sharing (no Drive API). Spreadsheet ID persists across logouts. User pastes ID on new device via "Link Devices" modal.
+Spreadsheet ID stored in authStore and synced via localStorage. Users can share their spreadsheet ID to access the same data on another device. No conflict resolution — last write wins.
 
 ## Environment
 
@@ -106,10 +121,31 @@ Requires `VITE_GOOGLE_CLIENT_ID` in `.env` (see `.env.example`). Google Cloud pr
 
 Push to `main` triggers `.github/workflows/deploy.yml`: `npm ci` → `npm run build` (with `VITE_GOOGLE_CLIENT_ID` secret) → GitHub Pages. Output in `dist/`, served at `/pokecity/`.
 
+## Testing & Test Data
+
+### Local Testing
+1. `npm run dev` — Starts Vite dev server on http://localhost:5173
+2. `npm run lint` — Check for TS errors before committing
+3. `npm run build` — Full production build (validates TypeScript)
+
+### Test Data Setup
+For end-to-end testing with real Google Sheets:
+1. Create a Google Cloud project with Sheets API + Calendar API enabled
+2. Create OAuth 2.0 web credentials (authorized origins: `http://localhost:5173`, production domain)
+3. Create `.env` with `VITE_GOOGLE_CLIENT_ID=your_client_id`
+4. Log in via the app — spreadsheet auto-creates with all 9 sheets
+5. Add test residents via the "+ ADD RESIDENT" button
+6. Click hex tiles to open modules and add data
+
+**Quick test data**:
+- Create 3 residents with different module types (tasks, notes, calendar)
+- Add a few items to each (tasks, notes, events) to verify CRUD and display
+- Test sync failure toast by going offline and trying an operation
+
 ## Key Patterns
 
 - **Optimistic updates**: Local state changes immediately, Sheets sync is async. Failures show toast.
-- **No router**: App state determines view (auth state → LandingPage vs LoadingScreen vs ShopView, selected agent → module view).
+- **No router**: App state determines view (auth state → LandingPage vs LoadingScreen vs CityView, selected agent → module view).
 - **JSON-in-cells**: Complex nested data (trip legs, packing lists) serialized as JSON strings in Sheets cells.
 - **Resident-centric data**: Module data keyed by `residentId`, not house. Residents own their data.
 - **TypeScript strict mode**: `noUnusedLocals`, `noUnusedParameters`, `noFallthroughCasesInSwitch` all enabled.
