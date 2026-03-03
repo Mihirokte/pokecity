@@ -2,21 +2,17 @@ import type { HouseModuleType } from '../../types';
 
 export type TileType = HouseModuleType | 'desert';
 
-/** Pokémon type key for Catan-style token (matches sprite's primary type) */
-export type TileTokenType =
-  | 'psychic'   // Celebi
-  | 'fighting'  // Machamp, Primeape
-  | 'normal'    // Smeargle, Meowth
-  | 'flying';   // Pidgeot
+/** 6 agent elements for surrounding effect (water, fire, wind, grass, lightning, rock) */
+export type TileElement = 'water' | 'fire' | 'wind' | 'grass' | 'lightning' | 'rock';
 
 export interface TileConfig {
   type: TileType;
   topColor: string;
   emissiveColor: string;
   sideColor: string;
+  borderColor: string;
   pokemonId: number | null;
-  /** Catan-style token: Pokémon type for symbol on tile (matches sprite) */
-  tokenType: TileTokenType | null;
+  element: TileElement | null;
 }
 
 export interface DemoSettlement {
@@ -30,69 +26,37 @@ export interface DemoSettlement {
   createdOrder: number;
 }
 
-// Tile type → color + Pokémon-type token (Catan-style: type matches sprite)
+// Futuristic: same base color for all tiles; element drives agent surrounding effect
+const TILE_BASE = {
+  topColor: '#1e293b',
+  emissiveColor: '#0ea5e9',
+  sideColor: '#0f172a',
+  borderColor: '#38bdf8',
+};
+
 const TILE_CONFIGS: Record<TileType, TileConfig> = {
-  calendar: {
-    type: 'calendar',
-    topColor: '#9b59b6',
-    emissiveColor: '#d7bde2',
-    sideColor: '#6c3a73',
-    pokemonId: 251, // Celebi — Psychic/Grass
-    tokenType: 'psychic',
-  },
-  tasks: {
-    type: 'tasks',
-    topColor: '#c0392b',
-    emissiveColor: '#f1948a',
-    sideColor: '#7e2722',
-    pokemonId: 68, // Machamp
-    tokenType: 'fighting',
-  },
-  notes: {
-    type: 'notes',
-    topColor: '#d4c5a9',
-    emissiveColor: '#f5e6c8',
-    sideColor: '#8b7d6b',
-    pokemonId: 235, // Smeargle
-    tokenType: 'normal',
-  },
-  travel: {
-    type: 'travel',
-    topColor: '#2980b9',
-    emissiveColor: '#aed6f1',
-    sideColor: '#1b5170',
-    pokemonId: 18, // Pidgeot
-    tokenType: 'flying',
-  },
-  gym: {
-    type: 'gym',
-    topColor: '#7f8c8d',
-    emissiveColor: '#d5dbdb',
-    sideColor: '#566573',
-    pokemonId: 57, // Primeape
-    tokenType: 'fighting',
-  },
-  shopping: {
-    type: 'shopping',
-    topColor: '#e91e8c',
-    emissiveColor: '#f9a8d4',
-    sideColor: '#971a58',
-    pokemonId: 52, // Meowth
-    tokenType: 'normal',
-  },
-  desert: {
-    type: 'desert',
-    topColor: '#d4a843',
-    emissiveColor: '#f5deb3',
-    sideColor: '#8b7340',
-    pokemonId: null,
-    tokenType: null,
-  },
+  calendar: { type: 'calendar', ...TILE_BASE, pokemonId: 251, element: 'grass' },
+  tasks:    { type: 'tasks',    ...TILE_BASE, pokemonId: 68,  element: 'fire' },
+  notes:    { type: 'notes',    ...TILE_BASE, pokemonId: 235, element: 'lightning' },
+  travel:   { type: 'travel',   ...TILE_BASE, pokemonId: 18,  element: 'wind' },
+  gym:      { type: 'gym',      ...TILE_BASE, pokemonId: 57,  element: 'rock' },
+  shopping: { type: 'shopping', ...TILE_BASE, pokemonId: 52,  element: 'water' },
+  desert:   { type: 'desert',   ...TILE_BASE, pokemonId: null, element: null },
 };
 
 export function getTileConfig(type: TileType): TileConfig {
   return TILE_CONFIGS[type];
 }
+
+/** Element color for surrounding effect (glow, particles) */
+export const ELEMENT_COLORS: Record<TileElement, string> = {
+  water: '#3b82f6',
+  fire: '#ef4444',
+  wind: '#94a3b8',
+  grass: '#22c55e',
+  lightning: '#eab308',
+  rock: '#78716c',
+};
 
 // 19-element sequence: 6 types × 3 tiles + 1 desert
 // Arranged to avoid same-type adjacency where possible

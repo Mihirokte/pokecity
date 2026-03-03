@@ -1,5 +1,5 @@
 // Hex grid utilities for flat-top hexagons
-export const HEX_SIZE = 2.0; // radius (center to vertex) in world units - sized to eliminate gaps
+export const HEX_SIZE = 2.6; // radius (center to vertex) in world units — larger futuristic tiles
 
 // All 19 board axial (q, r) pairs — radius-2 constraint
 export const BOARD_HEXES: [number, number][] = [

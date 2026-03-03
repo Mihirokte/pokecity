@@ -2,7 +2,7 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: [main, claude/fix-twitter-bot-auth-sfvhy]
+    branches: [main]
   workflow_dispatch:
 
 permissions:

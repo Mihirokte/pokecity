@@ -12,9 +12,10 @@ import {
   TILE_TYPE_SEQUENCE,
   HOME_TILE_INDICES,
   DEMO_AGENT_BY_TYPE,
+  ELEMENT_COLORS,
 } from './catanData';
+import type { TileElement } from './catanData';
 import { spriteAnimatedUrl, spriteArtworkUrl } from '../../config/pokemon';
-import { POKEMON_TYPES } from '../../config/pokemonTypes';
 
 /**
  * PRE-LOGIN LANDING SCENE ONLY.
@@ -92,10 +93,10 @@ function FloatingAgentName({
 }
 
 // ============================================================================
-// AGENT BASE GLOW (3D glow under agent tile for distinction)
+// AGENT BASE GLOW (element-colored glow under agent tile)
 // ============================================================================
 
-function AgentBaseGlow({ emissiveColor }: { emissiveColor: string }) {
+function AgentBaseGlow({ elementColor }: { elementColor: string }) {
   const glowRef = useRef<THREE.Group>(null);
   const ringRef = useRef<THREE.Mesh>(null);
 
@@ -112,9 +113,9 @@ function AgentBaseGlow({ emissiveColor }: { emissiveColor: string }) {
   return (
     <group ref={glowRef} position={[0, 0.56, 0]}>
       <mesh rotation={[-Math.PI / 2, 0, 0]}>
-        <coneGeometry args={[0.85, 0.35, 6]} />
+        <coneGeometry args={[1.1, 0.4, 6]} />
         <meshBasicMaterial
-          color={emissiveColor}
+          color={elementColor}
           transparent
           opacity={0.45}
           side={THREE.DoubleSide}
@@ -122,9 +123,9 @@ function AgentBaseGlow({ emissiveColor }: { emissiveColor: string }) {
         />
       </mesh>
       <mesh ref={ringRef} rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[0.5, 0.75, 32]} />
+        <ringGeometry args={[0.65, 0.95, 32]} />
         <meshBasicMaterial
-          color={emissiveColor}
+          color={elementColor}
           transparent
           opacity={0.6}
           side={THREE.DoubleSide}
@@ -133,6 +134,144 @@ function AgentBaseGlow({ emissiveColor }: { emissiveColor: string }) {
       </mesh>
     </group>
   );
+}
+
+// ============================================================================
+// ELEMENT SURROUNDING EFFECT (3D orbiting particles per element)
+// Water: spheres. Fire: cones. Wind: tori. Grass: boxes. Lightning: cylinders. Rock: dodecahedrons.
+// ============================================================================
+
+const ELEMENT_PARTICLE_COUNT = 12;
+const ORBIT_RADIUS = 1.35;
+const ORBIT_TILT = 0.25;
+
+function ElementSurroundingEffect({ element }: { element: TileElement }) {
+  const groupRef = useRef<THREE.Group>(null);
+  const color = ELEMENT_COLORS[element];
+
+  const positions = useMemo(() => {
+    return Array.from({ length: ELEMENT_PARTICLE_COUNT }, (_, i) => {
+      const angle = (i / ELEMENT_PARTICLE_COUNT) * Math.PI * 2;
+      const x = Math.cos(angle) * ORBIT_RADIUS;
+      const z = Math.sin(angle) * ORBIT_RADIUS;
+      const y = Math.sin(angle * 2) * 0.15;
+      return [x, y, z] as [number, number, number];
+    });
+  }, []);
+
+  useFrame((state) => {
+    if (groupRef.current) {
+      groupRef.current.rotation.y = state.clock.elapsedTime * 0.6;
+    }
+  });
+
+  const isEmissive = element === 'fire' || element === 'lightning';
+
+  return (
+    <group ref={groupRef} position={[0, 1.3, 0]} rotation={[ORBIT_TILT, 0, 0]}>
+      {positions.map((pos, i) => (
+        <ElementParticle
+          key={i}
+          element={element}
+          color={color}
+          position={pos}
+          index={i}
+          isEmissive={isEmissive}
+        />
+      ))}
+    </group>
+  );
+}
+
+function ElementParticle({
+  element,
+  color,
+  position,
+  index,
+  isEmissive,
+}: {
+  element: TileElement;
+  color: string;
+  position: [number, number, number];
+  index: number;
+  isEmissive: boolean;
+}) {
+  const meshRef = useRef<THREE.Mesh>(null);
+  const pulse = 0.9 + Math.sin(index * 1.3) * 0.1;
+
+  useFrame((state) => {
+    if (meshRef.current) {
+      const t = state.clock.elapsedTime;
+      meshRef.current.rotation.y += 0.02;
+      if (element === 'lightning') {
+        const flicker = 0.7 + Math.sin(t * 8 + index) * 0.3;
+        const s = 1.1 * pulse;
+        meshRef.current.scale.set(s * 0.12 * flicker, s * 1.2, s * 0.12 * flicker);
+      }
+    }
+  });
+
+  const scale = 1.1 * pulse;
+  const matProps = {
+    color,
+    transparent: true,
+    opacity: element === 'water' ? 0.85 : 0.9,
+    side: THREE.DoubleSide,
+    depthWrite: !isEmissive,
+    ...(isEmissive ? { emissive: color, emissiveIntensity: 0.6 } : {}),
+  };
+
+  switch (element) {
+    case 'water':
+      return (
+        <mesh ref={meshRef} position={position} scale={scale * 0.22}>
+          <sphereGeometry args={[0.5, 10, 8]} />
+          <meshStandardMaterial {...matProps} />
+        </mesh>
+      );
+    case 'fire':
+      return (
+        <mesh ref={meshRef} position={position} scale={[scale * 0.2, scale * 0.35, scale * 0.2]} rotation={[0, 0, Math.PI]}>
+          <coneGeometry args={[0.5, 1, 8]} />
+          <meshStandardMaterial {...matProps} />
+        </mesh>
+      );
+    case 'wind':
+      return (
+        <mesh ref={meshRef} position={position} scale={scale * 0.2} rotation={[Math.PI / 2, 0, 0]}>
+          <torusGeometry args={[0.4, 0.25, 6, 10]} />
+          <meshStandardMaterial {...matProps} />
+        </mesh>
+      );
+    case 'grass':
+      return (
+        <mesh ref={meshRef} position={position} scale={[scale * 0.15, scale * 0.35, scale * 0.08]} rotation={[0, (index / ELEMENT_PARTICLE_COUNT) * Math.PI * 2, 0]}>
+          <boxGeometry args={[1, 1, 1]} />
+          <meshStandardMaterial {...matProps} />
+        </mesh>
+      );
+    case 'lightning':
+      return (
+        <mesh ref={meshRef} position={position} scale={[scale * 0.12, scale * 1.2, scale * 0.12]} rotation={[0, 0, Math.PI / 2]}>
+          <cylinderGeometry args={[0.5, 0.5, 1, 6]} />
+          <meshStandardMaterial {...matProps} />
+        </mesh>
+      );
+    case 'rock':
+      return (
+        <mesh ref={meshRef} position={position} scale={scale * 0.2}>
+          <dodecahedronGeometry args={[0.5, 0]} />
+          <meshStandardMaterial {...matProps} />
+        </mesh>
+      );
+    default:
+      return (
+        <mesh ref={meshRef} position={position} scale={scale * 0.2}>
+          <sphereGeometry args={[0.5, 8, 6]} />
+          <meshStandardMaterial {...matProps} />
+        </mesh>
+      );
+  }
 }
 
 // ============================================================================
@@ -152,7 +291,7 @@ function HexTile({
   q,
   r,
   bobOffset,
-  typeLabel,
+  typeLabel: _typeLabel,
   agentName,
   spriteTextures,
 }: HexTileProps) {
@@ -190,19 +329,19 @@ function HexTile({
     const top = new THREE.MeshStandardMaterial({
       color: config.topColor,
       emissive: config.emissiveColor,
-      emissiveIntensity: 0.25,
-      metalness: 0.2,
-      roughness: 0.65,
+      emissiveIntensity: 0.12,
+      metalness: 0.55,
+      roughness: 0.4,
     });
     const bottom = new THREE.MeshStandardMaterial({
       color: config.sideColor,
-      metalness: 0.15,
-      roughness: 0.8,
+      metalness: 0.5,
+      roughness: 0.5,
     });
     const side = new THREE.MeshStandardMaterial({
       color: config.sideColor,
-      metalness: 0.15,
-      roughness: 0.8,
+      metalness: 0.5,
+      roughness: 0.5,
     });
     return [top, bottom, side];
   }, [config]);
@@ -217,81 +356,45 @@ function HexTile({
 
   const [x, z] = axialToWorld(q, r);
 
+  const elementColor = config.element ? ELEMENT_COLORS[config.element] : config.emissiveColor;
+
   return (
     <group ref={groupRef} position={[x, 0, z]}>
       <mesh geometry={geometry} material={materials} castShadow receiveShadow />
 
-      {/* Catan-style token: hex base + type disc (Pokémon type = sprite) */}
-      <mesh position={[0, 0.68, 0]} castShadow receiveShadow>
-        <cylinderGeometry args={[0.9, 0.95, 0.12, 6]} />
-        <meshStandardMaterial
-          color={config.sideColor}
-          metalness={0.2}
-          roughness={0.7}
+      {/* Futuristic border: emissive ring at hex edge */}
+      <mesh position={[0, 0.68, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[HEX_SIZE * 0.92, HEX_SIZE * 0.98, 6]} />
+        <meshBasicMaterial
+          color={config.borderColor}
+          transparent
+          opacity={0.7}
+          side={THREE.DoubleSide}
+          depthWrite={false}
         />
       </mesh>
-      {config.tokenType && POKEMON_TYPES[config.tokenType] && (
-        <mesh position={[0, 0.75, 0]} rotation={[-Math.PI / 2, 0, 0]} castShadow receiveShadow>
-          <circleGeometry args={[0.72, 32]} />
-          <meshStandardMaterial
-            color={POKEMON_TYPES[config.tokenType].color}
-            metalness={0.15}
-            roughness={0.7}
-          />
-        </mesh>
-      )}
-      {!config.tokenType && (
-        <mesh position={[0, 0.75, 0]} rotation={[-Math.PI / 2, 0, 0]} castShadow receiveShadow>
-          <circleGeometry args={[0.72, 32]} />
-          <meshStandardMaterial color={config.sideColor} metalness={0.15} roughness={0.7} />
-        </mesh>
+
+      {pokemonId && config.element && (
+        <AgentBaseGlow elementColor={elementColor} />
       )}
 
-      {/* Token face: type symbol + type name — scale with zoom for visibility */}
-      <Html position={[0, 0.78, 0]} distanceFactor={12} transform style={{ pointerEvents: 'none' }}>
-        <div
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontFamily: 'Dogica, monospace',
-            color: '#fff',
-            textShadow: '0 0 6px rgba(0,0,0,0.95), 0 0 12px rgba(255,255,255,0.2)',
-            textAlign: 'center',
-          }}
-        >
-          {config.tokenType && POKEMON_TYPES[config.tokenType] ? (
-            <>
-              <span style={{ fontSize: '18px', lineHeight: 1 }}>{POKEMON_TYPES[config.tokenType].emoji}</span>
-              <span style={{ fontSize: '8px', fontWeight: 'bold', letterSpacing: '0.04em', marginTop: 2 }}>
-                {POKEMON_TYPES[config.tokenType].name.toUpperCase()}
-              </span>
-            </>
-          ) : (
-            <span style={{ fontSize: '11px', fontWeight: 'bold', letterSpacing: '0.05em' }}>{typeLabel}</span>
-          )}
-        </div>
-      </Html>
+      {pokemonId && config.element && (
+        <ElementSurroundingEffect element={config.element} />
+      )}
 
-      {/* Agent base glow when demo agent on tile */}
-      {pokemonId && <AgentBaseGlow emissiveColor={config.emissiveColor} />}
-
-      {/* Demo agent name floating above sprite — zoom-responsive, float, glow */}
       {pokemonId && agentName && (
         <FloatingAgentName
           name={agentName}
-          glowColor={config.emissiveColor}
-          baseY={1.55}
+          glowColor={elementColor}
+          baseY={1.75}
         />
       )}
 
-      {/* Pokemon sprite: 2D texture in 3D with correct depth/visibility */}
       {pokemonId && pokeTexture && (
         <group position={[0, 1.3, 0]}>
           <Billboard follow={true}>
             <mesh renderOrder={1} castShadow={false}>
-              <planeGeometry args={[1.5, 1.5]} />
+              <planeGeometry args={[2.2, 2.2]} />
               <meshBasicMaterial
                 map={pokeTexture}
                 transparent
@@ -307,7 +410,7 @@ function HexTile({
             intensity={1.2}
             distance={4}
             decay={2}
-            color={config.emissiveColor}
+            color={elementColor}
           />
         </group>
       )}

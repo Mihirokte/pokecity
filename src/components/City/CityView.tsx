@@ -6,6 +6,7 @@ import { HOUSE_TYPES, HOUSE_TYPE_LIST } from '../../config/houseTypes';
 import { spriteArtworkUrl, PLAYER_POKEMON_ID } from '../../config/pokemon';
 import type { HouseModuleType, House, Resident } from '../../types';
 import { CityPanel } from './CityPanel';
+import { AboutMePanel } from './AboutMePanel';
 import { CatanCityScene } from '../Landing/CatanCityScene';
 import '../../styles/city.css';
 
@@ -25,6 +26,7 @@ export function CityView() {
 
   const [selected, setSelected] = useState<SelectedEntry | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [showAboutMe, setShowAboutMe] = useState(false);
   const [newAgentName, setNewAgentName] = useState('');
   const [newAgentType, setNewAgentType] = useState<HouseModuleType>('tasks');
   const [adding, setAdding] = useState(false);
@@ -61,6 +63,13 @@ export function CityView() {
           {entries.length} resident{entries.length !== 1 ? 's' : ''}
         </div>
         <div className="city-header__spacer" />
+        <button
+          type="button"
+          className="city-header__about-btn"
+          onClick={() => setShowAboutMe(true)}
+        >
+          ABOUT
+        </button>
         <button className="city-header__auth-btn" onClick={logout}>
           LOGOUT
         </button>
@@ -177,6 +186,11 @@ export function CityView() {
           house={selected.house}
           onClose={() => setSelected(null)}
         />
+      )}
+
+      {/* ── About Me (LinkedIn-style profile panel) ── */}
+      {showAboutMe && (
+        <AboutMePanel onClose={() => setShowAboutMe(false)} />
       )}
     </div>
   );

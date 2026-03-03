@@ -138,6 +138,219 @@
   transform: translate(-1px,-1px);
   box-shadow: 3px 3px 0 #1a0808;
 }
+.city-header__about-btn {
+  font-family: 'Dogica', monospace;
+  font-size: 9px;
+  background: #1a2a1a;
+  color: #8aff8a;
+  border: 2px solid #2d5a2d;
+  border-radius: 0;
+  padding: 6px 10px;
+  cursor: pointer;
+  box-shadow: 2px 2px 0 #0d180d;
+  transition: all 0.1s;
+}
+.city-header__about-btn:hover {
+  background: #2d5a2d;
+  color: #b8ffb8;
+  transform: translate(-1px,-1px);
+  box-shadow: 3px 3px 0 #0d180d;
+}
+
+/* ── About Me Panel (LinkedIn-style profile overlay) ── */
+.about-me-panel {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: city-fade-in 0.2s ease-out;
+}
+.about-me-panel__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.75);
+  cursor: pointer;
+}
+.about-me-panel__card {
+  position: relative;
+  width: 100%;
+  max-width: 520px;
+  max-height: 90dvh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(180deg, #1a1a2e 0%, #0f0f1a 100%);
+  border: 3px solid #FFD700;
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.5), 0 12px 32px rgba(0,0,0,0.6), 0 0 24px rgba(255,215,0,0.15);
+  border-radius: 0;
+  animation: panel-slide-up 0.3s ease-out;
+}
+.about-me-panel__close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  color: #fff;
+  background: rgba(255,255,255,0.1);
+  border: 2px solid rgba(255,255,255,0.3);
+  border-radius: 0;
+  cursor: pointer;
+  transition: all 0.1s;
+}
+.about-me-panel__close:hover {
+  background: rgba(255,100,100,0.3);
+  border-color: #ff6666;
+  color: #ffcccc;
+}
+.about-me-panel__hero {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 20px 20px 16px;
+  border-bottom: 2px solid rgba(255,215,0,0.3);
+  flex-shrink: 0;
+}
+.about-me-panel__sprite-wrap {
+  width: 80px;
+  height: 80px;
+  flex-shrink: 0;
+  border: 2px solid #FFD700;
+  border-radius: 0;
+  overflow: hidden;
+  background: rgba(255,255,255,0.05);
+  box-shadow: inset 0 0 12px rgba(0,0,0,0.4);
+}
+.about-me-panel__sprite {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+}
+.about-me-panel__identity {
+  flex: 1;
+  min-width: 0;
+}
+.about-me-panel__name {
+  font-family: 'Dogica', monospace;
+  font-size: clamp(14px, 3vw, 18px);
+  font-weight: 700;
+  color: #FFD700;
+  text-shadow: 0 0 10px rgba(255,215,0,0.4);
+  margin: 0 0 4px 0;
+  letter-spacing: 0.02em;
+}
+.about-me-panel__tagline {
+  font-family: 'VT323', monospace;
+  font-size: 18px;
+  color: rgba(255,255,255,0.9);
+  margin: 0 0 2px 0;
+}
+.about-me-panel__location {
+  font-family: 'VT323', monospace;
+  font-size: 14px;
+  color: rgba(255,255,255,0.5);
+  margin: 0 0 8px 0;
+}
+.about-me-panel__link {
+  font-family: 'Dogica', monospace;
+  font-size: 10px;
+  color: #7dd3fc;
+  text-decoration: none;
+  letter-spacing: 0.04em;
+}
+.about-me-panel__link:hover {
+  text-decoration: underline;
+  color: #bae6fd;
+}
+.about-me-panel__body {
+  overflow-y: auto;
+  padding: 16px 20px 24px;
+  flex: 1;
+  min-height: 0;
+}
+.about-me-panel__body::-webkit-scrollbar { width: 6px; }
+.about-me-panel__body::-webkit-scrollbar-track { background: rgba(0,0,0,0.3); }
+.about-me-panel__body::-webkit-scrollbar-thumb { background: rgba(255,215,0,0.3); border-radius: 3px; }
+.about-me-panel__section {
+  margin-bottom: 16px;
+}
+.about-me-panel__section:last-of-type { margin-bottom: 0; }
+.about-me-panel__section-title {
+  font-family: 'Dogica', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  color: #FFD700;
+  letter-spacing: 0.08em;
+  margin: 0 0 6px 0;
+  text-transform: uppercase;
+}
+.about-me-panel__text {
+  font-family: 'VT323', monospace;
+  font-size: 16px;
+  line-height: 1.45;
+  color: rgba(255,255,255,0.85);
+  margin: 0;
+}
+.about-me-panel__list {
+  font-family: 'VT323', monospace;
+  font-size: 16px;
+  color: rgba(255,255,255,0.85);
+  margin: 0;
+  padding-left: 18px;
+  line-height: 1.5;
+}
+.about-me-panel__list-item {
+  margin-bottom: 4px;
+}
+.about-me-panel__list--bullets {
+  list-style-type: disc;
+}
+.about-me-panel__meta {
+  color: rgba(255,255,255,0.55);
+  font-size: 14px;
+}
+.about-me-panel__skills {
+  font-family: 'VT323', monospace;
+  font-size: 15px;
+  line-height: 1.5;
+  color: rgba(255,255,255,0.8);
+  margin: 0;
+}
+.about-me-panel__links {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 2px solid rgba(255,215,0,0.2);
+}
+.about-me-panel__btn {
+  font-family: 'Dogica', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 8px 14px;
+  border: 2px solid #FFD700;
+  background: rgba(255,215,0,0.1);
+  color: #FFD700;
+  text-decoration: none;
+  letter-spacing: 0.04em;
+  border-radius: 0;
+  box-shadow: 2px 2px 0 rgba(0,0,0,0.3);
+  transition: all 0.1s;
+}
+.about-me-panel__btn:hover {
+  background: rgba(255,215,0,0.2);
+  transform: translate(-1px,-1px);
+  box-shadow: 3px 3px 0 rgba(0,0,0,0.3);
+}
 
 /* ── City Map ── */
 .city-map {
