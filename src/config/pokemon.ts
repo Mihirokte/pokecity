@@ -25,14 +25,24 @@ export function spriteBackUrl(id: number | string): string {
 /** The player's Pokemon — Pikachu */
 export const PLAYER_POKEMON_ID = 25;
 
-/** Pokemon assigned to each house/module type */
+/** 6 element sprites: one per element (water, fire, wind, grass, lightning, rock) */
+export const ELEMENT_SPRITE_IDS: Record<string, number> = {
+  water: 7,      // Squirtle
+  fire: 4,       // Charmander
+  wind: 18,      // Pidgeot
+  grass: 1,      // Bulbasaur
+  lightning: 25, // Pikachu
+  rock: 74,      // Geodude
+};
+
+/** Pokemon assigned to each house/module type (uses element sprite for that type) */
 export const MODULE_POKEMON: Record<string, number> = {
-  calendar: 251,     // Celebi — time travel Pokemon
-  tasks: 68,         // Machamp — hard worker, gets things done
-  notes: 235,        // Smeargle — the artist/writer Pokemon
-  travel: 18,        // Pidgeot — the traveler bird
-  gym: 57,           // Primeape — the fighting Pokemon
-  shopping: 52,      // Meowth — Pay Day, loves coins
+  calendar: ELEMENT_SPRITE_IDS.grass,    // grass
+  tasks: ELEMENT_SPRITE_IDS.fire,       // fire
+  notes: ELEMENT_SPRITE_IDS.lightning,   // lightning
+  travel: ELEMENT_SPRITE_IDS.wind,      // wind
+  gym: ELEMENT_SPRITE_IDS.rock,         // rock
+  shopping: ELEMENT_SPRITE_IDS.water,   // water
 };
 
 /** Pool of Pokemon IDs for random resident assignment */

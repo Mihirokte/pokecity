@@ -14,7 +14,7 @@ import {
   ELEMENT_COLORS,
 } from './catanData';
 import type { TileElement } from './catanData';
-import { spriteAnimatedUrl, spriteArtworkUrl } from '../../config/pokemon';
+import { spriteAnimatedUrl, spriteArtworkUrl, ELEMENT_SPRITE_IDS } from '../../config/pokemon';
 import type { House, Resident } from '../../types';
 
 /**
@@ -141,46 +141,67 @@ function AgentBaseGlow({ elementColor }: { elementColor: string }) {
 }
 
 // ============================================================================
-// ELEMENT SURROUNDING EFFECT (3D orbiting particles per element)
-// Water: spheres (droplets). Fire: cones (flames). Wind: tori (swirls).
-// Grass: boxes (leaves). Lightning: cylinders (bolts). Rock: dodecahedrons (stones).
+// ELEMENT CEILING EFFECT — idea of a layer above (no solid ceiling)
+// Particles from above: drip, fall, drift. Subtle hint of an upper layer.
 // ============================================================================
 
-const ELEMENT_PARTICLE_COUNT = 12;
-const ORBIT_RADIUS = 1.35;
-const ORBIT_TILT = 0.25; // rad — tilt ring for 3D depth
+const CEILING_PARTICLE_COUNT = 14;
+const CEILING_RADIUS = 0.9;
+const CEILING_TOP_Y = 1.15;
+const CEILING_FLOOR_Y = -0.35;
+
+const FALL_SPEED: Record<TileElement, number> = {
+  water: 0.4,
+  fire: 0.55,
+  wind: 0.25,
+  grass: 0.35,
+  lightning: 1.4,
+  rock: 0.9,
+};
 
 function ElementSurroundingEffect({ element }: { element: TileElement }) {
-  const groupRef = useRef<THREE.Group>(null);
   const color = ELEMENT_COLORS[element];
+  const isEmissive = element === 'fire' || element === 'lightning';
+  const layerRef = useRef<THREE.Mesh>(null);
 
-  // 3D positions on a tilted ring (y varies for depth)
   const positions = useMemo(() => {
-    return Array.from({ length: ELEMENT_PARTICLE_COUNT }, (_, i) => {
-      const angle = (i / ELEMENT_PARTICLE_COUNT) * Math.PI * 2;
-      const x = Math.cos(angle) * ORBIT_RADIUS;
-      const z = Math.sin(angle) * ORBIT_RADIUS;
-      const y = Math.sin(angle * 2) * 0.15; // wave for 3D
-      return [x, y, z] as [number, number, number];
+    return Array.from({ length: CEILING_PARTICLE_COUNT }, (_, i) => {
+      const angle = (i / CEILING_PARTICLE_COUNT) * Math.PI * 2 + (i * 0.7);
+      const r = CEILING_RADIUS * (0.4 + (i % 3) * 0.25);
+      return [Math.cos(angle) * r, CEILING_TOP_Y + (i * 0.04), Math.sin(angle) * r] as [number, number, number];
     });
   }, []);
 
   useFrame((state) => {
-    if (groupRef.current) {
-      groupRef.current.rotation.y = state.clock.elapsedTime * 0.6;
+    if (layerRef.current) {
+      const t = state.clock.elapsedTime;
+      layerRef.current.position.y = 1.18 + Math.sin(t * 0.4) * 0.03;
+      if (layerRef.current.material && 'opacity' in layerRef.current.material) {
+        (layerRef.current.material as THREE.MeshBasicMaterial).opacity = 0.04 + Math.sin(t * 0.6) * 0.02;
+      }
     }
   });
 
-  const isEmissive = element === 'fire' || element === 'lightning';
-
   return (
-    <group ref={groupRef} position={[0, 1.3, 0]} rotation={[ORBIT_TILT, 0, 0]}>
+    <group position={[0, 1.3, 0]}>
+      {/* Idea of a layer above: faint soft disc, not a solid ceiling */}
+      <mesh ref={layerRef} position={[0, 1.18, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[0.3, 1.4, 16]} />
+        <meshBasicMaterial
+          color={color}
+          transparent
+          opacity={0.05}
+          side={THREE.DoubleSide}
+          depthWrite={false}
+        />
+      </mesh>
+      <pointLight position={[0, 1.2, 0]} intensity={0.6} distance={2.5} decay={2} color={color} />
       {positions.map((pos, i) => (
-        <ElementParticle
+        <CeilingParticle
           key={i}
           element={element}
           color={color}
-          position={pos}
+          startPosition={pos}
           index={i}
           isEmissive={isEmissive}
         />
@@ -189,91 +210,98 @@ function ElementSurroundingEffect({ element }: { element: TileElement }) {
   );
 }
 
-function ElementParticle({
+function CeilingParticle({
   element,
   color,
-  position,
+  startPosition,
   index,
   isEmissive,
 }: {
   element: TileElement;
   color: string;
-  position: [number, number, number];
+  startPosition: [number, number, number];
   index: number;
   isEmissive: boolean;
 }) {
   const meshRef = useRef<THREE.Mesh>(null);
-  const pulse = 0.9 + Math.sin(index * 1.3) * 0.1;
+  const yRef = useRef(startPosition[1]);
+  const speed = FALL_SPEED[element];
 
-  useFrame((state) => {
-    if (meshRef.current) {
-      const t = state.clock.elapsedTime;
-      meshRef.current.rotation.y += 0.02;
-      if (element === 'lightning') {
-        const flicker = 0.7 + Math.sin(t * 8 + index) * 0.3;
-        const s = 1.1 * pulse;
-        meshRef.current.scale.set(s * 0.12 * flicker, s * 1.2, s * 0.12 * flicker);
-      }
+  useFrame((_, delta) => {
+    if (!meshRef.current) return;
+    const dt = Math.min(delta, 0.1);
+    yRef.current -= speed * dt;
+    if (element === 'wind') {
+      meshRef.current.position.x = startPosition[0] + Math.sin(yRef.current * 3) * 0.15;
+      meshRef.current.position.z = startPosition[2] + Math.cos(yRef.current * 2.5) * 0.1;
+    } else {
+      meshRef.current.position.x = startPosition[0] + (element === 'grass' ? Math.sin(yRef.current * 4) * 0.08 : 0);
+      meshRef.current.position.z = startPosition[2];
     }
+    meshRef.current.position.y = yRef.current;
+    if (yRef.current < CEILING_FLOOR_Y) {
+      yRef.current = CEILING_TOP_Y + (index * 0.03) % 0.4;
+    }
+    meshRef.current.rotation.y += 0.015;
   });
 
-  const scale = 1.1 * pulse;
+  const scale = 0.95 + (index % 3) * 0.1;
   const matProps = {
     color,
     transparent: true,
-    opacity: element === 'water' ? 0.85 : 0.9,
+    opacity: element === 'water' ? 0.9 : 0.85,
     side: THREE.DoubleSide,
     depthWrite: !isEmissive,
-    ...(isEmissive ? { emissive: color, emissiveIntensity: 0.6 } : {}),
+    ...(isEmissive ? { emissive: color, emissiveIntensity: 0.5 } : {}),
   };
 
   switch (element) {
     case 'water':
       return (
-        <mesh ref={meshRef} position={position} scale={scale * 0.22}>
-          <sphereGeometry args={[0.5, 10, 8]} />
+        <mesh ref={meshRef} position={[startPosition[0], startPosition[1], startPosition[2]]} scale={scale * 0.2}>
+          <sphereGeometry args={[0.5, 8, 6]} />
           <meshStandardMaterial {...matProps} />
         </mesh>
       );
     case 'fire':
       return (
-        <mesh ref={meshRef} position={position} scale={[scale * 0.2, scale * 0.35, scale * 0.2]} rotation={[0, 0, Math.PI]}>
-          <coneGeometry args={[0.5, 1, 8]} />
+        <mesh ref={meshRef} position={[startPosition[0], startPosition[1], startPosition[2]]} scale={[scale * 0.18, scale * 0.3, scale * 0.18]} rotation={[0, 0, Math.PI]}>
+          <coneGeometry args={[0.5, 1, 6]} />
           <meshStandardMaterial {...matProps} />
         </mesh>
       );
     case 'wind':
       return (
-        <mesh ref={meshRef} position={position} scale={scale * 0.2} rotation={[Math.PI / 2, 0, 0]}>
-          <torusGeometry args={[0.4, 0.25, 6, 10]} />
+        <mesh ref={meshRef} position={[startPosition[0], startPosition[1], startPosition[2]]} scale={scale * 0.15} rotation={[Math.PI / 2, 0, 0]}>
+          <torusGeometry args={[0.35, 0.2, 4, 8]} />
           <meshStandardMaterial {...matProps} />
         </mesh>
       );
     case 'grass':
       return (
-        <mesh ref={meshRef} position={position} scale={[scale * 0.15, scale * 0.35, scale * 0.08]} rotation={[0, (index / ELEMENT_PARTICLE_COUNT) * Math.PI * 2, 0]}>
+        <mesh ref={meshRef} position={[startPosition[0], startPosition[1], startPosition[2]]} scale={[scale * 0.12, scale * 0.28, scale * 0.06]} rotation={[0, index * 0.5, 0]}>
           <boxGeometry args={[1, 1, 1]} />
           <meshStandardMaterial {...matProps} />
         </mesh>
       );
     case 'lightning':
       return (
-        <mesh ref={meshRef} position={position} scale={[scale * 0.12, scale * 1.2, scale * 0.12]} rotation={[0, 0, Math.PI / 2]}>
+        <mesh ref={meshRef} position={[startPosition[0], startPosition[1], startPosition[2]]} scale={[scale * 0.08, scale * 0.9, scale * 0.08]} rotation={[0, 0, Math.PI / 2]}>
           <cylinderGeometry args={[0.5, 0.5, 1, 6]} />
           <meshStandardMaterial {...matProps} />
         </mesh>
       );
     case 'rock':
       return (
-        <mesh ref={meshRef} position={position} scale={scale * 0.2}>
+        <mesh ref={meshRef} position={[startPosition[0], startPosition[1], startPosition[2]]} scale={scale * 0.18}>
           <dodecahedronGeometry args={[0.5, 0]} />
           <meshStandardMaterial {...matProps} />
         </mesh>
       );
     default:
       return (
-        <mesh ref={meshRef} position={position} scale={scale * 0.2}>
-          <sphereGeometry args={[0.5, 8, 6]} />
+        <mesh ref={meshRef} position={[startPosition[0], startPosition[1], startPosition[2]]} scale={scale * 0.18}>
+          <sphereGeometry args={[0.5, 6, 4]} />
           <meshStandardMaterial {...matProps} />
         </mesh>
       );
@@ -338,9 +366,9 @@ function HexTile({
     const top = new THREE.MeshStandardMaterial({
       color: config.topColor,
       emissive: config.emissiveColor,
-      emissiveIntensity: 0.12,
-      metalness: 0.55,
-      roughness: 0.4,
+      emissiveIntensity: 0.18,
+      metalness: 0.6,
+      roughness: 0.35,
     });
     const bottom = new THREE.MeshStandardMaterial({
       color: config.sideColor,
@@ -370,13 +398,13 @@ function HexTile({
     <group ref={groupRef} position={[x, 0, z]}>
       <mesh geometry={geometry} material={materials} castShadow receiveShadow />
 
-      {/* Futuristic border: emissive ring at hex edge */}
+      {/* Futuristic border: bright emissive ring + inner edge */}
       <mesh position={[0, 0.68, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[HEX_SIZE * 0.92, HEX_SIZE * 0.98, 6]} />
+        <ringGeometry args={[HEX_SIZE * 0.88, HEX_SIZE * 1.0, 6]} />
         <meshBasicMaterial
           color={config.borderColor}
           transparent
-          opacity={0.7}
+          opacity={1}
           side={THREE.DoubleSide}
           depthWrite={false}
         />
@@ -675,7 +703,7 @@ function CatanScene({ entries, onSelectResident, onAddAgent }: CatanSceneProps) 
   // Load sprites: same as panel (left/top) — showdown animated, fallback official artwork
   useEffect(() => {
     const textureLoader = new THREE.TextureLoader();
-    const pokemonIds = [251, 68, 235, 18, 57, 52];
+    const pokemonIds = [...new Set(Object.values(ELEMENT_SPRITE_IDS))];
 
     pokemonIds.forEach((pokemonId) => {
       const primaryUrl = spriteAnimatedUrl(pokemonId);   // showdown — matches CityPanel

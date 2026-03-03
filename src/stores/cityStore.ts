@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import type { AllModuleData, CalendarEvent, HealthMetric, House, HouseModuleType, Note, Resident, ShoppingItem, Task, TripPlan } from '../types';
 import { SheetsService } from '../services/sheetsService';
-import { AVATAR_COLORS, HOUSE_TYPES } from '../config/houseTypes';
+import { AVATAR_COLORS, HOUSE_TYPES, HOUSE_TYPE_LIST } from '../config/houseTypes';
 import { RESIDENT_POKEMON_IDS } from '../config/pokemon';
 
 interface CityState {
@@ -22,6 +22,8 @@ interface CityState {
   updateResident: (id: string, updates: Partial<Resident>) => Promise<void>;
   setModuleData: <K extends keyof AllModuleData>(key: K, data: AllModuleData[K]) => void;
   loadAllData: () => Promise<void>;
+  /** Map any house with invalid type to one of the 6 valid types (default: tasks). Returns count fixed. */
+  resetHouseTypes: (defaultType?: HouseModuleType) => Promise<number>;
 }
 
 const emptyModuleData: AllModuleData = {
@@ -153,5 +155,23 @@ export const useCityStore = create<CityState>((set, get) => ({
       set({ dataLoaded: true });
       throw e;
     }
+  },
+
+  resetHouseTypes: async (defaultType: HouseModuleType = 'tasks') => {
+    const validTypes = new Set<string>(HOUSE_TYPE_LIST.map(h => h.type));
+    const houses = get().houses;
+    let fixed = 0;
+    const updated = houses.map(h => {
+      const type = String(h.type);
+      if (!validTypes.has(type)) {
+        fixed++;
+        const house: House = { ...h, type: defaultType, name: HOUSE_TYPES[defaultType].label };
+        SheetsService.update('Houses', house).catch(() => {});
+        return house;
+      }
+      return h;
+    });
+    if (fixed > 0) set({ houses: updated });
+    return fixed;
   },
 }));

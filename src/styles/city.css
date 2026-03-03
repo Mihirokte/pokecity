@@ -156,6 +156,28 @@
   transform: translate(-1px,-1px);
   box-shadow: 3px 3px 0 #0d180d;
 }
+.city-header__reset-btn {
+  font-family: 'Dogica', monospace;
+  font-size: 9px;
+  background: #2a221a;
+  color: #eab308;
+  border: 2px solid #5a4a2d;
+  border-radius: 0;
+  padding: 6px 10px;
+  cursor: pointer;
+  box-shadow: 2px 2px 0 #180d08;
+  transition: all 0.1s;
+}
+.city-header__reset-btn:hover:not(:disabled) {
+  background: #5a4a2d;
+  color: #fcd34d;
+  transform: translate(-1px,-1px);
+  box-shadow: 3px 3px 0 #180d08;
+}
+.city-header__reset-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
 
 /* ── About Me Panel (LinkedIn-style profile overlay) ── */
 .about-me-panel {

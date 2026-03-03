@@ -23,6 +23,7 @@ export function CityView() {
   const addResident = useCityStore(s => s.addResident);
   const logout = useAuthStore(s => s.logout);
   const addToast = useUIStore(s => s.addToast);
+  const resetHouseTypes = useCityStore(s => s.resetHouseTypes);
 
   const [selected, setSelected] = useState<SelectedEntry | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -30,6 +31,7 @@ export function CityView() {
   const [newAgentName, setNewAgentName] = useState('');
   const [newAgentType, setNewAgentType] = useState<HouseModuleType>('tasks');
   const [adding, setAdding] = useState(false);
+  const [resetting, setResetting] = useState(false);
 
   const handleAddAgent = useCallback(async () => {
     if (!newAgentName.trim() || adding) return;
@@ -63,6 +65,26 @@ export function CityView() {
           {entries.length} resident{entries.length !== 1 ? 's' : ''}
         </div>
         <div className="city-header__spacer" />
+        <button
+          type="button"
+          className="city-header__reset-btn"
+          onClick={async () => {
+            if (resetting) return;
+            setResetting(true);
+            try {
+              const count = await resetHouseTypes('tasks');
+              addToast(count > 0 ? `Reset ${count} house type(s) to Tasks.` : 'All house types are already valid.', count > 0 ? 'success' : 'info');
+            } catch {
+              addToast('Failed to reset house types.', 'error');
+            } finally {
+              setResetting(false);
+            }
+          }}
+          disabled={resetting}
+          title="Map any invalid house type to Tasks"
+        >
+          {resetting ? '…' : 'RESET TYPES'}
+        </button>
         <button
           type="button"
           className="city-header__about-btn"

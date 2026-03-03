@@ -26,7 +26,9 @@ export interface DemoSettlement {
   createdOrder: number;
 }
 
-// Futuristic: same base color for all tiles; element drives agent surrounding effect
+import { ELEMENT_SPRITE_IDS } from '../../config/pokemon';
+
+// Futuristic: same base color for all tiles; element drives sprite + surrounding effect
 const TILE_BASE = {
   topColor: '#1e293b',
   emissiveColor: '#0ea5e9',
@@ -35,12 +37,12 @@ const TILE_BASE = {
 };
 
 const TILE_CONFIGS: Record<TileType, TileConfig> = {
-  calendar: { type: 'calendar', ...TILE_BASE, pokemonId: 251, element: 'grass' },
-  tasks:    { type: 'tasks',    ...TILE_BASE, pokemonId: 68,  element: 'fire' },
-  notes:    { type: 'notes',    ...TILE_BASE, pokemonId: 235, element: 'lightning' },
-  travel:   { type: 'travel',   ...TILE_BASE, pokemonId: 18,  element: 'wind' },
-  gym:      { type: 'gym',      ...TILE_BASE, pokemonId: 57,  element: 'rock' },
-  shopping: { type: 'shopping', ...TILE_BASE, pokemonId: 52,  element: 'water' },
+  calendar: { type: 'calendar', ...TILE_BASE, pokemonId: ELEMENT_SPRITE_IDS.grass, element: 'grass' },
+  tasks:    { type: 'tasks',    ...TILE_BASE, pokemonId: ELEMENT_SPRITE_IDS.fire, element: 'fire' },
+  notes:    { type: 'notes',    ...TILE_BASE, pokemonId: ELEMENT_SPRITE_IDS.lightning, element: 'lightning' },
+  travel:   { type: 'travel',   ...TILE_BASE, pokemonId: ELEMENT_SPRITE_IDS.wind, element: 'wind' },
+  gym:      { type: 'gym',      ...TILE_BASE, pokemonId: ELEMENT_SPRITE_IDS.rock, element: 'rock' },
+  shopping: { type: 'shopping', ...TILE_BASE, pokemonId: ELEMENT_SPRITE_IDS.water, element: 'water' },
   desert:   { type: 'desert',   ...TILE_BASE, pokemonId: null, element: null },
 };
 
