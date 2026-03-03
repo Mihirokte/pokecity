@@ -2,7 +2,8 @@ import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useCityStore } from '../../stores/cityStore';
 import { useUIStore } from '../../stores/uiStore';
 import { SheetsService } from '../../services/sheetsService';
-import { badgeUrl, MODULE_BADGE_IDS } from '../../config/pokemon';
+import { ModuleHeader } from '../ui/ModuleHeader';
+import { Checkbox } from '../ui/Checkbox';
 import type { Resident, TripPlan, TripLeg, PackingItem } from '../../types';
 
 interface TravelModuleProps {
@@ -58,16 +59,13 @@ export function TravelModule({ resident }: TravelModuleProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'itinerary' | 'packing'>('itinerary');
 
-  // Leg form state
   const [legFrom, setLegFrom] = useState('');
   const [legTo, setLegTo] = useState('');
   const [legDate, setLegDate] = useState('');
   const [legTransport, setLegTransport] = useState<TripLeg['transport']>('flight');
   const [legDetails, setLegDetails] = useState('');
 
-  // Packing quick-add
   const [packingInput, setPackingInput] = useState('');
-  // Trip notes inline edit (save on blur)
   const [editingNotesId, setEditingNotesId] = useState<string | null>(null);
   const [editingNotesValue, setEditingNotesValue] = useState('');
 
@@ -76,7 +74,6 @@ export function TravelModule({ resident }: TravelModuleProps) {
     [tripPlans, resident.id],
   );
 
-  // Reset leg/packing form when switching trips
   /* eslint-disable react-hooks/set-state-in-effect -- reset form when selected trip changes */
   useEffect(() => {
     setLegFrom('');
@@ -88,7 +85,6 @@ export function TravelModule({ resident }: TravelModuleProps) {
   }, [expandedId]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
-  // ── Helper to persist a trip update ──
   const updateTrip = useCallback(
     (updated: TripPlan) => {
       const prev = tripPlans;
@@ -103,7 +99,6 @@ export function TravelModule({ resident }: TravelModuleProps) {
     [tripPlans, setModuleData, addToast],
   );
 
-  // ── Create trip ──
   const handleCreate = useCallback(() => {
     const name = formName.trim();
     const dest = formDest.trim();
@@ -139,7 +134,6 @@ export function TravelModule({ resident }: TravelModuleProps) {
     });
   }, [formName, formDest, formStart, formEnd, resident.id, tripPlans, setModuleData, addToast]);
 
-  // ── Delete trip ──
   const handleDelete = useCallback(
     (id: string) => {
       const prev = tripPlans;
@@ -155,7 +149,6 @@ export function TravelModule({ resident }: TravelModuleProps) {
     [tripPlans, expandedId, setModuleData, addToast],
   );
 
-  // ── Add leg ──
   const handleAddLeg = useCallback(
     (trip: TripPlan) => {
       if (!legFrom.trim() || !legTo.trim()) return;
@@ -182,7 +175,6 @@ export function TravelModule({ resident }: TravelModuleProps) {
     [legFrom, legTo, legDate, legTransport, legDetails, updateTrip],
   );
 
-  // ── Toggle packing item ──
   const togglePacked = useCallback(
     (trip: TripPlan, index: number) => {
       const items = parsePacking(trip);
@@ -197,7 +189,6 @@ export function TravelModule({ resident }: TravelModuleProps) {
     [updateTrip],
   );
 
-  // ── Quick-add packing item ──
   const handleAddPackingItem = useCallback(
     (trip: TripPlan) => {
       const item = packingInput.trim();
@@ -215,7 +206,6 @@ export function TravelModule({ resident }: TravelModuleProps) {
     [packingInput, updateTrip],
   );
 
-  // ── Clear all packed items ──
   const clearPacked = useCallback(
     (trip: TripPlan) => {
       const items = parsePacking(trip).filter(i => !i.packed);
@@ -231,35 +221,21 @@ export function TravelModule({ resident }: TravelModuleProps) {
 
   return (
     <div>
-      {/* Header */}
-      <div className="mod-header">
-        <span className="mod-header__title-wrap">
-          <img src={badgeUrl(MODULE_BADGE_IDS.travel)} alt="" className="pokecity-badge pokecity-badge--mod" />
-          <span className="mod-title">Travel</span>
-        </span>
+      <ModuleHeader moduleType="travel" title="Travel">
         <button className="mod-btn mod-btn--sm" onClick={() => setShowForm(f => !f)}>
           {showForm ? 'Cancel' : '+ New Trip'}
         </button>
-      </div>
+      </ModuleHeader>
 
-      {/* Create form */}
       {showForm && (
         <div className="mod-form">
           <label>
             Trip Name
-            <input
-              value={formName}
-              onChange={e => setFormName(e.target.value)}
-              placeholder="e.g. Tokyo Adventure"
-            />
+            <input value={formName} onChange={e => setFormName(e.target.value)} placeholder="e.g. Tokyo Adventure" />
           </label>
           <label>
             Destination
-            <input
-              value={formDest}
-              onChange={e => setFormDest(e.target.value)}
-              placeholder="e.g. Tokyo, Japan"
-            />
+            <input value={formDest} onChange={e => setFormDest(e.target.value)} placeholder="e.g. Tokyo, Japan" />
           </label>
           <div className="mod-form-row">
             <label style={{ flex: 1 }}>
@@ -277,7 +253,6 @@ export function TravelModule({ resident }: TravelModuleProps) {
         </div>
       )}
 
-      {/* Trip cards */}
       {myTrips.length === 0 && !showForm && (
         <div className="mod-empty">No trips planned. Start by creating one!</div>
       )}
@@ -291,7 +266,6 @@ export function TravelModule({ resident }: TravelModuleProps) {
 
         return (
           <div className="mod-card" key={trip.id}>
-            {/* Card header (accordion toggle) */}
             <div
               style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}
               onClick={() => {
@@ -318,10 +292,8 @@ export function TravelModule({ resident }: TravelModuleProps) {
               </button>
             </div>
 
-            {/* Expanded content */}
             {isExpanded && (
               <div style={{ marginTop: 12 }}>
-                {/* Trip notes (view/edit, save on blur) */}
                 <div style={{ marginBottom: 10 }}>
                   <label style={{ fontSize: 8, color: '#8b9bb4', display: 'block', marginBottom: 4 }}>Notes</label>
                   <textarea
@@ -342,7 +314,7 @@ export function TravelModule({ resident }: TravelModuleProps) {
                     style={{ width: '100%', resize: 'vertical', fontSize: 9 }}
                   />
                 </div>
-                {/* Tabs */}
+
                 <div className="mod-tabs">
                   <div
                     className={`mod-tab${activeTab === 'itinerary' ? ' active' : ''}`}
@@ -358,7 +330,6 @@ export function TravelModule({ resident }: TravelModuleProps) {
                   </div>
                 </div>
 
-                {/* ── Itinerary Tab ── */}
                 {activeTab === 'itinerary' && (
                   <div style={{ marginTop: 8 }}>
                     {legs.length > 0 && (
@@ -384,7 +355,6 @@ export function TravelModule({ resident }: TravelModuleProps) {
                       </div>
                     )}
 
-                    {/* Add leg form */}
                     <div className="mod-form" style={{ marginTop: 8 }}>
                       <div className="mod-form-row">
                         <label style={{ flex: 1 }}>
@@ -430,10 +400,8 @@ export function TravelModule({ resident }: TravelModuleProps) {
                   </div>
                 )}
 
-                {/* ── Packing Tab ── */}
                 {activeTab === 'packing' && (
                   <div style={{ marginTop: 8 }}>
-                    {/* Quick-add */}
                     <div className="mod-form-row" style={{ marginBottom: 8 }}>
                       <input
                         style={{ flex: 1 }}
@@ -447,18 +415,15 @@ export function TravelModule({ resident }: TravelModuleProps) {
                       </button>
                     </div>
 
-                    {/* Packing items */}
                     {packingItems.map((pi, i) => (
                       <div
                         key={i}
                         style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0' }}
                       >
-                        <div
-                          className={`checkbox${pi.packed ? ' checked' : ''}`}
-                          onClick={() => togglePacked(trip, i)}
-                        >
-                          {pi.packed ? '\u2713' : ''}
-                        </div>
+                        <Checkbox
+                          checked={pi.packed}
+                          onChange={() => togglePacked(trip, i)}
+                        />
                         <span
                           style={{
                             fontSize: 9,
@@ -475,7 +440,6 @@ export function TravelModule({ resident }: TravelModuleProps) {
                       <div style={{ fontSize: 8, color: '#8b9bb4' }}>No items in packing list.</div>
                     )}
 
-                    {/* Clear packed */}
                     {packedCount > 0 && (
                       <div style={{ marginTop: 8 }}>
                         <button className="mod-btn mod-btn--danger mod-btn--sm" onClick={() => clearPacked(trip)}>

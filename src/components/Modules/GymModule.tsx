@@ -1,8 +1,10 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useCityStore } from '../../stores/cityStore';
 import { useUIStore } from '../../stores/uiStore';
+import { useModuleSync } from '../../hooks/useModuleSync';
 import { SheetsService } from '../../services/sheetsService';
-import { badgeUrl, MODULE_BADGE_IDS } from '../../config/pokemon';
+import { ModuleHeader } from '../ui/ModuleHeader';
+import { getLocalDate } from '../../utils/dateUtils';
 import type { Resident, HealthMetric } from '../../types';
 
 const METRIC_TYPES = ['weight', 'reps', 'sets', 'duration', 'distance', 'calories', 'custom'] as const;
@@ -33,7 +35,7 @@ interface HealthForm {
 }
 
 const emptyForm = (metricType: string): HealthForm => ({
-  date: (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; })(),
+  date: getLocalDate(),
   metricType,
   value: '',
   unit: '',
@@ -42,8 +44,8 @@ const emptyForm = (metricType: string): HealthForm => ({
 
 export function GymModule({ resident }: { resident: Resident }) {
   const moduleData = useCityStore(s => s.moduleData);
-  const setModuleData = useCityStore(s => s.setModuleData);
   const addToast = useUIStore(s => s.addToast);
+  const sync = useModuleSync();
 
   const [activeType, setActiveType] = useState<string>('weight');
   const [showForm, setShowForm] = useState(false);
@@ -66,7 +68,6 @@ export function GymModule({ resident }: { resident: Resident }) {
 
   const latestValue = filteredMetrics[0] ?? null;
 
-  // Last 14 data points for sparkline (oldest to newest)
   const sparklineData = useMemo(() => {
     const recent = filteredMetrics.slice(0, 14).reverse();
     return recent.map(m => parseFloat(m.value) || 0);
@@ -85,10 +86,7 @@ export function GymModule({ resident }: { resident: Resident }) {
 
   const handlePreset = useCallback((preset: { metricType: string; unit: string }) => {
     setActiveType(preset.metricType);
-    setForm({
-      ...emptyForm(preset.metricType),
-      unit: preset.unit,
-    });
+    setForm({ ...emptyForm(preset.metricType), unit: preset.unit });
     setShowForm(true);
   }, []);
 
@@ -133,18 +131,12 @@ export function GymModule({ resident }: { resident: Resident }) {
         unit: form.unit.trim(),
         notes: form.notes.trim(),
       };
-      const updatedList = allMetrics.map(m => m.id === editingId ? updated : m);
-      setModuleData('healthMetrics', updatedList);
       setForm(emptyForm(activeType));
       setShowForm(false);
       setEditingId(null);
       addToast('Metric updated', 'success');
-      try {
-        await SheetsService.update('HealthMetrics', updated);
-      } catch {
-        setModuleData('healthMetrics', allMetrics);
-        addToast('Failed to update metric', 'error');
-      }
+      await sync('healthMetrics', allMetrics, allMetrics.map(m => m.id === editingId ? updated : m),
+        () => SheetsService.update('HealthMetrics', updated), 'Failed to update metric');
       return;
     }
 
@@ -159,47 +151,30 @@ export function GymModule({ resident }: { resident: Resident }) {
       createdAt: new Date().toISOString(),
     };
 
-    setModuleData('healthMetrics', [...allMetrics, entry]);
     setForm(emptyForm(activeType));
     setShowForm(false);
     addToast('Metric logged', 'success');
-
-    try {
-      await SheetsService.append('HealthMetrics', entry);
-    } catch {
-      setModuleData('healthMetrics', allMetrics);
-      addToast('Failed to save metric', 'error');
-    }
-  }, [form, resident.id, allMetrics, activeType, editingId, setModuleData, addToast]);
+    await sync('healthMetrics', allMetrics, [...allMetrics, entry],
+      () => SheetsService.append('HealthMetrics', entry), 'Failed to save metric');
+  }, [form, resident.id, allMetrics, activeType, editingId, sync, addToast]);
 
   const handleDelete = useCallback(async (id: string) => {
-    const prev = allMetrics;
-    // Optimistic update
-    setModuleData('healthMetrics', allMetrics.filter(m => m.id !== id));
     addToast('Metric deleted', 'info');
-
-    try {
-      await SheetsService.deleteRow('HealthMetrics', id);
-    } catch {
-      setModuleData('healthMetrics', prev);
-      addToast('Failed to delete metric', 'error');
-    }
-  }, [allMetrics, setModuleData, addToast]);
+    await sync('healthMetrics', allMetrics, allMetrics.filter(m => m.id !== id),
+      () => SheetsService.deleteRow('HealthMetrics', id), 'Failed to delete metric');
+  }, [allMetrics, sync, addToast]);
 
   return (
     <div>
-      {/* Header */}
-      <div className="mod-header">
-        <span className="mod-header__title-wrap">
-          <img src={badgeUrl(MODULE_BADGE_IDS.gym)} alt="" className="pokecity-badge pokecity-badge--mod" />
-          <span className="mod-title">Gym</span>
-        </span>
-        <button className="mod-btn mod-btn--sm" onClick={() => { setEditingId(null); setForm(emptyForm(activeType)); setShowForm(!showForm); }}>
+      <ModuleHeader moduleType="gym" title="Gym">
+        <button
+          className="mod-btn mod-btn--sm"
+          onClick={() => { setEditingId(null); setForm(emptyForm(activeType)); setShowForm(!showForm); }}
+        >
           {showForm ? 'Cancel' : '+ Log'}
         </button>
-      </div>
+      </ModuleHeader>
 
-      {/* Metric type tabs */}
       <div className="mod-tabs">
         {METRIC_TYPES.map(type => (
           <button
@@ -212,7 +187,6 @@ export function GymModule({ resident }: { resident: Resident }) {
         ))}
       </div>
 
-      {/* Quick-add presets */}
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
         {PRESETS.map(p => (
           <button key={p.metricType} className="mod-btn mod-btn--sm" onClick={() => handlePreset(p)}>
@@ -221,7 +195,6 @@ export function GymModule({ resident }: { resident: Resident }) {
         ))}
       </div>
 
-      {/* Latest value card */}
       {latestValue ? (
         <div className="mod-card" style={{ marginBottom: 12 }}>
           <div style={{ fontSize: 9, color: '#8b9bb4', marginBottom: 4 }}>
@@ -238,7 +211,6 @@ export function GymModule({ resident }: { resident: Resident }) {
         <div className="mod-empty">No {METRIC_LABELS[activeType]} entries yet.</div>
       )}
 
-      {/* Sparkline */}
       {sparklineData.length > 1 && (
         <div style={{ marginBottom: 12 }}>
           <div style={{ fontSize: 8, color: '#8b9bb4', marginBottom: 4 }}>Last {sparklineData.length} readings</div>
@@ -255,17 +227,12 @@ export function GymModule({ resident }: { resident: Resident }) {
         </div>
       )}
 
-      {/* Inline form */}
       {showForm && (
         <div className="mod-form" style={{ marginBottom: 12 }}>
           <div className="mod-form-row">
             <label>
               Date
-              <input
-                type="date"
-                value={form.date}
-                onChange={e => updateField('date', e.target.value)}
-              />
+              <input type="date" value={form.date} onChange={e => updateField('date', e.target.value)} />
             </label>
             <label>
               Type
@@ -315,7 +282,6 @@ export function GymModule({ resident }: { resident: Resident }) {
         </div>
       )}
 
-      {/* History list */}
       {filteredMetrics.length > 0 && (
         <div>
           <div style={{ fontSize: 9, color: '#8b9bb4', marginBottom: 6 }}>History</div>

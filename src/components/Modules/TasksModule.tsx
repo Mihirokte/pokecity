@@ -17,11 +17,22 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { Resident, Task } from '../../types';
-import { badgeUrl, MODULE_BADGE_IDS } from '../../config/pokemon';
 import { useCityStore } from '../../stores/cityStore';
 import { useUIStore } from '../../stores/uiStore';
 import { useAuthStore } from '../../stores/authStore';
+import { useModuleSync } from '../../hooks/useModuleSync';
 import { SheetsService } from '../../services/sheetsService';
+import { createGcalEvent, updateGcalEvent, deleteGcalEvent } from '../../services/gcalService';
+import { ModuleHeader } from '../ui/ModuleHeader';
+import { Checkbox } from '../ui/Checkbox';
+import {
+  getLocalDate,
+  formatTime,
+  daysInMonth,
+  firstDayOfMonth,
+  MONTH_NAMES,
+  DAY_LABELS,
+} from '../../utils/dateUtils';
 
 interface TasksModuleProps {
   resident: Resident;
@@ -52,8 +63,6 @@ const STATUS_CYCLE: Record<Task['status'], Task['status']> = {
   done: 'backlog',
 };
 
-const DAY_LABELS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
-
 const emptyForm = (): Omit<Task, 'id' | 'residentId' | 'createdAt' | 'updatedAt'> => ({
   title: '',
   priority: 'normal',
@@ -68,136 +77,47 @@ const emptyForm = (): Omit<Task, 'id' | 'residentId' | 'createdAt' | 'updatedAt'
   sortOrder: '',
 });
 
-function getLocalDate(d = new Date()): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-
 function isOverdue(task: Task): boolean {
   if (!task.dueDate || task.status === 'done') return false;
   return task.dueDate < getLocalDate();
 }
 
-function formatTime(t: string): string {
-  if (!t) return '';
-  const [hStr, mStr] = t.split(':');
-  let h = parseInt(hStr, 10);
-  const ampm = h >= 12 ? 'PM' : 'AM';
-  if (h === 0) h = 12;
-  else if (h > 12) h -= 12;
-  return `${h}:${mStr} ${ampm}`;
+// ─── Sortable row (defined outside TasksModule to avoid re-creation on each render) ───
+
+interface SortableTaskRowProps {
+  task: Task;
+  isSubtask: boolean;
+  renderTask: (task: Task, isSubtask: boolean, dragHandle?: ReactNode) => ReactNode;
 }
 
-function daysInMonth(year: number, month: number): number {
-  return new Date(year, month + 1, 0).getDate();
-}
-
-function firstDayOfMonth(year: number, month: number): number {
-  return new Date(year, month, 1).getDay();
-}
-
-const MONTH_NAMES = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
-];
-
-// ─── Google Calendar helpers ───
-
-async function createGcalEvent(
-  token: string,
-  task: Task,
-): Promise<string> {
-  const isAllDay = !task.dueTime;
-  const body: Record<string, unknown> = {
-    summary: task.title,
-    description: task.notes || undefined,
-  };
-  if (isAllDay) {
-    // All-day event: date only
-    body.start = { date: task.dueDate };
-    // End date is exclusive in GCal, so next day
-    const end = new Date(task.dueDate + 'T00:00:00');
-    end.setDate(end.getDate() + 1);
-    body.end = { date: getLocalDate(end) };
-  } else {
-    const startDt = `${task.dueDate}T${task.dueTime}:00`;
-    const endDate = new Date(startDt);
-    endDate.setHours(endDate.getHours() + 1);
-    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    body.start = { dateTime: startDt, timeZone: tz };
-    body.end = {
-      dateTime: endDate.toISOString().replace('Z', '').slice(0, 19),
-      timeZone: tz,
-    };
-  }
-  const res = await fetch(
-    'https://www.googleapis.com/calendar/v3/calendars/primary/events',
-    {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(body),
-    },
+function SortableTaskRow({ task, isSubtask, renderTask }: SortableTaskRowProps) {
+  const { setNodeRef, transform, transition, attributes, listeners } = useSortable({ id: task.id });
+  const handle = (
+    <button
+      type="button"
+      className="mod-btn mod-btn--sm task-drag-handle"
+      {...attributes}
+      {...listeners}
+      title="Drag to reorder"
+      style={{
+        cursor: 'grab',
+        touchAction: 'none',
+        flexShrink: 0,
+        padding: '4px 8px',
+        fontSize: 9,
+        lineHeight: 1,
+        minWidth: 48,
+      }}
+      onPointerDown={e => e.stopPropagation()}
+    >
+      <span aria-hidden style={{ opacity: 0.9 }}>≡</span> Move
+    </button>
   );
-  if (!res.ok) throw new Error('Failed to create GCal event');
-  const data = await res.json();
-  return data.id as string;
-}
-
-async function updateGcalEvent(
-  token: string,
-  eventId: string,
-  task: Task,
-): Promise<void> {
-  const isAllDay = !task.dueTime;
-  const body: Record<string, unknown> = {
-    summary: task.title,
-    description: task.notes || undefined,
-  };
-  if (isAllDay) {
-    body.start = { date: task.dueDate };
-    const end = new Date(task.dueDate + 'T00:00:00');
-    end.setDate(end.getDate() + 1);
-    body.end = { date: getLocalDate(end) };
-  } else {
-    const startDt = `${task.dueDate}T${task.dueTime}:00`;
-    const endDate = new Date(startDt);
-    endDate.setHours(endDate.getHours() + 1);
-    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    body.start = { dateTime: startDt, timeZone: tz };
-    body.end = {
-      dateTime: endDate.toISOString().replace('Z', '').slice(0, 19),
-      timeZone: tz,
-    };
-  }
-  const res = await fetch(
-    `https://www.googleapis.com/calendar/v3/calendars/primary/events/${encodeURIComponent(eventId)}`,
-    {
-      method: 'PATCH',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(body),
-    },
+  return (
+    <div ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }}>
+      {renderTask(task, isSubtask, handle)}
+    </div>
   );
-  if (!res.ok) throw new Error('Failed to update GCal event');
-}
-
-async function deleteGcalEvent(
-  token: string,
-  eventId: string,
-): Promise<void> {
-  const res = await fetch(
-    `https://www.googleapis.com/calendar/v3/calendars/primary/events/${encodeURIComponent(eventId)}`,
-    {
-      method: 'DELETE',
-      headers: { Authorization: `Bearer ${token}` },
-    },
-  );
-  // 204 = deleted, 410 = already gone — both OK
-  if (!res.ok && res.status !== 410) throw new Error('Failed to delete GCal event');
 }
 
 // ─── Component ───
@@ -207,6 +127,7 @@ export function TasksModule({ resident }: TasksModuleProps) {
   const setModuleData = useCityStore(s => s.setModuleData);
   const addToast = useUIStore(s => s.addToast);
   const accessToken = useAuthStore(s => s.accessToken);
+  const sync = useModuleSync();
 
   const [activeTab, setActiveTab] = useState<FilterTab>('all');
   const [showForm, setShowForm] = useState(false);
@@ -214,7 +135,6 @@ export function TasksModule({ resident }: TasksModuleProps) {
   const [form, setForm] = useState(emptyForm());
   const [pushingGcal, setPushingGcal] = useState<string | null>(null);
 
-  // Calendar view state
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const today = new Date();
   const [calMonth, setCalMonth] = useState(today.getMonth());
@@ -242,20 +162,17 @@ export function TasksModule({ resident }: TasksModuleProps) {
     return [...list].sort(byOrder);
   }, [tasks, activeTab, viewMode, selectedDate]);
 
-  /** List in tree order: root tasks (by sortOrder), then each root's direct children (by sortOrder) */
+  /** Tree order: root tasks then each root's children, sorted by sortOrder */
   const taskTreeList = useMemo(() => {
-    const roots = filtered.filter(t => !t.parentId || t.parentId === '').sort((a, b) => {
+    const byOrder = (a: Task, b: Task) => {
       const na = parseFloat(a.sortOrder ?? '') || 999999;
       const nb = parseFloat(b.sortOrder ?? '') || 999999;
       return na - nb || (a.createdAt > b.createdAt ? 1 : -1);
-    });
+    };
+    const roots = filtered.filter(t => !t.parentId || t.parentId === '').sort(byOrder);
     return roots.flatMap(r => [
       r,
-      ...filtered.filter(t => t.parentId === r.id).sort((a, b) => {
-        const na = parseFloat(a.sortOrder ?? '') || 999999;
-        const nb = parseFloat(b.sortOrder ?? '') || 999999;
-        return na - nb || (a.createdAt > b.createdAt ? 1 : -1);
-      }),
+      ...filtered.filter(t => t.parentId === r.id).sort(byOrder),
     ]);
   }, [filtered]);
 
@@ -305,7 +222,6 @@ export function TasksModule({ resident }: TasksModuleProps) {
 
     const now = new Date().toISOString();
     const allTasks = moduleData.tasks;
-    const prev = allTasks;
 
     if (editingId) {
       const updated: Task = {
@@ -316,20 +232,12 @@ export function TasksModule({ resident }: TasksModuleProps) {
         updatedAt: now,
       };
 
-      const next = allTasks.map(t => (t.id === editingId ? updated : t));
-      setModuleData('tasks', next);
       setShowForm(false);
       setEditingId(null);
       addToast('Task updated', 'success');
+      await sync('tasks', allTasks, allTasks.map(t => (t.id === editingId ? updated : t)),
+        () => SheetsService.update('Tasks', updated), 'Failed to sync update');
 
-      try {
-        await SheetsService.update('Tasks', updated);
-      } catch {
-        setModuleData('tasks', prev);
-        addToast('Failed to sync update', 'error');
-      }
-
-      // Auto-update GCal event if synced
       if (updated.gcalEventId && updated.dueDate && accessToken) {
         try {
           await updateGcalEvent(accessToken, updated.gcalEventId, updated);
@@ -348,32 +256,18 @@ export function TasksModule({ resident }: TasksModuleProps) {
         updatedAt: now,
       };
 
-      setModuleData('tasks', [...allTasks, newTask]);
       setShowForm(false);
       addToast('Task created', 'success');
-
-      try {
-        await SheetsService.append('Tasks', newTask);
-      } catch {
-        setModuleData('tasks', prev);
-        addToast('Failed to sync task', 'error');
-      }
+      await sync('tasks', allTasks, [...allTasks, newTask],
+        () => SheetsService.append('Tasks', newTask), 'Failed to sync task');
     }
-  }, [form, editingId, moduleData.tasks, resident.id, setModuleData, addToast, accessToken]);
+  }, [form, editingId, moduleData.tasks, resident.id, sync, addToast, accessToken]);
 
   const handleDelete = useCallback(async (task: Task) => {
-    const prev = moduleData.tasks;
-    setModuleData('tasks', prev.filter(t => t.id !== task.id));
     addToast('Task deleted', 'success');
+    await sync('tasks', moduleData.tasks, moduleData.tasks.filter(t => t.id !== task.id),
+      () => SheetsService.deleteRow('Tasks', task.id), 'Failed to sync deletion');
 
-    try {
-      await SheetsService.deleteRow('Tasks', task.id);
-    } catch {
-      setModuleData('tasks', prev);
-      addToast('Failed to sync deletion', 'error');
-    }
-
-    // Auto-delete GCal event if synced
     if (task.gcalEventId && accessToken) {
       try {
         await deleteGcalEvent(accessToken, task.gcalEventId);
@@ -381,26 +275,17 @@ export function TasksModule({ resident }: TasksModuleProps) {
         // silent — event may already be gone
       }
     }
-  }, [moduleData.tasks, setModuleData, addToast, accessToken]);
+  }, [moduleData.tasks, sync, addToast, accessToken]);
 
   const cycleStatus = useCallback(async (task: Task) => {
     const nextStatus = STATUS_CYCLE[task.status];
     const now = new Date().toISOString();
     const updated: Task = { ...task, status: nextStatus, updatedAt: now };
 
-    const prev = moduleData.tasks;
-    const next = prev.map(t => (t.id === task.id ? updated : t));
-    setModuleData('tasks', next);
     addToast(`Status: ${STATUS_LABELS[nextStatus]}`, 'info');
+    await sync('tasks', moduleData.tasks, moduleData.tasks.map(t => (t.id === task.id ? updated : t)),
+      () => SheetsService.update('Tasks', updated), 'Failed to sync status');
 
-    try {
-      await SheetsService.update('Tasks', updated);
-    } catch {
-      setModuleData('tasks', prev);
-      addToast('Failed to sync status', 'error');
-    }
-
-    // Auto-update GCal if synced
     if (updated.gcalEventId && updated.dueDate && accessToken) {
       try {
         await updateGcalEvent(accessToken, updated.gcalEventId, updated);
@@ -408,7 +293,7 @@ export function TasksModule({ resident }: TasksModuleProps) {
         // silent
       }
     }
-  }, [moduleData.tasks, setModuleData, addToast, accessToken]);
+  }, [moduleData.tasks, sync, addToast, accessToken]);
 
   const pushToGcal = useCallback(async (task: Task) => {
     if (!accessToken || !task.dueDate) return;
@@ -419,31 +304,22 @@ export function TasksModule({ resident }: TasksModuleProps) {
       let gcalEventId = task.gcalEventId;
 
       if (gcalEventId) {
-        // Update existing
         await updateGcalEvent(accessToken, gcalEventId, task);
         addToast('GCal event updated', 'success');
       } else {
-        // Create new
         gcalEventId = await createGcalEvent(accessToken, task);
         addToast('Pushed to Google Calendar', 'success');
       }
 
       const updated: Task = { ...task, gcalEventId, updatedAt: new Date().toISOString() };
-      const next = prev.map(t => (t.id === task.id ? updated : t));
-      setModuleData('tasks', next);
-
-      try {
-        await SheetsService.update('Tasks', updated);
-      } catch {
-        setModuleData('tasks', prev);
-        addToast('Failed to sync GCal ID', 'error');
-      }
+      await sync('tasks', prev, prev.map(t => (t.id === task.id ? updated : t)),
+        () => SheetsService.update('Tasks', updated), 'Failed to sync GCal ID');
     } catch {
       addToast('GCal push failed', 'error');
     } finally {
       setPushingGcal(null);
     }
-  }, [accessToken, moduleData.tasks, setModuleData, addToast]);
+  }, [accessToken, moduleData.tasks, sync, addToast]);
 
   const tabCounts = useMemo(() => ({
     all: tasks.length,
@@ -472,9 +348,7 @@ export function TasksModule({ resident }: TasksModuleProps) {
   const tasksByDate = useMemo(() => {
     const map: Record<string, number> = {};
     for (const t of tasks) {
-      if (t.dueDate) {
-        map[t.dueDate] = (map[t.dueDate] || 0) + 1;
-      }
+      if (t.dueDate) map[t.dueDate] = (map[t.dueDate] || 0) + 1;
     }
     return map;
   }, [tasks]);
@@ -513,12 +387,12 @@ export function TasksModule({ resident }: TasksModuleProps) {
       if (oldIndex === -1 || newIndex === -1) return;
       const newOrder = arrayMove(taskTreeList, oldIndex, newIndex);
       const now = new Date().toISOString();
-      const updatedTasks = moduleData.tasks.map(t => {
+      const prev = moduleData.tasks;
+      const updatedTasks = prev.map(t => {
         const idx = newOrder.findIndex(x => x.id === t.id);
         if (idx === -1) return t;
         return { ...t, sortOrder: String(idx), updatedAt: now };
       });
-      const prev = moduleData.tasks;
       setModuleData('tasks', updatedTasks);
       try {
         for (const task of newOrder) {
@@ -529,15 +403,15 @@ export function TasksModule({ resident }: TasksModuleProps) {
         }
       } catch {
         setModuleData('tasks', prev);
-        addToast('Failed to save order');
+        addToast('Failed to save order', 'error');
       }
     },
     [taskTreeList, moduleData.tasks, setModuleData, addToast],
   );
 
-  // ─── Render ───
+  // ─── Render helpers ───
 
-  const renderTask = (task: Task, isSubtask = false, dragHandle?: ReactNode) => {
+  const renderTask = useCallback((task: Task, isSubtask = false, dragHandle?: ReactNode) => {
     const overdue = isOverdue(task);
     const isDone = task.status === 'done';
     const isSynced = !!task.gcalEventId;
@@ -553,13 +427,11 @@ export function TasksModule({ resident }: TasksModuleProps) {
         }}
       >
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-          <div
-            className={`checkbox${isDone ? ' checked' : ''}`}
-            onClick={() => cycleStatus(task)}
+          <Checkbox
+            checked={isDone}
+            onChange={() => cycleStatus(task)}
             title={`Click to change status (currently ${STATUS_LABELS[task.status]})`}
-          >
-            {isDone && '\u2713'}
-          </div>
+          />
           {dragHandle}
 
           <div style={{ flex: 1, minWidth: 0 }}>
@@ -607,9 +479,7 @@ export function TasksModule({ resident }: TasksModuleProps) {
                 </span>
               )}
               {task.tags && (
-                <span style={{ color: '#a29bfe' }}>
-                  {task.tags}
-                </span>
+                <span style={{ color: '#a29bfe' }}>{task.tags}</span>
               )}
             </div>
 
@@ -640,55 +510,22 @@ export function TasksModule({ resident }: TasksModuleProps) {
         </div>
       </div>
     );
-  };
-
-  function SortableTaskRow({ task, isSubtask }: { task: Task; isSubtask: boolean }) {
-    const { setNodeRef, transform, transition, attributes, listeners } = useSortable({ id: task.id });
-    const handle = (
-      <button
-        type="button"
-        className="mod-btn mod-btn--sm task-drag-handle"
-        {...attributes}
-        {...listeners}
-        title="Drag to reorder"
-        style={{
-          cursor: 'grab',
-          touchAction: 'none',
-          flexShrink: 0,
-          padding: '4px 8px',
-          fontSize: 9,
-          lineHeight: 1,
-          minWidth: 48,
-        }}
-        onPointerDown={(e) => e.stopPropagation()}
-      >
-        <span aria-hidden style={{ opacity: 0.9 }}>≡</span> Move
-      </button>
-    );
-    return (
-      <div ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }}>
-        {renderTask(task, isSubtask, handle)}
-      </div>
-    );
-  }
+  }, [pushingGcal, cycleStatus, openCreateSubtask, openEdit, handleDelete, pushToGcal]);
 
   const renderCalendar = () => (
     <div style={{ marginBottom: 12 }}>
-      {/* Month navigation */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
         <button className="mod-btn mod-btn--sm" onClick={prevMonth}>&lt;</button>
         <span style={{ fontSize: 11, fontWeight: 600 }}>{MONTH_NAMES[calMonth]} {calYear}</span>
         <button className="mod-btn mod-btn--sm" onClick={nextMonth}>&gt;</button>
       </div>
 
-      {/* Day headers */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2, textAlign: 'center', marginBottom: 4 }}>
         {DAY_LABELS.map(d => (
           <div key={d} style={{ fontSize: 8, color: '#6c7a89', padding: '2px 0' }}>{d}</div>
         ))}
       </div>
 
-      {/* Day cells */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2 }}>
         {calDays.map((day, i) => {
           if (day === null) return <div key={`empty-${i}`} />;
@@ -722,10 +559,7 @@ export function TasksModule({ resident }: TasksModuleProps) {
               {count > 0 && (
                 <div style={{ display: 'flex', justifyContent: 'center', gap: 2, marginTop: 2 }}>
                   {Array.from({ length: Math.min(count, 3) }).map((_, idx) => (
-                    <div key={idx} style={{
-                      width: 4, height: 4, borderRadius: '50%',
-                      background: '#818cf8',
-                    }} />
+                    <div key={idx} style={{ width: 4, height: 4, borderRadius: '50%', background: '#818cf8' }} />
                   ))}
                 </div>
               )}
@@ -751,24 +585,18 @@ export function TasksModule({ resident }: TasksModuleProps) {
 
   return (
     <div>
-      <div className="mod-header">
-        <span className="mod-header__title-wrap">
-          <img src={badgeUrl(MODULE_BADGE_IDS.tasks)} alt="" className="pokecity-badge pokecity-badge--mod" />
-          <span className="mod-title">Tasks</span>
-        </span>
-        <div style={{ display: 'flex', gap: 6 }}>
-          <button
-            className="mod-btn"
-            onClick={() => {
-              setViewMode(v => v === 'list' ? 'calendar' : 'list');
-              setSelectedDate(null);
-            }}
-          >
-            {viewMode === 'list' ? 'Calendar' : 'List'}
-          </button>
-          <button className="mod-btn" onClick={openCreate}>+ Task</button>
-        </div>
-      </div>
+      <ModuleHeader moduleType="tasks" title="Tasks">
+        <button
+          className="mod-btn"
+          onClick={() => {
+            setViewMode(v => v === 'list' ? 'calendar' : 'list');
+            setSelectedDate(null);
+          }}
+        >
+          {viewMode === 'list' ? 'Calendar' : 'List'}
+        </button>
+        <button className="mod-btn" onClick={openCreate}>+ Task</button>
+      </ModuleHeader>
 
       {viewMode === 'list' && (
         <div className="mod-tabs">
@@ -807,10 +635,7 @@ export function TasksModule({ resident }: TasksModuleProps) {
           <div className="mod-form-row">
             <label style={{ flex: 1 }}>
               Priority
-              <select
-                value={form.priority}
-                onChange={e => updateField('priority', e.target.value as Task['priority'])}
-              >
+              <select value={form.priority} onChange={e => updateField('priority', e.target.value as Task['priority'])}>
                 {PRIORITY_OPTIONS.map(p => (
                   <option key={p} value={p}>{PRIORITY_LABELS[p]}</option>
                 ))}
@@ -818,10 +643,7 @@ export function TasksModule({ resident }: TasksModuleProps) {
             </label>
             <label style={{ flex: 1 }}>
               Status
-              <select
-                value={form.status}
-                onChange={e => updateField('status', e.target.value as Task['status'])}
-              >
+              <select value={form.status} onChange={e => updateField('status', e.target.value as Task['status'])}>
                 {STATUS_OPTIONS.map(s => (
                   <option key={s} value={s}>{STATUS_LABELS[s]}</option>
                 ))}
@@ -909,6 +731,7 @@ export function TasksModule({ resident }: TasksModuleProps) {
                 key={task.id}
                 task={task}
                 isSubtask={!!(task.parentId && task.parentId !== '')}
+                renderTask={renderTask}
               />
             ))}
           </SortableContext>
