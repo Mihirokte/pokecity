@@ -12,6 +12,7 @@ import {
   getTileConfig,
   getPastelColorForHex,
   TILE_TYPE_SEQUENCE,
+  HOME_TILE_INDICES,
 } from './catanData';
 import { spriteAnimatedUrl, spriteArtworkUrl, ELEMENT_SPRITE_IDS } from '../../config/pokemon';
 import type { House, Resident } from '../../types';
@@ -754,7 +755,6 @@ function PokeballOnRoad({
 }
 
 function House({ x, z, baseColor }: { x: number; z: number; baseColor: string }) {
-  const roofColor = baseColor; // same or darken in CSS-style - use a lighter tint
   const darker = (hex: string, f: number) => {
     const n = parseInt(hex.slice(1), 16);
     const r = Math.round(((n >> 16) & 255) * f);
