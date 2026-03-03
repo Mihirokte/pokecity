@@ -1,0 +1,730 @@
+/* ═══════════════════════════════════════════
+   PokéCity — City Map & Game UI Styles
+   ═══════════════════════════════════════════ */
+
+/* ── Animations ── */
+@keyframes sprite-float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-6px); }
+}
+@keyframes sprite-fast-bounce {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+@keyframes lot-enter-flash {
+  0%   { filter: brightness(1) saturate(1); }
+  25%  { filter: brightness(2.5) saturate(0.5); }
+  55%  { filter: brightness(1.6) saturate(1.2); }
+  100% { filter: brightness(1) saturate(1); }
+}
+@keyframes panel-slide-up {
+  from { transform: translateY(100%); opacity: 0; }
+  to   { transform: translateY(0);   opacity: 1; }
+}
+@keyframes panel-slide-down {
+  from { transform: translateY(0);   opacity: 1; }
+  to   { transform: translateY(100%); opacity: 0; }
+}
+@keyframes dialogue-cursor {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+@keyframes empty-pulse {
+  0%, 100% { border-color: rgba(255,215,0,0.3); box-shadow: 0 0 0 rgba(255,215,0,0); }
+  50% { border-color: rgba(255,215,0,0.8); box-shadow: 0 0 16px rgba(255,215,0,0.2); }
+}
+@keyframes tooltip-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(4px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+@keyframes city-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ── City View Root ── */
+.city-view {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  overflow: hidden;
+  background: #1e4a14;
+  animation: city-fade-in 0.4s ease-out;
+}
+
+/* ── City Header ── */
+.city-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px;
+  background: rgba(0,0,0,0.75);
+  border-bottom: 3px solid #FFD700;
+  backdrop-filter: blur(4px);
+  z-index: 10;
+  flex-shrink: 0;
+}
+.city-header__name {
+  font-family: 'Dogica', monospace;
+  font-weight: 700;
+  font-size: clamp(10px, 2.5vw, 14px);
+  color: #FFD700;
+  text-shadow: 0 0 10px rgba(255,215,0,0.5);
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+}
+.city-header__sep {
+  color: rgba(255,255,255,0.3);
+  font-size: 12px;
+}
+.city-header__stats {
+  font-family: 'VT323', monospace;
+  font-size: 16px;
+  color: #8aff8a;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+.city-header__spacer {
+  flex: 1;
+}
+.city-header__pc-btn {
+  font-family: 'Dogica', monospace;
+  font-size: 9px;
+  font-weight: 700;
+  background: #222244;
+  color: #a0b0ff;
+  border: 2px solid #4455cc;
+  border-radius: 0;
+  padding: 6px 10px;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  box-shadow: 2px 2px 0 #1a1a33;
+  transition: all 0.1s;
+  white-space: nowrap;
+}
+.city-header__pc-btn:hover {
+  background: #3344aa;
+  color: #d0d8ff;
+  box-shadow: 3px 3px 0 #0d0d22;
+  transform: translate(-1px,-1px);
+}
+.city-header__pc-btn:active {
+  transform: translate(1px,1px);
+  box-shadow: 1px 1px 0 #0d0d22;
+}
+.city-header__auth-btn {
+  font-family: 'Dogica', monospace;
+  font-size: 9px;
+  background: #331111;
+  color: #ff8888;
+  border: 2px solid #662222;
+  border-radius: 0;
+  padding: 6px 10px;
+  cursor: pointer;
+  box-shadow: 2px 2px 0 #1a0808;
+  transition: all 0.1s;
+}
+.city-header__auth-btn:hover {
+  background: #662222;
+  color: #ffcccc;
+  transform: translate(-1px,-1px);
+  box-shadow: 3px 3px 0 #1a0808;
+}
+
+/* ── City Map ── */
+.city-map {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 24px 20px 40px;
+
+  /* Pixel grass tile background */
+  background-color: #2d6a1f;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px),
+    radial-gradient(circle at 8px 8px, rgba(0,0,0,0.06) 2px, transparent 0),
+    radial-gradient(circle at 24px 24px, rgba(255,255,255,0.015) 1px, transparent 0);
+  background-size: 32px 32px, 32px 32px, 32px 32px, 32px 32px;
+}
+.city-map::-webkit-scrollbar { width: 6px; }
+.city-map::-webkit-scrollbar-track { background: rgba(0,0,0,0.3); }
+.city-map::-webkit-scrollbar-thumb { background: rgba(255,215,0,0.3); border-radius: 3px; }
+
+/* ── City Grid ── */
+.city-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  justify-content: center;
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+/* ── City Lot (one building slot) ── */
+.city-lot {
+  --lot-accent: #888;
+  position: relative;
+  width: 130px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: transform 0.2s;
+}
+.city-lot:hover {
+  transform: translateY(-4px);
+}
+.city-lot--entering {
+  animation: lot-enter-flash 0.45s ease-out;
+}
+.city-lot--empty {
+  width: 130px;
+  height: 180px;
+  border: 3px dashed rgba(255,215,0,0.35);
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  background: rgba(255,255,255,0.02);
+  animation: empty-pulse 2.5s ease-in-out infinite;
+  transition: background 0.2s;
+}
+.city-lot--empty:hover {
+  background: rgba(255,215,0,0.06);
+  animation: none;
+  border-color: #FFD700;
+}
+.city-lot--empty__plus {
+  font-family: 'Dogica', monospace;
+  font-size: 28px;
+  color: rgba(255,215,0,0.6);
+  line-height: 1;
+  margin-bottom: 8px;
+}
+.city-lot--empty__label {
+  font-family: 'VT323', monospace;
+  font-size: 14px;
+  color: rgba(255,215,0,0.5);
+  letter-spacing: 0.08em;
+  text-align: center;
+}
+
+/* ── Building Structures (CSS pixel art) ── */
+.building-wrap {
+  position: relative;
+  width: 110px;
+  height: 110px;
+  flex-shrink: 0;
+}
+
+/* Shared roof shape */
+.building-roof {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 38px;
+  clip-path: polygon(0 100%, 12% 0, 50% 0, 88% 0, 100% 100%);
+}
+/* Flat-top roof variant */
+.building-roof--flat {
+  clip-path: polygon(0 100%, 0 15%, 100% 15%, 100% 100%);
+  height: 44px;
+}
+/* Pointed roof */
+.building-roof--peak {
+  clip-path: polygon(0 100%, 50% 0, 100% 100%);
+  height: 42px;
+}
+
+.building-body {
+  position: absolute;
+  bottom: 0;
+  left: 8px;
+  right: 8px;
+  top: 32px;
+  border-radius: 2px 2px 0 0;
+}
+
+/* Windows */
+.building-win {
+  position: absolute;
+  background: rgba(255,255,220,0.85);
+  border: 1px solid rgba(0,0,0,0.25);
+  border-radius: 1px;
+  box-shadow: inset 0 0 4px rgba(0,0,0,0.2);
+}
+.building-win--lit {
+  background: rgba(255,240,100,0.95);
+  box-shadow: 0 0 6px rgba(255,230,0,0.5), inset 0 0 4px rgba(255,200,0,0.3);
+}
+
+/* Door */
+.building-door {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #3a2000;
+  border-radius: 2px 2px 0 0;
+}
+
+/* ── Per-Type Building Styles ── */
+
+/* TASKS — green gym building */
+.building-wrap--tasks .building-roof {
+  background: linear-gradient(180deg, #3da84a 0%, #2d8a3a 100%);
+  clip-path: polygon(0 100%, 8% 0, 92% 0, 100% 100%);
+}
+.building-wrap--tasks .building-body {
+  background: linear-gradient(180deg, #8B6914 0%, #6b4e10 100%);
+  box-shadow: inset 2px 0 0 rgba(0,0,0,0.15), inset -2px 0 0 rgba(0,0,0,0.15);
+}
+.building-wrap--tasks .building-door { width: 18px; height: 24px; background: #1a0d00; }
+
+/* CALENDAR — blue town hall */
+.building-wrap--calendar .building-roof {
+  background: linear-gradient(180deg, #5aa8e8 0%, #3a82c4 100%);
+  clip-path: polygon(0 100%, 0 25%, 50% 0, 100% 25%, 100% 100%);
+  height: 46px;
+}
+.building-wrap--calendar .building-body {
+  background: linear-gradient(180deg, #D4C5A9 0%, #b8a98a 100%);
+  top: 38px;
+}
+.building-wrap--calendar .building-door { width: 16px; height: 22px; border-radius: 6px 6px 0 0; background: #2a1a00; }
+
+/* NOTES — warm library */
+.building-wrap--notes .building-roof {
+  background: linear-gradient(180deg, #e8a030 0%, #c07820 100%);
+  clip-path: polygon(0 100%, 10% 0, 90% 0, 100% 100%);
+}
+.building-wrap--notes .building-body {
+  background: linear-gradient(180deg, #9C7A3C 0%, #7a5c28 100%);
+}
+.building-wrap--notes .building-door { width: 14px; height: 20px; background: #2a1800; }
+
+/* TRAVEL — teal transport hub */
+.building-wrap--travel .building-roof {
+  background: linear-gradient(180deg, #2ad4b0 0%, #1aa890 100%);
+  clip-path: polygon(0 100%, 0 30%, 100% 30%, 100% 100%);
+  height: 44px;
+}
+.building-wrap--travel .building-body {
+  background: linear-gradient(180deg, #B8C8D8 0%, #8898a8 100%);
+  top: 36px;
+}
+.building-wrap--travel .building-door { width: 20px; height: 26px; background: #0a1828; }
+
+/* GYM — red fitness center */
+.building-wrap--gym .building-roof {
+  background: linear-gradient(180deg, #e85040 0%, #c02820 100%);
+  clip-path: polygon(0 100%, 0 15%, 15% 0, 85% 0, 100% 15%, 100% 100%);
+  height: 46px;
+}
+.building-wrap--gym .building-body {
+  background: linear-gradient(180deg, #5A5A6E 0%, #3c3c50 100%);
+  top: 38px;
+}
+.building-wrap--gym .building-door { width: 22px; height: 28px; background: #100010; }
+
+/* SHOPPING — orange market */
+.building-wrap--shopping .building-roof {
+  background: linear-gradient(180deg, #f09030 0%, #c06810 100%);
+  clip-path: polygon(0 100%, 0 20%, 100% 20%, 100% 100%);
+  height: 40px;
+}
+.building-wrap--shopping .building-body {
+  background: linear-gradient(180deg, #C8A050 0%, #a07830 100%);
+  top: 32px;
+}
+.building-wrap--shopping .building-door { width: 18px; height: 22px; border-radius: 2px 2px 0 0; background: #200800; }
+
+/* Awning for shopping */
+.building-awning {
+  position: absolute;
+  top: 30px;
+  left: 0;
+  right: 0;
+  height: 10px;
+  background: repeating-linear-gradient(
+    90deg,
+    #e67e22 0%, #e67e22 8px,
+    #c04000 8px, #c04000 16px
+  );
+  z-index: 1;
+}
+
+/* ── Hover Glow ── */
+.city-lot:hover .building-wrap {
+  filter: drop-shadow(0 0 12px var(--lot-accent));
+}
+
+/* ── Building Sprite ── */
+.building-sprite-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 6px;
+}
+.building-sprite {
+  width: 56px;
+  height: 56px;
+  object-fit: contain;
+  image-rendering: auto;
+  animation: sprite-float 2.2s ease-in-out infinite;
+}
+.city-lot:hover .building-sprite {
+  animation: sprite-fast-bounce 0.7s ease-in-out infinite;
+}
+
+/* ── Building Label ── */
+.building-label {
+  font-family: 'VT323', monospace;
+  font-size: 15px;
+  color: #eee;
+  text-align: center;
+  margin-top: 3px;
+  text-shadow: 1px 1px 0 rgba(0,0,0,0.8), -1px 1px 0 rgba(0,0,0,0.8);
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.building-type-badge {
+  font-family: 'Dogica', monospace;
+  font-size: 7px;
+  color: var(--lot-accent);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-shadow: none;
+  opacity: 0.9;
+}
+
+/* ── Tooltip ── */
+.building-tooltip {
+  position: absolute;
+  top: -30px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0,0,0,0.88);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 3px;
+  padding: 3px 8px;
+  font-family: 'VT323', monospace;
+  font-size: 13px;
+  color: #fff;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  animation: tooltip-in 0.18s ease-out forwards;
+  z-index: 20;
+}
+.city-lot:hover .building-tooltip {
+  opacity: 1;
+}
+
+/* ── Empty City Message ── */
+.city-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 40px 20px;
+  text-align: center;
+}
+.city-empty__title {
+  font-family: 'Dogica', monospace;
+  font-size: 13px;
+  color: rgba(255,215,0,0.8);
+  letter-spacing: 0.06em;
+}
+.city-empty__sub {
+  font-family: 'VT323', monospace;
+  font-size: 18px;
+  color: rgba(255,255,255,0.5);
+  max-width: 280px;
+  line-height: 1.4;
+}
+.city-empty__sprite {
+  width: 96px;
+  height: 96px;
+  object-fit: contain;
+  animation: sprite-float 2s ease-in-out infinite;
+}
+
+/* ════════════════════════════════════════════
+   City Panel (Full-screen module view)
+   ════════════════════════════════════════════ */
+.city-panel {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  background: #0c0c1e;
+  animation: panel-slide-up 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.city-panel--closing {
+  animation: panel-slide-down 0.25s ease-in forwards;
+}
+
+/* Type color accent bar at very top */
+.city-panel__accent {
+  height: 4px;
+  flex-shrink: 0;
+}
+
+/* Header */
+.city-panel__header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  background: rgba(0,0,0,0.5);
+  border-bottom: 2px solid rgba(255,255,255,0.08);
+  flex-shrink: 0;
+}
+.city-panel__back {
+  font-family: 'Dogica', monospace;
+  font-size: 9px;
+  font-weight: 700;
+  background: rgba(255,255,255,0.07);
+  color: #ccc;
+  border: 2px solid rgba(255,255,255,0.15);
+  border-radius: 0;
+  padding: 6px 10px;
+  cursor: pointer;
+  letter-spacing: 0.05em;
+  transition: all 0.12s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.city-panel__back:hover {
+  background: rgba(255,255,255,0.14);
+  color: #fff;
+  transform: translateX(-2px);
+}
+.city-panel__sprite {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  image-rendering: auto;
+  animation: sprite-float 1.8s ease-in-out infinite;
+  flex-shrink: 0;
+}
+.city-panel__identity {
+  flex: 1;
+  min-width: 0;
+}
+.city-panel__name {
+  font-family: 'Dogica', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.city-panel__role {
+  font-family: 'VT323', monospace;
+  font-size: 16px;
+  color: rgba(255,255,255,0.55);
+  letter-spacing: 0.05em;
+}
+
+/* Module content */
+.city-panel__module {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  position: relative;
+}
+.city-panel__module::-webkit-scrollbar { width: 6px; }
+.city-panel__module::-webkit-scrollbar-track { background: transparent; }
+.city-panel__module::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 3px; }
+
+/* ── Dialogue Box ── */
+.city-dialogue {
+  flex-shrink: 0;
+  background: #0a0a0a;
+  border-top: 3px solid #fff;
+  padding: 12px 16px 14px;
+  cursor: pointer;
+  position: relative;
+  min-height: 80px;
+  max-height: 110px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.city-dialogue::before {
+  content: '▼';
+  position: absolute;
+  bottom: 8px;
+  right: 14px;
+  font-family: 'VT323', monospace;
+  font-size: 16px;
+  color: rgba(255,255,255,0.5);
+  animation: dialogue-cursor 0.9s step-end infinite;
+}
+.city-dialogue__speaker {
+  font-family: 'Dogica', monospace;
+  font-size: 9px;
+  font-weight: 700;
+  color: #FFD700;
+  letter-spacing: 0.06em;
+  margin-bottom: 2px;
+}
+.city-dialogue__text {
+  font-family: 'VT323', monospace;
+  font-size: 17px;
+  color: #fff;
+  line-height: 1.35;
+  letter-spacing: 0.02em;
+}
+
+/* ════════════════════════════════════════════
+   Add Agent Modal
+   ════════════════════════════════════════════ */
+.city-add-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: rgba(0,0,0,0.7);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  animation: city-fade-in 0.2s ease-out;
+}
+.city-add-panel {
+  width: 100%;
+  max-width: 560px;
+  background: #0d0d20;
+  border: 3px solid #FFD700;
+  border-bottom: none;
+  border-radius: 4px 4px 0 0;
+  padding: 20px 20px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  animation: panel-slide-up 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.city-add-panel__title {
+  font-family: 'Dogica', monospace;
+  font-weight: 700;
+  font-size: 12px;
+  color: #FFD700;
+  letter-spacing: 0.06em;
+  text-align: center;
+}
+.city-add-panel__types {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.city-type-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 10px 6px;
+  background: rgba(255,255,255,0.04);
+  border: 2px solid rgba(255,255,255,0.1);
+  border-radius: 2px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.city-type-btn:hover, .city-type-btn--selected {
+  background: rgba(255,255,255,0.1);
+  border-color: var(--type-color);
+  box-shadow: 0 0 12px rgba(255,255,255,0.08);
+}
+.city-type-btn__emoji {
+  font-size: 20px;
+}
+.city-type-btn__label {
+  font-family: 'Dogica', monospace;
+  font-size: 7px;
+  color: #ccc;
+  letter-spacing: 0.04em;
+}
+.city-type-btn--selected .city-type-btn__label {
+  color: var(--type-color);
+}
+.city-add-panel__input {
+  font-family: 'VT323', monospace;
+  font-size: 18px;
+  background: rgba(255,255,255,0.05);
+  border: 2px solid rgba(255,255,255,0.15);
+  border-radius: 2px;
+  color: #fff;
+  padding: 10px 12px;
+  outline: none;
+  letter-spacing: 0.04em;
+  transition: border-color 0.15s;
+}
+.city-add-panel__input:focus {
+  border-color: #FFD700;
+}
+.city-add-panel__input::placeholder {
+  color: rgba(255,255,255,0.3);
+}
+.city-add-panel__actions {
+  display: flex;
+  gap: 8px;
+}
+.city-btn {
+  font-family: 'Dogica', monospace;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 0;
+  cursor: pointer;
+  letter-spacing: 0.05em;
+  transition: all 0.1s;
+  box-shadow: 3px 3px 0 rgba(0,0,0,0.4);
+}
+.city-btn:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 rgba(0,0,0,0.4);
+}
+.city-btn--primary {
+  background: #FFD700;
+  color: #1a1a00;
+  flex: 1;
+}
+.city-btn--primary:hover { background: #ffe840; }
+.city-btn--secondary {
+  background: rgba(255,255,255,0.08);
+  color: #aaa;
+  border: 2px solid rgba(255,255,255,0.12);
+  box-shadow: none;
+}
+.city-btn--secondary:hover { background: rgba(255,255,255,0.14); color: #fff; }
+
+/* ── Mobile responsive ── */
+@media (max-width: 479px) {
+  .city-grid { gap: 16px; padding: 0; }
+  .city-lot { width: 110px; }
+  .city-lot--empty { width: 110px; height: 160px; }
+  .building-wrap { width: 96px; height: 96px; }
+  .building-sprite { width: 48px; height: 48px; }
+  .city-header__name { max-width: 130px; }
+  .city-add-panel__types { grid-template-columns: repeat(3, 1fr); }
+  .city-panel__sprite { width: 40px; height: 40px; }
+}
+@media (max-width: 360px) {
+  .city-lot { width: calc(50vw - 24px); }
+  .city-lot--empty { width: calc(50vw - 24px); }
+}

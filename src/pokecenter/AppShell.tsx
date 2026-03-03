@@ -51,7 +51,11 @@ function getPageComponent(pageId: string) {
   }
 }
 
-export function AppShell() {
+interface AppShellProps {
+  onBack?: () => void;
+}
+
+export function AppShell({ onBack }: AppShellProps) {
   const currentPage = usePokecenterStore(s => s.currentPage);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -59,7 +63,7 @@ export function AppShell() {
     <div className="app-shell">
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="main-content">
-        <Header onMenuToggle={() => setSidebarOpen(o => !o)} />
+        <Header onMenuToggle={() => setSidebarOpen(o => !o)} onBack={onBack} />
         <div className="page">
           {getPageComponent(currentPage)}
         </div>
