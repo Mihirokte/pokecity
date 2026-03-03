@@ -610,9 +610,28 @@ const DUPLEX_MID_W = B * 1.32;
 const DUPLEX_MID_H = B * 1.05;
 const DUPLEX_ROOF_W = B * 1.1;
 const DUPLEX_ROOF_H = B * 0.66;
-const ROAD_RADIUS = HEX_SIZE * 0.1;
-const ROAD_COLOR = '#f0f4f8';
+const ROAD_HALF_WIDTH = HEX_SIZE * 0.1;
 const ROAD_Y = BUILDING_BASE_Y + 0.1;
+// Pavement texture: across road width (V) = dark grey border | green center | dark grey border
+const PAVEMENT_TEXTURE = (() => {
+  const w = 64;
+  const h = 128;
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d')!;
+  const borderPx = Math.floor(h * 0.28);
+  ctx.fillStyle = '#2a2d2a';
+  ctx.fillRect(0, 0, w, borderPx);
+  ctx.fillRect(0, h - borderPx, w, borderPx);
+  ctx.fillStyle = '#5a9c6b';
+  ctx.fillRect(0, borderPx, w, h - 2 * borderPx);
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.ClampToEdgeWrapping;
+  tex.needsUpdate = true;
+  return tex;
+})();
 
 /** Shared curve for road mesh and Pokéball path (identical geometry). */
 function createRoadCurve(x1: number, z1: number, x2: number, z2: number): THREE.QuadraticBezierCurve3 {
@@ -625,20 +644,22 @@ function createRoadCurve(x1: number, z1: number, x2: number, z2: number): THREE.
   return new THREE.QuadraticBezierCurve3(A, control, B);
 }
 
-/** Get position and tangent on the full agent path (forward 0→1→2→0, then back 0→2→1→0). t in [0,1]. */
+/** Road segments per agent: only house–duplex (0–2 and 1–2), not house–house (0–1). */
+const AGENT_ROAD_SEGMENTS: [number, number][] = [[0, 2], [1, 2]];
+
+/** Get position and tangent on agent path: 0→2→1 then back 1→2→0 (only house–duplex roads). t in [0,1]. */
 function getPointOnAgentPath(
   positions: [number, number][],
   t: number
 ): { point: THREE.Vector3; tangent: THREE.Vector3 } {
-  const curves = [
-    createRoadCurve(positions[0][0], positions[0][1], positions[1][0], positions[1][1]),
-    createRoadCurve(positions[1][0], positions[1][1], positions[2][0], positions[2][1]),
-    createRoadCurve(positions[2][0], positions[2][1], positions[0][0], positions[0][1]),
-  ];
-  const seg = Math.floor(t * 6);
-  const localT = (t * 6) % 1;
-  const forward = seg < 3;
-  const curveIndex = forward ? seg : 5 - seg;
+  const curves = AGENT_ROAD_SEGMENTS.map(([i, j]) =>
+    createRoadCurve(positions[i][0], positions[i][1], positions[j][0], positions[j][1])
+  );
+  const totalSegs = curves.length * 2;
+  const seg = Math.floor(t * totalSegs) % totalSegs;
+  const localT = (t * totalSegs) % 1;
+  const forward = seg < curves.length;
+  const curveIndex = forward ? seg : totalSegs - 1 - seg;
   const u = forward ? localT : 1 - localT;
   const curve = curves[curveIndex];
   const point = curve.getPoint(u);
@@ -670,15 +691,65 @@ function getColorsForAgent(residentId: string): [string, string, string] {
   ];
 }
 
-function SmoothRoad({ x1, z1, x2, z2 }: { x1: number; z1: number; x2: number; z2: number }) {
+/** Canonical key for an edge so we don't draw the same road twice (A-B and B-A are one edge). */
+function edgeKey(x1: number, z1: number, x2: number, z2: number): string {
+  const a = `${x1.toFixed(3)},${z1.toFixed(3)}`;
+  const b = `${x2.toFixed(3)},${z2.toFixed(3)}`;
+  return a < b ? `${a}-${b}` : `${b}-${a}`;
+}
+
+/** Flat ribbon along curve: V = across road (border = grey, center = green). */
+function createRibbonGeometry(curve: THREE.Curve<THREE.Vector3>, halfWidth: number, segments: number): THREE.BufferGeometry {
+  const left: THREE.Vector3[] = [];
+  const right: THREE.Vector3[] = [];
+  const up = new THREE.Vector3(0, 1, 0);
+  for (let i = 0; i <= segments; i++) {
+    const t = i / segments;
+    const pt = curve.getPoint(t);
+    const tangent = curve.getTangent(t).normalize();
+    const perp = new THREE.Vector3().crossVectors(up, tangent).normalize();
+    left.push(pt.clone().addScaledVector(perp, -halfWidth));
+    right.push(pt.clone().addScaledVector(perp, halfWidth));
+  }
+  const positions: number[] = [];
+  const uvs: number[] = [];
+  for (let i = 0; i <= segments; i++) {
+    positions.push(left[i].x, left[i].y, left[i].z);
+    uvs.push(i / segments, 0);
+    positions.push(right[i].x, right[i].y, right[i].z);
+    uvs.push(i / segments, 1);
+  }
+  const indices: number[] = [];
+  for (let i = 0; i < segments; i++) {
+    const a = i * 2;
+    const b = i * 2 + 1;
+    const c = i * 2 + 2;
+    const d = i * 2 + 3;
+    indices.push(a, b, c, b, d, c);
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  geo.setIndex(indices);
+  geo.computeVertexNormals();
+  return geo;
+}
+
+/** Pavement road: flat ribbon with distinct green center and dark grey borders. */
+function PavementRoad({ x1, z1, x2, z2 }: { x1: number; z1: number; x2: number; z2: number }) {
   const curve = useMemo(() => createRoadCurve(x1, z1, x2, z2), [x1, z1, x2, z2]);
-  const tubeGeo = useMemo(
-    () => new THREE.TubeGeometry(curve, 20, ROAD_RADIUS, 10, false),
+  const ribbonGeo = useMemo(
+    () => createRibbonGeometry(curve, ROAD_HALF_WIDTH, 24),
     [curve]
   );
   return (
-    <mesh geometry={tubeGeo} castShadow receiveShadow>
-      <meshStandardMaterial color={ROAD_COLOR} roughness={0.7} metalness={0.1} />
+    <mesh geometry={ribbonGeo} castShadow receiveShadow rotation={[0, 0, 0]}>
+      <meshStandardMaterial
+        map={PAVEMENT_TEXTURE}
+        roughness={0.75}
+        metalness={0.05}
+        side={THREE.DoubleSide}
+      />
     </mesh>
   );
 }
@@ -821,34 +892,45 @@ function SettlementsAndRoads({ entries }: SettlementsAndRoadsProps) {
     });
   }, [entries]);
 
+  // Unique edges only: house–duplex (0–2, 1–2), never house–house (0–1). Deduplicate across agents.
+  const uniqueRoadEdges = useMemo(() => {
+    const seen = new Set<string>();
+    const edges: { x1: number; z1: number; x2: number; z2: number }[] = [];
+    for (const agent of agentData) {
+      for (const [i, j] of AGENT_ROAD_SEGMENTS) {
+        const x1 = agent.positions[i][0];
+        const z1 = agent.positions[i][1];
+        const x2 = agent.positions[j][0];
+        const z2 = agent.positions[j][1];
+        const key = edgeKey(x1, z1, x2, z2);
+        if (!seen.has(key)) {
+          seen.add(key);
+          edges.push({ x1, z1, x2, z2 });
+        }
+      }
+    }
+    return edges;
+  }, [agentData]);
+
   return (
     <group>
+      {/* One pavement road per unique edge (green center, dark grey borders) */}
+      {uniqueRoadEdges.map((edge, i) => (
+        <PavementRoad
+          key={i}
+          x1={edge.x1}
+          z1={edge.z1}
+          x2={edge.x2}
+          z2={edge.z2}
+        />
+      ))}
       {agentData.map((agent, ai) => (
         <React.Fragment key={agent.resident.id}>
-          {/* Roads connecting the 3 buildings (smooth curve) */}
-          <SmoothRoad
-            x1={agent.positions[0][0]}
-            z1={agent.positions[0][1]}
-            x2={agent.positions[1][0]}
-            z2={agent.positions[1][1]}
-          />
-          <SmoothRoad
-            x1={agent.positions[1][0]}
-            z1={agent.positions[1][1]}
-            x2={agent.positions[2][0]}
-            z2={agent.positions[2][1]}
-          />
-          <SmoothRoad
-            x1={agent.positions[2][0]}
-            z1={agent.positions[2][1]}
-            x2={agent.positions[0][0]}
-            z2={agent.positions[0][1]}
-          />
           {/* 2 settlements (houses) + 1 city (duplex) */}
           <House x={agent.positions[0][0]} z={agent.positions[0][1]} baseColor={agent.colors[0]} />
           <House x={agent.positions[1][0]} z={agent.positions[1][1]} baseColor={agent.colors[1]} />
           <Duplex x={agent.positions[2][0]} z={agent.positions[2][1]} baseColor={agent.colors[2]} />
-          {/* Pokéball rolls along this agent's road loop (forward then trace back) */}
+          {/* Pokéball rolls along house–duplex roads only (forward then trace back) */}
           <PokeballOnRoad positions={agent.positions} phase={ai * 2.5} />
         </React.Fragment>
       ))}
