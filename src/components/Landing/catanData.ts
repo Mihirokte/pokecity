@@ -88,6 +88,13 @@ export const TILE_TYPE_SEQUENCE: TileType[] = [
   'travel', 'shopping', 'tasks', // row bottom (3)
 ];
 
+// Pre-computed: index in TILE_TYPE_SEQUENCE where each type first appears (the "home tile")
+export const HOME_TILE_INDICES: Set<number> = new Set(
+  Object.keys(TILE_CONFIGS)
+    .map((type) => TILE_TYPE_SEQUENCE.indexOf(type as TileType))
+    .filter((i) => i !== -1)
+);
+
 // 6 hardcoded demo settlements
 export const DEMO_SETTLEMENTS: DemoSettlement[] = [
   {
@@ -151,6 +158,17 @@ export const DEMO_SETTLEMENTS: DemoSettlement[] = [
     createdOrder: 5,
   },
 ];
+
+// Demo agent name by module type (for landing page home tiles)
+export const DEMO_AGENT_BY_TYPE: Record<TileType, string> = {
+  calendar: "Mihir's Calendar",
+  tasks: 'Task HQ',
+  notes: 'Note Atelier',
+  travel: 'Travel Bureau',
+  gym: 'Iron Gym',
+  shopping: 'Market District',
+  desert: '', // Desert has no agent
+};
 
 // Road connections (settlement pairs in creation order)
 export const ROADS: [number, number][] = [

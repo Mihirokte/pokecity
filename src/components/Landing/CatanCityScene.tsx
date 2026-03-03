@@ -10,6 +10,7 @@ import {
 import {
   getTileConfig,
   TILE_TYPE_SEQUENCE,
+  HOME_TILE_INDICES,
 } from './catanData';
 import type { House, Resident } from '../../types';
 
@@ -26,27 +27,30 @@ interface HexTileProps {
   q: number;
   r: number;
   bobOffset: number;
-  pokemonId: number | null;
   typeLabel: string;
-  pokeTexture: THREE.Texture | null;
   residentName?: string;
-  isOccupied: boolean;
+  spriteTextures: Map<number, THREE.Texture>;
+  isHomeTile: boolean;
 }
 
 function HexTile({
   q,
   r,
   bobOffset,
-  pokemonId,
   typeLabel,
-  pokeTexture,
   residentName,
-  isOccupied,
+  spriteTextures,
+  isHomeTile,
 }: HexTileProps) {
   const groupRef = useRef<THREE.Group>(null);
   const hexIndex = BOARD_HEXES.findIndex(([hq, hr]) => hq === q && hr === r);
   const tileType = TILE_TYPE_SEQUENCE[hexIndex];
   const config = getTileConfig(tileType);
+
+  // Only show pokemon if this is a home tile AND there's a resident
+  const isOccupied = isHomeTile && !!residentName;
+  const pokemonId = isOccupied ? config.pokemonId : null;
+  const pokeTexture = pokemonId ? spriteTextures.get(pokemonId) || null : null;
 
   const geometry = useMemo(() => {
     const shape = new THREE.Shape();
@@ -315,9 +319,8 @@ function CatanScene({ entries, onSelectResident }: CatanSceneProps) {
       {/* Render all 19 hex tiles */}
       {BOARD_HEXES.map(([q, r], idx) => {
         const tileType = TILE_TYPE_SEQUENCE[idx];
-        const config = getTileConfig(tileType);
-        const resident = occupiedTiles.get(tileType);
-        const isOccupied = !!resident;
+        const isHomeTile = HOME_TILE_INDICES.has(idx);
+        const resident = isHomeTile ? occupiedTiles.get(tileType) : undefined;
 
         return (
           <group key={`hex-${q}-${r}`}>
@@ -325,15 +328,14 @@ function CatanScene({ entries, onSelectResident }: CatanSceneProps) {
               q={q}
               r={r}
               bobOffset={idx * 0.15}
-              pokemonId={config.pokemonId}
               typeLabel={tileType === 'desert' ? 'DESERT' : tileType.toUpperCase()}
-              pokeTexture={config.pokemonId ? spriteTextures.get(config.pokemonId) || null : null}
               residentName={resident?.name}
-              isOccupied={isOccupied}
+              spriteTextures={spriteTextures}
+              isHomeTile={isHomeTile}
             />
 
             {/* Clickable region for selecting resident */}
-            {isOccupied && resident && (
+            {resident && (
               <Html
                 position={[...axialToWorld(q, r), 1]}
                 distanceFactor={1}

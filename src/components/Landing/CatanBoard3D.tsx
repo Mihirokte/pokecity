@@ -10,6 +10,8 @@ import {
 import {
   getTileConfig,
   TILE_TYPE_SEQUENCE,
+  HOME_TILE_INDICES,
+  DEMO_AGENT_BY_TYPE,
 } from './catanData';
 
 interface CatanBoard3DProps {
@@ -24,23 +26,27 @@ interface HexTileProps {
   q: number;
   r: number;
   bobOffset: number;
-  pokemonId: number | null;
   typeLabel: string;
-  pokeTexture: THREE.Texture | null;
+  agentName?: string;
+  spriteTextures: Map<number, THREE.Texture>;
 }
 
 function HexTile({
   q,
   r,
   bobOffset,
-  pokemonId,
   typeLabel,
-  pokeTexture,
+  agentName,
+  spriteTextures,
 }: HexTileProps) {
   const groupRef = useRef<THREE.Group>(null);
   const hexIndex = BOARD_HEXES.findIndex(([hq, hr]) => hq === q && hr === r);
   const tileType = TILE_TYPE_SEQUENCE[hexIndex];
   const config = getTileConfig(tileType);
+
+  // Only show pokemon if this is a home tile AND there's an agent
+  const pokemonId = agentName ? config.pokemonId : null;
+  const pokeTexture = pokemonId ? spriteTextures.get(pokemonId) || null : null;
 
   // Create simple hex shape - flat top
   const geometry = useMemo(() => {
@@ -282,7 +288,8 @@ function CatanScene() {
       {/* Render all 19 hex tiles */}
       {BOARD_HEXES.map(([q, r], idx) => {
         const tileType = TILE_TYPE_SEQUENCE[idx];
-        const config = getTileConfig(tileType);
+        const isHomeTile = HOME_TILE_INDICES.has(idx);
+        const agentName = isHomeTile ? DEMO_AGENT_BY_TYPE[tileType] : undefined;
 
         return (
           <HexTile
@@ -290,9 +297,9 @@ function CatanScene() {
             q={q}
             r={r}
             bobOffset={idx * 0.15}
-            pokemonId={config.pokemonId}
             typeLabel={tileType === 'desert' ? 'DESERT' : tileType.toUpperCase()}
-            pokeTexture={config.pokemonId ? spriteTextures.get(config.pokemonId) || null : null}
+            agentName={agentName}
+            spriteTextures={spriteTextures}
           />
         );
       })}
