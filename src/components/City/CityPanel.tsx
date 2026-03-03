@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { House, Resident } from '../../types';
 import { HOUSE_TYPES } from '../../config/houseTypes';
-import { spriteAnimatedUrl, badgeUrl, MODULE_BADGE_IDS } from '../../config/pokemon';
+import { spriteArtworkUrl, badgeUrl, MODULE_BADGE_IDS } from '../../config/pokemon';
 import { CalendarModule } from '../Modules/CalendarModule';
 import { TasksModule } from '../Modules/TasksModule';
 import { NotesModule } from '../Modules/NotesModule';
@@ -56,7 +56,7 @@ export function CityPanel({ resident, house, onClose }: CityPanelProps) {
           ← BACK
         </button>
         <img
-          src={spriteAnimatedUrl(resident.emoji)}
+          src={spriteArtworkUrl(resident.emoji)}
           alt={resident.name}
           className="city-panel__sprite"
         />

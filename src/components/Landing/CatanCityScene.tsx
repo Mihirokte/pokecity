@@ -89,8 +89,8 @@ function FloatingAgentName({
   );
 }
 
-// Sprite: above hex top (extrusion top ≈ 0.65); bottom of plane must be ≥ hex top
-const SPRITE_SIZE = 2.8;
+// Sprite: sized to fit within hex (proportional to tile)
+const SPRITE_SIZE = HEX_SIZE * 0.92;
 const HEX_TOP_Y = 0.65;
 const SPRITE_Y = HEX_TOP_Y + SPRITE_SIZE / 2 + 0.15;
 
@@ -486,8 +486,8 @@ function CatanScene({ entries, onSelectResident, onAddAgent, panelOpen }: CatanS
     const pokemonIds = [...new Set([...Object.values(ELEMENT_SPRITE_IDS), ...residentIds])];
 
     pokemonIds.forEach((pokemonId) => {
-      const primaryUrl = spriteAnimatedUrl(pokemonId);   // showdown — matches CityPanel
-      const fallbackUrl = spriteArtworkUrl(pokemonId);
+      const primaryUrl = spriteArtworkUrl(pokemonId);   // HD official artwork
+      const fallbackUrl = spriteAnimatedUrl(pokemonId);
 
       textureLoader.load(
         primaryUrl,
@@ -598,21 +598,19 @@ function CatanScene({ entries, onSelectResident, onAddAgent, panelOpen }: CatanS
 // ============================================================================
 
 const BUILDING_BASE_Y = 0.72;
-const SCALE = 2; // building size (was 4; halved)
-// Settlement (house): base and roof
-const HOUSE_BASE_W = 0.48 * SCALE;
-const HOUSE_BASE_H = 0.4 * SCALE;
-const HOUSE_ROOF_W = 0.34 * SCALE;
-const HOUSE_ROOF_H = 0.24 * SCALE;
-// City (duplex): larger, two tiers
-const DUPLEX_BASE_W = 0.6 * SCALE;
-const DUPLEX_BASE_H = 0.5 * SCALE;
-const DUPLEX_MID_W = 0.5 * SCALE;
-const DUPLEX_MID_H = 0.4 * SCALE;
-const DUPLEX_ROOF_W = 0.42 * SCALE;
-const DUPLEX_ROOF_H = 0.25 * SCALE;
-// Roads
-const ROAD_RADIUS = 0.28;
+// Building, road and Pokéball sizes derived from tile (HEX_SIZE) for proper proportion
+const B = HEX_SIZE * 0.38; // base unit for building dimensions
+const HOUSE_BASE_W = B * 1.26;
+const HOUSE_BASE_H = B * 1.05;
+const HOUSE_ROOF_W = B * 0.9;
+const HOUSE_ROOF_H = B * 0.63;
+const DUPLEX_BASE_W = B * 1.58;
+const DUPLEX_BASE_H = B * 1.32;
+const DUPLEX_MID_W = B * 1.32;
+const DUPLEX_MID_H = B * 1.05;
+const DUPLEX_ROOF_W = B * 1.1;
+const DUPLEX_ROOF_H = B * 0.66;
+const ROAD_RADIUS = HEX_SIZE * 0.1;
 const ROAD_COLOR = '#f0f4f8';
 const ROAD_Y = BUILDING_BASE_Y + 0.1;
 
@@ -685,8 +683,8 @@ function SmoothRoad({ x1, z1, x2, z2 }: { x1: number; z1: number; x2: number; z2
   );
 }
 
-// Pokéball rolling along one agent's road loop (forward then trace back)
-const POKEBALL_RADIUS = 0.18;
+// Pokéball: proportional to road/tile
+const POKEBALL_RADIUS = HEX_SIZE * 0.065;
 const POKEBALL_LOOP_DURATION = 14;
 const POKEBALL_TEXTURE = (() => {
   const canvas = document.createElement('canvas');

@@ -93,8 +93,8 @@ function FloatingAgentName({
   );
 }
 
-// Sprite: one size, above surface (match CatanCityScene)
-const SPRITE_SIZE = 2.8;
+// Sprite: sized to fit within hex (match CatanCityScene)
+const SPRITE_SIZE = HEX_SIZE * 0.92;
 const HEX_TOP_Y = 0.65;
 const SPRITE_Y = HEX_TOP_Y + SPRITE_SIZE / 2 + 0.15;
 
@@ -516,14 +516,14 @@ function CatanScene() {
     new Map()
   );
 
-  // Load sprites: same as panel (left/top) — showdown animated, fallback official artwork
+  // Load sprites: HD official artwork, fallback animated
   useEffect(() => {
     const textureLoader = new THREE.TextureLoader();
     const pokemonIds = [...new Set(Object.values(ELEMENT_SPRITE_IDS))];
 
     pokemonIds.forEach((pokemonId) => {
-      const primaryUrl = spriteAnimatedUrl(pokemonId);   // showdown — matches CityPanel
-      const fallbackUrl = spriteArtworkUrl(pokemonId);
+      const primaryUrl = spriteArtworkUrl(pokemonId);
+      const fallbackUrl = spriteAnimatedUrl(pokemonId);
 
       textureLoader.load(
         primaryUrl,

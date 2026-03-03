@@ -3,7 +3,7 @@ import { useCityStore } from '../../stores/cityStore';
 import { useUIStore } from '../../stores/uiStore';
 import { useAuthStore } from '../../stores/authStore';
 import { HOUSE_TYPES, HOUSE_TYPE_LIST } from '../../config/houseTypes';
-import { spriteAnimatedUrl, spriteArtworkUrl, PLAYER_POKEMON_ID } from '../../config/pokemon';
+import { spriteArtworkUrl, PLAYER_POKEMON_ID } from '../../config/pokemon';
 import { AgentCard } from './AgentCard';
 import { CalendarModule } from '../Modules/CalendarModule';
 import { TasksModule } from '../Modules/TasksModule';
@@ -253,7 +253,7 @@ export function ShopView() {
                 <>
                   <div className="shop-panel__agent-bar">
                     <img
-                      src={spriteAnimatedUrl(selectedAgent.emoji)}
+                      src={spriteArtworkUrl(selectedAgent.emoji)}
                       alt={selectedAgent.name}
                       className="shop-panel__agent-sprite"
                     />

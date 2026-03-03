@@ -1,6 +1,6 @@
 import type { House, Resident } from '../../types';
 import { HOUSE_TYPES } from '../../config/houseTypes';
-import { spriteAnimatedUrl } from '../../config/pokemon';
+import { spriteArtworkUrl } from '../../config/pokemon';
 
 interface CityBuildingProps {
   house: House;
@@ -82,7 +82,7 @@ export function CityBuilding({ house, resident, isEntering, onClick }: CityBuild
       {/* Resident sprite */}
       <div className="building-sprite-wrap">
         <img
-          src={spriteAnimatedUrl(spriteId)}
+          src={spriteArtworkUrl(spriteId)}
           alt={resident.name}
           className="building-sprite"
           loading="lazy"
