@@ -598,7 +598,7 @@ function CatanScene({ entries, onSelectResident, onAddAgent, panelOpen }: CatanS
 // ============================================================================
 
 const BUILDING_BASE_Y = 0.72;
-const SCALE = 4; // 300% size increase
+const SCALE = 2; // building size (was 4; halved)
 // Settlement (house): base and roof
 const HOUSE_BASE_W = 0.48 * SCALE;
 const HOUSE_BASE_H = 0.4 * SCALE;
