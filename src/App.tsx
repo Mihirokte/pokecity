@@ -145,12 +145,10 @@ export default function App() {
     return () => { cancelled = true; };
   }, [accessToken, spreadsheetId, booting]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Render
-  if (booting) return <LoadingScreen />;
-
+  // Render - always show landing page (agents directory) 
+  // User can login to access full CityView
   const isAuthed = !!user && !!accessToken && isTokenValid();
-
-  // Show LandingPage (3D Catan board) for unauthenticated users, CityView for authenticated
+  
   return (
     <>
       <Toasts />
