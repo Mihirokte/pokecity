@@ -235,7 +235,11 @@ function FloatingParticles() {
 // CATAN SCENE
 // ============================================================================
 
-function CatanScene() {
+interface CatanSceneProps {
+  onLogin: () => void;
+}
+
+function CatanScene({ onLogin }: CatanSceneProps) {
   const orbitControlsRef = useRef<any>(null);
   const [autoRotate, setAutoRotate] = useState(true);
   const [spriteTextures, setSpriteTextures] = useState<Map<number, THREE.Texture>>(
@@ -292,6 +296,7 @@ function CatanScene() {
             bobOffset={idx * 0.15}
             pokemonId={config.pokemonId}
             typeLabel={tileType === 'desert' ? 'DESERT' : tileType.toUpperCase()}
+            typeColor={config.topColor}
             pokeTexture={config.pokemonId ? spriteTextures.get(config.pokemonId) || null : null}
           />
         );
@@ -333,7 +338,7 @@ export function CatanBoard3D({ onLogin }: CatanBoard3DProps) {
         }}
       >
         <React.Suspense fallback={null}>
-          <CatanScene />
+          <CatanScene onLogin={onLogin} />
         </React.Suspense>
       </Canvas>
 

@@ -292,6 +292,7 @@ function CatanScene() {
             bobOffset={idx * 0.15}
             pokemonId={config.pokemonId}
             typeLabel={tileType === 'desert' ? 'DESERT' : tileType.toUpperCase()}
+            typeColor={config.topColor}
             pokeTexture={config.pokemonId ? spriteTextures.get(config.pokemonId) || null : null}
           />
         );

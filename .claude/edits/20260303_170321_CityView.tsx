@@ -92,6 +92,7 @@ export function CityView() {
       <CatanCityScene
         entries={entries}
         onSelectResident={(resident, house) => setSelected({ resident, house })}
+        onAddClick={() => setShowAddForm(true)}
       />
 
       {/* ── Add Agent Modal ── */}

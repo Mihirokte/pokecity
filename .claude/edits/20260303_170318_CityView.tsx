@@ -88,10 +88,11 @@ export function CityView() {
         </div>
       )}
 
-      {/* ── 3D Catan City (always mounted, behind everything) ── */}
-      <CatanCityScene
+      {/* ── 3D Three.js City (always mounted, behind everything) ── */}
+      <ThreeCityScene
         entries={entries}
-        onSelectResident={(resident, house) => setSelected({ resident, house })}
+        onSelectBuilding={(resident, house) => setSelected({ resident, house })}
+        onAddClick={() => setShowAddForm(true)}
       />
 
       {/* ── Add Agent Modal ── */}
