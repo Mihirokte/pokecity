@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { useCityStore } from '../../stores/cityStore';
 import { useUIStore } from '../../stores/uiStore';
 import { useAuthStore } from '../../stores/authStore';
@@ -33,6 +33,14 @@ export function CityView() {
   const [adding, setAdding] = useState(false);
   const [resetting, setResetting] = useState(false);
 
+  const headerRef = useRef<HTMLDivElement>(null);
+  const focusHeader = useCallback(() => {
+    requestAnimationFrame(() => {
+      const first = headerRef.current?.querySelector<HTMLElement>('button, [href], input, select, textarea');
+      first?.focus();
+    });
+  }, []);
+
   const handleAddAgent = useCallback(async () => {
     if (!newAgentName.trim() || adding) return;
     setAdding(true);
@@ -42,10 +50,11 @@ export function CityView() {
       setNewAgentName('');
       setShowAddForm(false);
       addToast('New resident joined the city!', 'success');
+      focusHeader();
     } finally {
       setAdding(false);
     }
-  }, [newAgentName, newAgentType, adding, findOrCreateHouse, addResident, addToast]);
+  }, [newAgentName, newAgentType, adding, findOrCreateHouse, addResident, addToast, focusHeader]);
 
   // Build list: one entry per resident with their house
   const entries = residents
@@ -58,7 +67,7 @@ export function CityView() {
   return (
     <div className="city-view">
       {/* ── Floating Header HUD ── */}
-      <header className="city-header city-header--hud">
+      <header ref={headerRef} className="city-header city-header--hud" tabIndex={-1}>
         <div className="city-header__brand">
           <img src={badgeUrl(HEADER_BADGE_ID)} alt="" className="pokecity-badge pokecity-badge--header" />
           <div className="city-header__name">{cityName}</div>
@@ -179,7 +188,7 @@ export function CityView() {
               </button>
               <button
                 className="city-btn city-btn--secondary"
-                onClick={() => { setShowAddForm(false); setNewAgentName(''); }}
+                onClick={() => { setShowAddForm(false); setNewAgentName(''); focusHeader(); }}
               >
                 CANCEL
               </button>
@@ -211,7 +220,7 @@ export function CityView() {
         <CityPanel
           resident={selected.resident}
           house={selected.house}
-          onClose={() => setSelected(null)}
+          onClose={() => { setSelected(null); focusHeader(); }}
         />
       )}
 

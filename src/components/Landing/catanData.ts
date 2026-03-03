@@ -151,6 +151,16 @@ export const HOME_TILE_INDICES: Set<number> = new Set(
     .filter((i) => i !== -1)
 );
 
+/** Ordered list of the 6 home hex board indices (slot 0..5 → hex index) */
+export const ORDERED_HOME_HEX_INDICES: number[] = Array.from(HOME_TILE_INDICES).sort((a, b) => a - b);
+
+/** Default board slot (0..5) for a house type — used when gridX is unset or invalid */
+export function defaultSlotForType(type: TileType): number {
+  const hexIdx = TILE_TYPE_SEQUENCE.indexOf(type);
+  const slot = ORDERED_HOME_HEX_INDICES.indexOf(hexIdx);
+  return slot >= 0 ? slot : 0;
+}
+
 // 6 hardcoded demo settlements
 export const DEMO_SETTLEMENTS: DemoSettlement[] = [
   {

@@ -1,8 +1,14 @@
 import { create } from 'zustand';
 import type { AllModuleData, CalendarEvent, HealthMetric, House, HouseModuleType, Note, Resident, ShoppingItem, Task, TripPlan } from '../types';
 import { SheetsService } from '../services/sheetsService';
+import { useUIStore } from './uiStore';
 import { AVATAR_COLORS, HOUSE_TYPES, HOUSE_TYPE_LIST } from '../config/houseTypes';
 import { RESIDENT_POKEMON_IDS } from '../config/pokemon';
+import { defaultSlotForType } from '../components/Landing/catanData';
+
+function syncFailedToast(message: string) {
+  useUIStore.getState().addToast(message, 'error');
+}
 
 interface CityState {
   cityName: string;
@@ -16,6 +22,8 @@ interface CityState {
   placeHouse: (type: HouseModuleType) => Promise<House>;
   removeHouse: (id: string) => Promise<void>;
   renameHouse: (id: string, name: string) => Promise<void>;
+  /** Set board slot (0..5) for a house for better space organization */
+  updateHousePosition: (houseId: string, slotIndex: number) => Promise<void>;
   findOrCreateHouse: (type: HouseModuleType) => Promise<House>;
   addResident: (houseId: string, name: string) => Promise<void>;
   removeResident: (id: string) => Promise<void>;
@@ -44,22 +52,23 @@ export const useCityStore = create<CityState>((set, get) => ({
 
   setCityName: (name) => {
     set({ cityName: name });
-    SheetsService.update('Meta', { key: 'cityName', value: name }, 'key').catch(() => {});
+    SheetsService.update('Meta', { key: 'cityName', value: name }, 'key').catch(() => syncFailedToast('Failed to save city name'));
   },
 
   placeHouse: async (type) => {
     const { houses } = get();
+    const slot = defaultSlotForType(type);
     const house: House = {
       id: `house_${crypto.randomUUID()}`,
       type,
       name: HOUSE_TYPES[type].label,
-      gridX: 0,
+      gridX: slot,
       gridY: 0,
       createdAt: new Date().toISOString(),
     };
 
     set({ houses: [...houses, house] });
-    SheetsService.append('Houses', house).catch(() => {});
+    SheetsService.append('Houses', house).catch(() => syncFailedToast('Failed to save house'));
     return house;
   },
 
@@ -69,9 +78,9 @@ export const useCityStore = create<CityState>((set, get) => ({
       houses: get().houses.filter(h => h.id !== id),
       residents: get().residents.filter(r => r.houseId !== id),
     });
-    SheetsService.deleteRow('Houses', id).catch(() => {});
+    SheetsService.deleteRow('Houses', id).catch(() => syncFailedToast('Failed to remove house'));
     for (const r of orphanedResidents) {
-      SheetsService.deleteRow('Residents', r.id).catch(() => {});
+      SheetsService.deleteRow('Residents', r.id).catch(() => syncFailedToast('Failed to remove resident'));
     }
   },
 
@@ -79,7 +88,17 @@ export const useCityStore = create<CityState>((set, get) => ({
     const houses = get().houses.map(h => h.id === id ? { ...h, name } : h);
     set({ houses });
     const house = houses.find(h => h.id === id);
-    if (house) SheetsService.update('Houses', house).catch(() => {});
+    if (house) SheetsService.update('Houses', house).catch(() => syncFailedToast('Failed to rename house'));
+  },
+
+  updateHousePosition: async (houseId, slotIndex) => {
+    const clamped = Math.max(0, Math.min(5, Math.floor(slotIndex)));
+    const houses = get().houses.map(h =>
+      h.id === houseId ? { ...h, gridX: clamped } : h
+    );
+    set({ houses });
+    const house = houses.find(h => h.id === houseId);
+    if (house) SheetsService.update('Houses', house).catch(() => syncFailedToast('Failed to update position'));
   },
 
   findOrCreateHouse: async (type) => {
@@ -105,12 +124,12 @@ export const useCityStore = create<CityState>((set, get) => ({
     };
 
     set({ residents: [...get().residents, resident] });
-    SheetsService.append('Residents', resident).catch(() => {});
+    SheetsService.append('Residents', resident).catch(() => syncFailedToast('Failed to save resident'));
   },
 
   removeResident: async (id) => {
     set({ residents: get().residents.filter(r => r.id !== id) });
-    SheetsService.deleteRow('Residents', id).catch(() => {});
+    SheetsService.deleteRow('Residents', id).catch(() => syncFailedToast('Failed to remove resident'));
   },
 
   updateResident: async (id, updates) => {
@@ -119,7 +138,7 @@ export const useCityStore = create<CityState>((set, get) => ({
     );
     set({ residents });
     const updated = residents.find(r => r.id === id);
-    if (updated) SheetsService.update('Residents', updated).catch(() => {});
+    if (updated) SheetsService.update('Residents', updated).catch(() => syncFailedToast('Failed to update resident'));
   },
 
   setModuleData: (key, data) => {
@@ -166,7 +185,7 @@ export const useCityStore = create<CityState>((set, get) => ({
       if (!validTypes.has(type)) {
         fixed++;
         const house: House = { ...h, type: defaultType, name: HOUSE_TYPES[defaultType].label };
-        SheetsService.update('Houses', house).catch(() => {});
+        SheetsService.update('Houses', house).catch(() => syncFailedToast('Failed to fix house type'));
         return house;
       }
       return h;

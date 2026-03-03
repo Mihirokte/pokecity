@@ -9,9 +9,14 @@ export function spriteUrl(id: number | string): string {
   return `${SPRITE_BASE}/${id}.png`;
 }
 
-/** Get the animated showdown sprite (GIF) */
+/** Get the animated showdown sprite (GIF) — moving sprite used on the board */
 export function spriteAnimatedUrl(id: number | string): string {
   return `${SPRITE_BASE}/other/showdown/${id}.gif`;
+}
+
+/** Gen V Black/White animated (alternative; use for board if preferred) */
+export function spriteAnimatedGen5Url(id: number | string): string {
+  return `${SPRITE_BASE}/versions/generation-v/black-white/animated/${id}.gif`;
 }
 
 /** Get the high-res official artwork (clean, no pixels) */

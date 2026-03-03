@@ -516,7 +516,8 @@ function CatanScene() {
     new Map()
   );
 
-  // Load sprites: HD official artwork, fallback animated
+  // Load sprites: HD official artwork; ref for disposal on unmount
+  const texturesRef = useRef<Map<number, THREE.Texture>>(new Map());
   useEffect(() => {
     const textureLoader = new THREE.TextureLoader();
     const pokemonIds = [...new Set(Object.values(ELEMENT_SPRITE_IDS))];
@@ -524,24 +525,30 @@ function CatanScene() {
     pokemonIds.forEach((pokemonId) => {
       const primaryUrl = spriteArtworkUrl(pokemonId);
       const fallbackUrl = spriteAnimatedUrl(pokemonId);
-
+      const onLoad = (texture: THREE.Texture) => {
+        texture.magFilter = THREE.NearestFilter;
+        texture.minFilter = THREE.NearestFilter;
+        texturesRef.current.set(pokemonId, texture);
+        setSpriteTextures((prev) => new Map(prev).set(pokemonId, texture));
+      };
       textureLoader.load(
         primaryUrl,
-        (texture) => {
-          texture.magFilter = THREE.NearestFilter;
-          texture.minFilter = THREE.NearestFilter;
-          setSpriteTextures((prev) => new Map(prev).set(pokemonId, texture));
-        },
+        onLoad,
         undefined,
         () => {
           textureLoader.load(fallbackUrl, (texture) => {
             texture.magFilter = THREE.NearestFilter;
             texture.minFilter = THREE.NearestFilter;
+            texturesRef.current.set(pokemonId, texture);
             setSpriteTextures((prev) => new Map(prev).set(pokemonId, texture));
           });
         }
       );
     });
+    return () => {
+      texturesRef.current.forEach((t) => t.dispose());
+      texturesRef.current.clear();
+    };
   }, []);
 
   const handleOrbitStart = () => {

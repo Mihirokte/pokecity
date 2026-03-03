@@ -17,6 +17,8 @@ function getAuth(): { token: string; sheetId: string } {
   return { token: accessToken, sheetId: spreadsheetId };
 }
 
+const MAX_RETRIES = 3;
+
 async function withRetry<T>(
   fn: () => Promise<T>,
   retryCount = 0
@@ -24,12 +26,18 @@ async function withRetry<T>(
   try {
     return await fn();
   } catch (error) {
-    // If we get a 401, try silent refresh once
-    if (error instanceof Error && error.message.includes('401') && retryCount === 0) {
+    const msg = error instanceof Error ? error.message : String(error);
+    // 401: try silent token refresh once
+    if (msg.includes('401') && retryCount === 0) {
       const refreshed = await useAuthStore.getState().refreshTokenSilently();
-      if (refreshed) {
-        return withRetry(fn, retryCount + 1);
-      }
+      if (refreshed) return withRetry(fn, 1);
+    }
+    // 429 (rate limit) or 5xx or network: retry with backoff
+    const isRetryable = /\(429\)|\(5\d{2}\)/.test(msg) || msg.includes('Failed to fetch') || msg.includes('NetworkError');
+    if (isRetryable && retryCount < MAX_RETRIES) {
+      const delayMs = Math.min(1000 * Math.pow(2, retryCount), 8000);
+      await new Promise(r => setTimeout(r, delayMs));
+      return withRetry(fn, retryCount + 1);
     }
     throw error;
   }
@@ -340,38 +348,38 @@ export const SheetsService = {
 
   // ── Delete a row by ID ──
   async deleteRow(sheetName: SheetName, id: string): Promise<void> {
-    const auth = getAuth();
-    if (auth.sheetId === SAMPLE_SPREADSHEET_ID) return Promise.resolve();
-    const { token, sheetId } = auth;
-    const { sheetGids } = useAuthStore.getState();
-    const gid = sheetGids[sheetName];
-    if (gid === undefined) throw new Error(`No GID for ${sheetName}`);
+    if (getAuth().sheetId === SAMPLE_SPREADSHEET_ID) return Promise.resolve();
+    return withRetry(async () => {
+      const { token, sheetId } = getAuth();
+      const { sheetGids } = useAuthStore.getState();
+      const gid = sheetGids[sheetName];
+      if (gid === undefined) throw new Error(`No GID for ${sheetName}`);
 
-    // Find the row index
-    const all = await this.readAll<{ id: string }>(sheetName);
-    const idx = all.findIndex(r => r.id === id);
-    if (idx === -1) throw new Error(`Row not found in ${sheetName}: ${id}`);
-    const rowIndex = idx + 1; // 0-indexed, but skip header
+      const all = await this.readAll<{ id: string }>(sheetName);
+      const idx = all.findIndex(r => r.id === id);
+      if (idx === -1) throw new Error(`Row not found in ${sheetName}: ${id}`);
+      const rowIndex = idx + 1;
 
-    const res = await fetch(`${SHEETS_API}/${sheetId}:batchUpdate`, {
-      method: 'POST',
-      headers: headers(token),
-      body: JSON.stringify({
-        requests: [{
-          deleteDimension: {
-            range: {
-              sheetId: gid,
-              dimension: 'ROWS',
-              startIndex: rowIndex,
-              endIndex: rowIndex + 1,
+      const res = await fetch(`${SHEETS_API}/${sheetId}:batchUpdate`, {
+        method: 'POST',
+        headers: headers(token),
+        body: JSON.stringify({
+          requests: [{
+            deleteDimension: {
+              range: {
+                sheetId: gid,
+                dimension: 'ROWS',
+                startIndex: rowIndex,
+                endIndex: rowIndex + 1,
+              },
             },
-          },
-        }],
-      }),
+          }],
+        }),
+      });
+      if (!res.ok) {
+        const errBody = await res.text().catch(() => '');
+        throw new Error(`Failed to delete from ${sheetName} (${res.status}): ${errBody || res.statusText}`);
+      }
     });
-    if (!res.ok) {
-      const errBody = await res.text().catch(() => '');
-      throw new Error(`Failed to delete from ${sheetName} (${res.status}): ${errBody || res.statusText}`);
-    }
   },
 };

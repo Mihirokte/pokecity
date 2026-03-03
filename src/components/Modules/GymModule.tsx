@@ -47,6 +47,7 @@ export function GymModule({ resident }: { resident: Resident }) {
 
   const [activeType, setActiveType] = useState<string>('weight');
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<HealthForm>(emptyForm('weight'));
 
   const allMetrics = moduleData.healthMetrics;
@@ -98,9 +99,52 @@ export function GymModule({ resident }: { resident: Resident }) {
     [],
   );
 
+  const handleEdit = useCallback((m: HealthMetric) => {
+    setEditingId(m.id);
+    setForm({
+      date: m.date,
+      metricType: m.metricType,
+      value: m.value,
+      unit: m.unit ?? '',
+      notes: m.notes ?? '',
+    });
+    setActiveType(m.metricType);
+    setShowForm(true);
+  }, []);
+
   const handleCreate = useCallback(async () => {
     if (!form.value.trim()) {
       addToast('Value is required', 'error');
+      return;
+    }
+
+    if (editingId) {
+      const existing = allMetrics.find(m => m.id === editingId);
+      if (!existing) {
+        setEditingId(null);
+        setShowForm(false);
+        return;
+      }
+      const updated: HealthMetric = {
+        ...existing,
+        date: form.date,
+        metricType: form.metricType,
+        value: form.value.trim(),
+        unit: form.unit.trim(),
+        notes: form.notes.trim(),
+      };
+      const updatedList = allMetrics.map(m => m.id === editingId ? updated : m);
+      setModuleData('healthMetrics', updatedList);
+      setForm(emptyForm(activeType));
+      setShowForm(false);
+      setEditingId(null);
+      addToast('Metric updated', 'success');
+      try {
+        await SheetsService.update('HealthMetrics', updated);
+      } catch {
+        setModuleData('healthMetrics', allMetrics);
+        addToast('Failed to update metric', 'error');
+      }
       return;
     }
 
@@ -115,7 +159,6 @@ export function GymModule({ resident }: { resident: Resident }) {
       createdAt: new Date().toISOString(),
     };
 
-    // Optimistic update
     setModuleData('healthMetrics', [...allMetrics, entry]);
     setForm(emptyForm(activeType));
     setShowForm(false);
@@ -124,11 +167,10 @@ export function GymModule({ resident }: { resident: Resident }) {
     try {
       await SheetsService.append('HealthMetrics', entry);
     } catch {
-      // Revert on failure
       setModuleData('healthMetrics', allMetrics);
       addToast('Failed to save metric', 'error');
     }
-  }, [form, resident.id, allMetrics, activeType, setModuleData, addToast]);
+  }, [form, resident.id, allMetrics, activeType, editingId, setModuleData, addToast]);
 
   const handleDelete = useCallback(async (id: string) => {
     const prev = allMetrics;
@@ -152,7 +194,7 @@ export function GymModule({ resident }: { resident: Resident }) {
           <img src={badgeUrl(MODULE_BADGE_IDS.gym)} alt="" className="pokecity-badge pokecity-badge--mod" />
           <span className="mod-title">Gym</span>
         </span>
-        <button className="mod-btn mod-btn--sm" onClick={() => { setForm(emptyForm(activeType)); setShowForm(!showForm); }}>
+        <button className="mod-btn mod-btn--sm" onClick={() => { setEditingId(null); setForm(emptyForm(activeType)); setShowForm(!showForm); }}>
           {showForm ? 'Cancel' : '+ Log'}
         </button>
       </div>
@@ -267,8 +309,8 @@ export function GymModule({ resident }: { resident: Resident }) {
             />
           </label>
           <div className="mod-form-actions">
-            <button className="mod-btn" onClick={handleCreate}>Save</button>
-            <button className="mod-btn mod-btn--danger" onClick={() => setShowForm(false)}>Cancel</button>
+            <button className="mod-btn" onClick={handleCreate}>{editingId ? 'Update' : 'Save'}</button>
+            <button className="mod-btn mod-btn--danger" onClick={() => { setShowForm(false); setEditingId(null); }}>Cancel</button>
           </div>
         </div>
       )}
@@ -287,6 +329,7 @@ export function GymModule({ resident }: { resident: Resident }) {
                   {m.date}{m.notes ? ` \u2014 ${m.notes}` : ''}
                 </div>
               </div>
+              <button className="mod-btn mod-btn--sm" onClick={() => handleEdit(m)}>Edit</button>
               <button className="mod-btn mod-btn--danger mod-btn--sm" onClick={() => handleDelete(m.id)}>
                 Del
               </button>

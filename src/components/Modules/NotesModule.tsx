@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import ReactMarkdown from 'react-markdown';
 import { useCityStore } from '../../stores/cityStore';
 import { useUIStore } from '../../stores/uiStore';
 import { SheetsService } from '../../services/sheetsService';
@@ -249,10 +250,18 @@ export function NotesModule({ resident }: NotesModuleProps) {
           <textarea
             value={draftContent}
             onChange={e => handleContentChange(e.target.value)}
-            placeholder="Write your note here..."
+            placeholder="Write your note here (Markdown supported)..."
             rows={12}
             style={{ width: '100%', resize: 'vertical' }}
           />
+          {draftContent.trim() && (
+            <div className="mod-note-preview">
+              <label>Preview</label>
+              <div className="mod-note-preview__body">
+                <ReactMarkdown>{draftContent}</ReactMarkdown>
+              </div>
+            </div>
+          )}
 
           <div className="mod-form-actions">
             <button className="mod-btn" onClick={handleManualSave}>

@@ -1310,6 +1310,33 @@
   margin-top: 8px;
 }
 
+/* ── Notes: Markdown preview ── */
+.mod-note-preview {
+  margin-top: 12px;
+}
+.mod-note-preview label {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 9px;
+  color: #8b9bb4;
+}
+.mod-note-preview__body {
+  padding: 10px 12px;
+  background: rgba(0,0,0,0.2);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 4px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.mod-note-preview__body p { margin: 0 0 8px; }
+.mod-note-preview__body p:last-child { margin-bottom: 0; }
+.mod-note-preview__body h1, .mod-note-preview__body h2, .mod-note-preview__body h3 {
+  margin: 12px 0 6px;
+  font-size: 14px;
+}
+.mod-note-preview__body ul, .mod-note-preview__body ol { margin: 8px 0; padding-left: 20px; }
+.mod-note-preview__body code { background: rgba(255,255,255,0.1); padding: 2px 4px; border-radius: 2px; }
+
 /* ── Empty State ── */
 .mod-empty {
   text-align: center;

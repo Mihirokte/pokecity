@@ -13,8 +13,10 @@ import {
   getPastelColorForHex,
   TILE_TYPE_SEQUENCE,
   HOME_TILE_INDICES,
+  ORDERED_HOME_HEX_INDICES,
+  defaultSlotForType,
 } from './catanData';
-import { spriteAnimatedUrl, spriteArtworkUrl, ELEMENT_SPRITE_IDS } from '../../config/pokemon';
+import { spriteAnimatedUrl, ELEMENT_SPRITE_IDS } from '../../config/pokemon';
 import type { House, Resident } from '../../types';
 
 /**
@@ -116,8 +118,10 @@ interface HexTileProps {
   bobOffset: number;
   typeLabel: string;
   residentName?: string;
-  /** When set, use this sprite on the board (matches panel / second-photo style) */
+  /** When set, use this animated sprite on the board (GIF URL for motion) */
   residentSpriteId?: number;
+  /** Animated GIF URL for resident (moving sprite); used when residentSpriteId is set */
+  residentSpriteAnimatedUrl?: string;
   spriteTextures: Map<number, THREE.Texture>;
   isHomeTile: boolean;
   /** When true, hide floating nameplate (e.g. when side panel is open) */
@@ -131,6 +135,7 @@ function HexTile({
   typeLabel: _typeLabel,
   residentName,
   residentSpriteId,
+  residentSpriteAnimatedUrl,
   spriteTextures,
   isHomeTile,
   hideNameplate,
@@ -145,6 +150,7 @@ function HexTile({
     ? (residentSpriteId && Number.isInteger(residentSpriteId) ? residentSpriteId : config.pokemonId)
     : null;
   const pokeTexture = pokemonId ? spriteTextures.get(pokemonId) || null : null;
+  const useAnimatedGif = isOccupied && residentSpriteAnimatedUrl;
 
   const pastel = useMemo(() => getPastelColorForHex(q, r), [q, r]);
 
@@ -215,8 +221,31 @@ function HexTile({
         />
       </mesh>
 
-      {/* Sprite: same as side panel (showdown GIF) with matching float/bob */}
-      {pokemonId && pokeTexture && (
+      {/* Sprite: animated GIF (moving) when resident present, else static fallback */}
+      {useAnimatedGif ? (
+        <SpriteWithFloat baseY={SPRITE_Y}>
+          <Billboard follow={true}>
+            <Html
+              position={[0, 0, 0]}
+              distanceFactor={14}
+              transform
+              center
+              style={{ pointerEvents: 'none', width: 128, height: 128 }}
+            >
+              <img
+                src={residentSpriteAnimatedUrl}
+                alt=""
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'contain',
+                  imageRendering: 'pixelated',
+                }}
+              />
+            </Html>
+          </Billboard>
+        </SpriteWithFloat>
+      ) : pokemonId && pokeTexture ? (
         <SpriteWithFloat baseY={SPRITE_Y}>
           <Billboard follow={true}>
             <mesh renderOrder={1} castShadow={false}>
@@ -233,7 +262,7 @@ function HexTile({
             </mesh>
           </Billboard>
         </SpriteWithFloat>
-      )}
+      ) : null}
 
       {isOccupied && residentName && !hideNameplate && (
         <FloatingAgentName
@@ -477,7 +506,8 @@ function CatanScene({ entries, onSelectResident, onAddAgent, panelOpen }: CatanS
     new Map()
   );
 
-  // Load sprites: panel-style (showdown) for residents + element fallbacks for unoccupied tiles
+  // Load static fallback textures for unoccupied tiles (first frame of animated sprite)
+  const texturesRef = useRef<Map<number, THREE.Texture>>(new Map());
   useEffect(() => {
     const textureLoader = new THREE.TextureLoader();
     const residentIds = entries
@@ -486,33 +516,30 @@ function CatanScene({ entries, onSelectResident, onAddAgent, panelOpen }: CatanS
     const pokemonIds = [...new Set([...Object.values(ELEMENT_SPRITE_IDS), ...residentIds])];
 
     pokemonIds.forEach((pokemonId) => {
-      const primaryUrl = spriteArtworkUrl(pokemonId);   // HD official artwork
-      const fallbackUrl = spriteAnimatedUrl(pokemonId);
-
-      textureLoader.load(
-        primaryUrl,
-        (texture) => {
-          texture.magFilter = THREE.NearestFilter;
-          texture.minFilter = THREE.NearestFilter;
-          setSpriteTextures((prev) => new Map(prev).set(pokemonId, texture));
-        },
-        undefined,
-        () => {
-          textureLoader.load(fallbackUrl, (texture) => {
-            texture.magFilter = THREE.NearestFilter;
-            texture.minFilter = THREE.NearestFilter;
-            setSpriteTextures((prev) => new Map(prev).set(pokemonId, texture));
-          });
-        }
-      );
+      const url = spriteAnimatedUrl(pokemonId);
+      textureLoader.load(url, (texture) => {
+        texture.magFilter = THREE.NearestFilter;
+        texture.minFilter = THREE.NearestFilter;
+        texturesRef.current.set(pokemonId, texture);
+        setSpriteTextures((prev) => new Map(prev).set(pokemonId, texture));
+      });
     });
+    return () => {
+      texturesRef.current.forEach((t) => t.dispose());
+      texturesRef.current.clear();
+    };
   }, [entries]);
 
-  // Map of house type → resident (for highlighting occupied tiles)
+  // Map of hex index → resident+house (placement by slot; slot 0..5 from house.gridX)
   const occupiedTiles = useMemo(() => {
-    const map = new Map<string, Resident>();
+    const map = new Map<number, { resident: Resident; house: House }>();
     entries.forEach(({ resident, house }) => {
-      map.set(house.type, resident);
+      const effectiveSlot =
+        house.gridX >= 0 && house.gridX <= 5
+          ? house.gridX
+          : defaultSlotForType(house.type);
+      const hexIndex = ORDERED_HOME_HEX_INDICES[effectiveSlot] ?? ORDERED_HOME_HEX_INDICES[0];
+      map.set(hexIndex, { resident, house });
     });
     return map;
   }, [entries]);
@@ -538,7 +565,8 @@ function CatanScene({ entries, onSelectResident, onAddAgent, panelOpen }: CatanS
         if (onAddAgent && q === 0 && r === 0) return null; // center = pit
         const tileType = TILE_TYPE_SEQUENCE[idx];
         const isHomeTile = HOME_TILE_INDICES.has(idx);
-        const resident = isHomeTile ? occupiedTiles.get(tileType) : undefined;
+        const entry = isHomeTile ? occupiedTiles.get(idx) : undefined;
+        const resident = entry?.resident;
 
         return (
           <group key={`hex-${q}-${r}`}>
@@ -549,15 +577,18 @@ function CatanScene({ entries, onSelectResident, onAddAgent, panelOpen }: CatanS
               typeLabel={tileType === 'desert' ? 'DESERT' : tileType.toUpperCase()}
               residentName={resident?.name}
               residentSpriteId={resident ? parseInt(resident.emoji, 10) : undefined}
+              residentSpriteAnimatedUrl={
+                resident ? spriteAnimatedUrl(parseInt(resident.emoji, 10)) : undefined
+              }
               spriteTextures={spriteTextures}
               isHomeTile={isHomeTile}
               hideNameplate={panelOpen}
             />
 
             {/* Post-login only: invisible clickable mesh for this resident (never on landing) */}
-            {resident && (() => {
+            {resident && entry && (() => {
               const [wx, wz] = axialToWorld(q, r);
-              const house = entries.find((e) => e.resident.id === resident.id)?.house;
+              const house = entry.house;
               if (!house) return null; // no panel without a house
               return (
                 <mesh
@@ -880,7 +911,11 @@ interface SettlementsAndRoadsProps {
 function SettlementsAndRoads({ entries }: SettlementsAndRoadsProps) {
   const agentData = useMemo(() => {
     return entries.map(({ resident, house }) => {
-      const homeIndex = TILE_TYPE_SEQUENCE.indexOf(house.type);
+      const effectiveSlot =
+        house.gridX >= 0 && house.gridX <= 5
+          ? house.gridX
+          : defaultSlotForType(house.type);
+      const homeIndex = ORDERED_HOME_HEX_INDICES[effectiveSlot] ?? ORDERED_HOME_HEX_INDICES[0];
       const [q, r] = BOARD_HEXES[homeIndex];
       const positions = getAgentBuildingPositions(q, r);
       const colors = getColorsForAgent(resident.id);
