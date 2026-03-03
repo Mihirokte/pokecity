@@ -5,20 +5,16 @@ import { useAuthStore } from '../../stores/authStore';
 import { HOUSE_TYPES, HOUSE_TYPE_LIST } from '../../config/houseTypes';
 import { spriteArtworkUrl, PLAYER_POKEMON_ID } from '../../config/pokemon';
 import type { HouseModuleType, House, Resident } from '../../types';
-import { CityBuilding } from './CityBuilding';
 import { CityPanel } from './CityPanel';
+import { ThreeCityScene } from './ThreeCityScene';
 import '../../styles/city.css';
-
-interface CityViewProps {
-  onOpenPokecenter: () => void;
-}
 
 interface SelectedEntry {
   resident: Resident;
   house: House;
 }
 
-export function CityView({ onOpenPokecenter }: CityViewProps) {
+export function CityView() {
   const houses = useCityStore(s => s.houses);
   const residents = useCityStore(s => s.residents);
   const cityName = useCityStore(s => s.cityName);
@@ -28,19 +24,10 @@ export function CityView({ onOpenPokecenter }: CityViewProps) {
   const addToast = useUIStore(s => s.addToast);
 
   const [selected, setSelected] = useState<SelectedEntry | null>(null);
-  const [enteringId, setEnteringId] = useState<string | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
   const [newAgentName, setNewAgentName] = useState('');
   const [newAgentType, setNewAgentType] = useState<HouseModuleType>('tasks');
   const [adding, setAdding] = useState(false);
-
-  const handleEnterBuilding = useCallback((house: House, resident: Resident) => {
-    setEnteringId(house.id);
-    setTimeout(() => {
-      setEnteringId(null);
-      setSelected({ house, resident });
-    }, 420);
-  }, []);
 
   const handleAddAgent = useCallback(async () => {
     if (!newAgentName.trim() || adding) return;
@@ -56,7 +43,7 @@ export function CityView({ onOpenPokecenter }: CityViewProps) {
     }
   }, [newAgentName, newAgentType, adding, findOrCreateHouse, addResident, addToast]);
 
-  // Build list: one entry per resident (with their house)
+  // Build list: one entry per resident with their house
   const entries = residents
     .map(r => {
       const house = houses.find(h => h.id === r.houseId);
@@ -66,70 +53,47 @@ export function CityView({ onOpenPokecenter }: CityViewProps) {
 
   return (
     <div className="city-view">
-      {/* ── Header ── */}
-      <header className="city-header">
+      {/* ── Floating Header HUD ── */}
+      <header className="city-header city-header--hud">
         <div className="city-header__name">{cityName}</div>
         <span className="city-header__sep">|</span>
         <div className="city-header__stats">
           {entries.length} resident{entries.length !== 1 ? 's' : ''}
         </div>
         <div className="city-header__spacer" />
-        <button className="city-header__pc-btn" onClick={onOpenPokecenter}>
-          💻 POKÉCENTER
-        </button>
         <button className="city-header__auth-btn" onClick={logout}>
           LOGOUT
         </button>
       </header>
 
-      {/* ── City Map ── */}
-      <main className="city-map">
-        {entries.length === 0 && !showAddForm ? (
-          <div className="city-empty">
-            <img
-              src={spriteArtworkUrl(PLAYER_POKEMON_ID)}
-              alt="Pikachu"
-              className="city-empty__sprite"
-            />
-            <div className="city-empty__title">YOUR CITY IS EMPTY!</div>
-            <div className="city-empty__sub">
-              Add your first resident to build your city.
-            </div>
-            <button
-              className="city-btn city-btn--primary"
-              style={{ marginTop: 8 }}
-              onClick={() => setShowAddForm(true)}
-            >
-              + ADD RESIDENT
-            </button>
+      {/* ── Empty State (no residents yet) ── */}
+      {entries.length === 0 && !showAddForm && (
+        <div className="city-empty city-empty--hud">
+          <img
+            src={spriteArtworkUrl(PLAYER_POKEMON_ID)}
+            alt="Pikachu"
+            className="city-empty__sprite"
+          />
+          <div className="city-empty__title">YOUR CITY IS EMPTY!</div>
+          <div className="city-empty__sub">
+            Add your first resident to build your city.
           </div>
-        ) : (
-          <div className="city-grid">
-            {entries.map(({ resident, house }) => (
-              <CityBuilding
-                key={resident.id}
-                house={house}
-                resident={resident}
-                isEntering={enteringId === house.id}
-                onClick={() => handleEnterBuilding(house, resident)}
-              />
-            ))}
+          <button
+            className="city-btn city-btn--primary"
+            style={{ marginTop: 8 }}
+            onClick={() => setShowAddForm(true)}
+          >
+            + ADD RESIDENT
+          </button>
+        </div>
+      )}
 
-            {/* Empty lot — add new agent */}
-            <div
-              className="city-lot--empty"
-              onClick={() => setShowAddForm(true)}
-              role="button"
-              tabIndex={0}
-              aria-label="Add new resident"
-              onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && setShowAddForm(true)}
-            >
-              <div className="city-lot--empty__plus">+</div>
-              <div className="city-lot--empty__label">NEW RESIDENT</div>
-            </div>
-          </div>
-        )}
-      </main>
+      {/* ── 3D Three.js City (always mounted, behind everything) ── */}
+      <ThreeCityScene
+        entries={entries}
+        onSelectBuilding={(resident, house) => setSelected({ resident, house })}
+        onAddClick={() => setShowAddForm(true)}
+      />
 
       {/* ── Add Agent Modal ── */}
       {showAddForm && (
@@ -185,7 +149,6 @@ export function CityView({ onOpenPokecenter }: CityViewProps) {
               </button>
             </div>
 
-            {/* Preview of selected type */}
             <div style={{
               display: 'flex', alignItems: 'center', gap: 8,
               padding: '8px 12px',
@@ -207,7 +170,7 @@ export function CityView({ onOpenPokecenter }: CityViewProps) {
         </div>
       )}
 
-      {/* ── City Panel (module view) ── */}
+      {/* ── City Panel (module view — slides up over the 3D city) ── */}
       {selected && (
         <CityPanel
           resident={selected.resident}
