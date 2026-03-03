@@ -1,4 +1,21 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, type ReactNode } from 'react';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+  sortableKeyboardCoordinates,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import type { Resident, Task } from '../../types';
 import { badgeUrl, MODULE_BADGE_IDS } from '../../config/pokemon';
 import { useCityStore } from '../../stores/cityStore';
@@ -48,6 +65,7 @@ const emptyForm = (): Omit<Task, 'id' | 'residentId' | 'createdAt' | 'updatedAt'
   projectName: '',
   tags: '',
   gcalEventId: '',
+  sortOrder: '',
 });
 
 function getLocalDate(d = new Date()): string {
@@ -216,13 +234,29 @@ export function TasksModule({ resident }: TasksModuleProps) {
     if (viewMode === 'calendar' && selectedDate) {
       list = list.filter(t => t.dueDate === selectedDate);
     }
-    return list;
+    const byOrder = (a: Task, b: Task) => {
+      const na = parseFloat(a.sortOrder ?? '') || 999999;
+      const nb = parseFloat(b.sortOrder ?? '') || 999999;
+      return na - nb || (a.createdAt > b.createdAt ? 1 : -1);
+    };
+    return [...list].sort(byOrder);
   }, [tasks, activeTab, viewMode, selectedDate]);
 
-  /** List in tree order: root tasks, then each root's direct children (for indented subtask display) */
+  /** List in tree order: root tasks (by sortOrder), then each root's direct children (by sortOrder) */
   const taskTreeList = useMemo(() => {
-    const roots = filtered.filter(t => !t.parentId || t.parentId === '');
-    return roots.flatMap(r => [r, ...filtered.filter(t => t.parentId === r.id)]);
+    const roots = filtered.filter(t => !t.parentId || t.parentId === '').sort((a, b) => {
+      const na = parseFloat(a.sortOrder ?? '') || 999999;
+      const nb = parseFloat(b.sortOrder ?? '') || 999999;
+      return na - nb || (a.createdAt > b.createdAt ? 1 : -1);
+    });
+    return roots.flatMap(r => [
+      r,
+      ...filtered.filter(t => t.parentId === r.id).sort((a, b) => {
+        const na = parseFloat(a.sortOrder ?? '') || 999999;
+        const nb = parseFloat(b.sortOrder ?? '') || 999999;
+        return na - nb || (a.createdAt > b.createdAt ? 1 : -1);
+      }),
+    ]);
   }, [filtered]);
 
   const updateField = useCallback(<K extends keyof typeof form>(key: K, value: (typeof form)[K]) => {
@@ -304,10 +338,12 @@ export function TasksModule({ resident }: TasksModuleProps) {
         }
       }
     } else {
+      const residentTasks = allTasks.filter(t => t.residentId === resident.id);
       const newTask: Task = {
         id: `task_${crypto.randomUUID()}`,
         residentId: resident.id,
         ...form,
+        sortOrder: String(residentTasks.length),
         createdAt: now,
         updatedAt: now,
       };
@@ -463,9 +499,45 @@ export function TasksModule({ resident }: TasksModuleProps) {
     setSelectedDate(prev => prev === dateStr ? null : dateStr);
   }, []);
 
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { delay: 150, tolerance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  const handleDragEnd = useCallback(
+    async (event: DragEndEvent) => {
+      const { active, over } = event;
+      if (!over || active.id === over.id) return;
+      const oldIndex = taskTreeList.findIndex(t => t.id === active.id);
+      const newIndex = taskTreeList.findIndex(t => t.id === over.id);
+      if (oldIndex === -1 || newIndex === -1) return;
+      const newOrder = arrayMove(taskTreeList, oldIndex, newIndex);
+      const now = new Date().toISOString();
+      const updatedTasks = moduleData.tasks.map(t => {
+        const idx = newOrder.findIndex(x => x.id === t.id);
+        if (idx === -1) return t;
+        return { ...t, sortOrder: String(idx), updatedAt: now };
+      });
+      const prev = moduleData.tasks;
+      setModuleData('tasks', updatedTasks);
+      try {
+        for (const task of newOrder) {
+          const u = updatedTasks.find(t => t.id === task.id)!;
+          if (u.sortOrder !== (prev.find(t => t.id === task.id)?.sortOrder ?? '')) {
+            await SheetsService.update('Tasks', u);
+          }
+        }
+      } catch {
+        setModuleData('tasks', prev);
+        addToast('Failed to save order');
+      }
+    },
+    [taskTreeList, moduleData.tasks, setModuleData, addToast],
+  );
+
   // ─── Render ───
 
-  const renderTask = (task: Task, isSubtask = false) => {
+  const renderTask = (task: Task, isSubtask = false, dragHandle?: ReactNode) => {
     const overdue = isOverdue(task);
     const isDone = task.status === 'done';
     const isSynced = !!task.gcalEventId;
@@ -488,6 +560,7 @@ export function TasksModule({ resident }: TasksModuleProps) {
           >
             {isDone && '\u2713'}
           </div>
+          {dragHandle}
 
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, flexWrap: 'wrap' }}>
@@ -568,6 +641,25 @@ export function TasksModule({ resident }: TasksModuleProps) {
       </div>
     );
   };
+
+  function SortableTaskRow({ task, isSubtask }: { task: Task; isSubtask: boolean }) {
+    const { setNodeRef, transform, transition, attributes, listeners } = useSortable({ id: task.id });
+    const handle = (
+      <span
+        {...attributes}
+        {...listeners}
+        style={{ cursor: 'grab', padding: '2px 4px', opacity: 0.7, touchAction: 'none' }}
+        title="Drag to reorder"
+      >
+        ⋮⋮
+      </span>
+    );
+    return (
+      <div ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }}>
+        {renderTask(task, isSubtask, handle)}
+      </div>
+    );
+  }
 
   const renderCalendar = () => (
     <div style={{ marginBottom: 12 }}>
@@ -798,7 +890,19 @@ export function TasksModule({ resident }: TasksModuleProps) {
         </div>
       )}
 
-      {!showForm && taskTreeList.map(task => renderTask(task, !!(task.parentId && task.parentId !== '')))}
+      {!showForm && (
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext items={taskTreeList.map(t => t.id)} strategy={verticalListSortingStrategy}>
+            {taskTreeList.map(task => (
+              <SortableTaskRow
+                key={task.id}
+                task={task}
+                isSubtask={!!(task.parentId && task.parentId !== '')}
+              />
+            ))}
+          </SortableContext>
+        </DndContext>
+      )}
     </div>
   );
 }

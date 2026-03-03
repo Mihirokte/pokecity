@@ -100,6 +100,8 @@ export interface Task {
   updatedAt: string;
   dueTime: string;
   gcalEventId: string;
+  /** Optional sort order for drag-drop reorder (persisted to sheet) */
+  sortOrder?: string;
 }
 
 export interface Note {
