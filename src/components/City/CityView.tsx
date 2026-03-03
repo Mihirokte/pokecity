@@ -76,6 +76,24 @@ export function CityView() {
         <div className="city-header__stats">
           {entries.length} resident{entries.length !== 1 ? 's' : ''}
         </div>
+        {entries.length > 0 && (
+          <nav aria-label="Residents" style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+            {entries.map(({ resident, house }) => (
+              <button
+                key={resident.id}
+                type="button"
+                className="city-header__resident-btn"
+                onClick={() => setSelected({ resident, house })}
+                onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelected({ resident, house }); } }}
+                aria-label={`Open ${resident.name}'s ${house.name}`}
+                aria-pressed={selected?.resident.id === resident.id}
+                style={{ fontSize: 9, padding: '4px 8px' }}
+              >
+                {resident.name}
+              </button>
+            ))}
+          </nav>
+        )}
         <div className="city-header__spacer" />
         <button
           type="button"

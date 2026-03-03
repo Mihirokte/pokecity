@@ -1,13 +1,14 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { useAuthStore } from './stores/authStore';
 import { useCityStore } from './stores/cityStore';
 import { useUIStore } from './stores/uiStore';
 import { SheetsService } from './services/sheetsService';
 import { SAMPLE_SPREADSHEET_ID } from './data/sampleData';
-import { LandingPage } from './components/Landing/LandingPage';
-import { CityView } from './components/City/CityView';
 import { Toasts } from './components/Toasts';
 import './styles/city.css';
+
+const LandingPage = lazy(() => import('./components/Landing/LandingPage').then(m => ({ default: m.LandingPage })));
+const CityView = lazy(() => import('./components/City/CityView').then(m => ({ default: m.CityView })));
 
 function LoadingScreen() {
   return (
@@ -33,6 +34,73 @@ function LoadingScreen() {
   );
 }
 
+function ReconnectScreen({
+  onCreateNewCity,
+  onLogout,
+}: {
+  onCreateNewCity: () => Promise<void>;
+  onLogout: () => void;
+}) {
+  const [creating, setCreating] = useState(false);
+  return (
+    <div style={{
+      height: '100vh', width: '100vw', display: 'flex', flexDirection: 'column',
+      alignItems: 'center', justifyContent: 'center', gap: 24,
+      background: '#09090b',
+      fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif",
+      padding: 24,
+    }}>
+      <div style={{ fontSize: 18, color: '#f0f0f5', fontWeight: 600, textAlign: 'center' }}>
+        Your city spreadsheet was not found
+      </div>
+      <div style={{ fontSize: 14, color: '#8b9bb4', textAlign: 'center', maxWidth: 320 }}>
+        It may have been deleted or you no longer have access. Create a new city to continue.
+      </div>
+      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center' }}>
+        <button
+          type="button"
+          onClick={async () => {
+            setCreating(true);
+            try {
+              await onCreateNewCity();
+            } finally {
+              setCreating(false);
+            }
+          }}
+          disabled={creating}
+          style={{
+            padding: '12px 24px',
+            fontSize: 14,
+            fontWeight: 600,
+            background: '#3b82f6',
+            color: '#fff',
+            border: 'none',
+            borderRadius: 8,
+            cursor: creating ? 'not-allowed' : 'pointer',
+          }}
+        >
+          {creating ? 'Creating…' : 'Create new city'}
+        </button>
+        <button
+          type="button"
+          onClick={onLogout}
+          style={{
+            padding: '12px 24px',
+            fontSize: 14,
+            background: 'transparent',
+            color: '#8b9bb4',
+            border: '1px solid #3f3f46',
+            borderRadius: 8,
+            cursor: 'pointer',
+          }}
+        >
+          Logout
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const user = useAuthStore(s => s.user);
   const accessToken = useAuthStore(s => s.accessToken);
@@ -44,8 +112,10 @@ export default function App() {
   const addToast = useUIStore(s => s.addToast);
   const loadAllData = useCityStore(s => s.loadAllData);
   const dataLoaded = useCityStore(s => s.dataLoaded);
+  const setDataLoaded = useCityStore(s => s.setDataLoaded);
 
   const [booting, setBooting] = useState(true);
+  const [spreadsheetNotFound, setSpreadsheetNotFound] = useState(false);
 
   // On mount: try restoring session or handling OAuth callback
   useEffect(() => {
@@ -145,6 +215,8 @@ export default function App() {
           if (msg.includes('404') || msg.includes('Not Found')) {
             console.warn('Spreadsheet not found, clearing stale ID');
             setSpreadsheet('', {});
+            setDataLoaded(false);
+            setSpreadsheetNotFound(true);
             return;
           }
           throw loadErr;
@@ -159,6 +231,24 @@ export default function App() {
     return () => { cancelled = true; };
   }, [accessToken, spreadsheetId, booting]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const logout = useAuthStore(s => s.logout);
+
+  const handleCreateNewCity = useCallback(async () => {
+    const { spreadsheetId: newId, sheetGids } =
+      await SheetsService.createSpreadsheet(`PokéCenter Hub - ${user?.name ?? 'User'}`);
+    setSpreadsheet(newId, sheetGids);
+    setSpreadsheetNotFound(false);
+    try {
+      const folderId = await SheetsService.ensureDriveFolder('PokéCity');
+      await SheetsService.moveToFolder(newId, folderId);
+    } catch (e) {
+      console.warn('Could not move spreadsheet to Drive folder:', e);
+    }
+    await SheetsService.append('Meta', { key: 'cityName', value: 'PokéCenter' });
+    await loadAllData();
+    addToast('New city created!', 'success');
+  }, [user?.name, setSpreadsheet, loadAllData, addToast]);
+
   // Render - always show landing page (agents directory) 
   // User can login to access full CityView
   const isAuthed = !!user && !!accessToken && isTokenValid();
@@ -167,11 +257,17 @@ export default function App() {
     <>
       <Toasts />
       {!isAuthed ? (
-        <LandingPage />
+        <Suspense fallback={<LoadingScreen />}>
+          <LandingPage />
+        </Suspense>
+      ) : spreadsheetNotFound ? (
+        <ReconnectScreen onCreateNewCity={handleCreateNewCity} onLogout={logout} />
       ) : !dataLoaded ? (
         <LoadingScreen />
       ) : (
-        <CityView />
+        <Suspense fallback={<LoadingScreen />}>
+          <CityView />
+        </Suspense>
       )}
     </>
   );

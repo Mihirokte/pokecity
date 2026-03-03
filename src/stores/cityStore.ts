@@ -29,6 +29,7 @@ interface CityState {
   removeResident: (id: string) => Promise<void>;
   updateResident: (id: string, updates: Partial<Resident>) => Promise<void>;
   setModuleData: <K extends keyof AllModuleData>(key: K, data: AllModuleData[K]) => void;
+  setDataLoaded: (loaded: boolean) => void;
   loadAllData: () => Promise<void>;
   /** Map any house with invalid type to one of the 6 valid types (default: tasks). Returns count fixed. */
   resetHouseTypes: (defaultType?: HouseModuleType) => Promise<number>;
@@ -144,6 +145,8 @@ export const useCityStore = create<CityState>((set, get) => ({
   setModuleData: (key, data) => {
     set({ moduleData: { ...get().moduleData, [key]: data } });
   },
+
+  setDataLoaded: (loaded) => set({ dataLoaded: loaded }),
 
   loadAllData: async () => {
     try {

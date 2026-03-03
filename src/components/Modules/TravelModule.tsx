@@ -67,6 +67,9 @@ export function TravelModule({ resident }: TravelModuleProps) {
 
   // Packing quick-add
   const [packingInput, setPackingInput] = useState('');
+  // Trip notes inline edit (save on blur)
+  const [editingNotesId, setEditingNotesId] = useState<string | null>(null);
+  const [editingNotesValue, setEditingNotesValue] = useState('');
 
   const myTrips = useMemo(
     () => tripPlans.filter(t => t.residentId === resident.id),
@@ -318,6 +321,27 @@ export function TravelModule({ resident }: TravelModuleProps) {
             {/* Expanded content */}
             {isExpanded && (
               <div style={{ marginTop: 12 }}>
+                {/* Trip notes (view/edit, save on blur) */}
+                <div style={{ marginBottom: 10 }}>
+                  <label style={{ fontSize: 8, color: '#8b9bb4', display: 'block', marginBottom: 4 }}>Notes</label>
+                  <textarea
+                    value={editingNotesId === trip.id ? editingNotesValue : (trip.notes ?? '')}
+                    onFocus={() => {
+                      setEditingNotesId(trip.id);
+                      setEditingNotesValue(trip.notes ?? '');
+                    }}
+                    onChange={e => setEditingNotesValue(e.target.value)}
+                    onBlur={() => {
+                      if (editingNotesId === trip.id && (trip.notes ?? '') !== editingNotesValue) {
+                        updateTrip({ ...trip, notes: editingNotesValue });
+                      }
+                      setEditingNotesId(null);
+                    }}
+                    placeholder="Trip notes, reminders..."
+                    rows={2}
+                    style={{ width: '100%', resize: 'vertical', fontSize: 9 }}
+                  />
+                </div>
                 {/* Tabs */}
                 <div className="mod-tabs">
                   <div

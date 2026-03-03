@@ -219,6 +219,12 @@ export function TasksModule({ resident }: TasksModuleProps) {
     return list;
   }, [tasks, activeTab, viewMode, selectedDate]);
 
+  /** List in tree order: root tasks, then each root's direct children (for indented subtask display) */
+  const taskTreeList = useMemo(() => {
+    const roots = filtered.filter(t => !t.parentId || t.parentId === '');
+    return roots.flatMap(r => [r, ...filtered.filter(t => t.parentId === r.id)]);
+  }, [filtered]);
+
   const updateField = useCallback(<K extends keyof typeof form>(key: K, value: (typeof form)[K]) => {
     setForm(prev => ({ ...prev, [key]: value }));
   }, []);
@@ -226,6 +232,12 @@ export function TasksModule({ resident }: TasksModuleProps) {
   const openCreate = useCallback(() => {
     setEditingId(null);
     setForm(emptyForm());
+    setShowForm(true);
+  }, []);
+
+  const openCreateSubtask = useCallback((parentTask: Task) => {
+    setEditingId(null);
+    setForm({ ...emptyForm(), parentId: parentTask.id });
     setShowForm(true);
   }, []);
 
@@ -453,7 +465,7 @@ export function TasksModule({ resident }: TasksModuleProps) {
 
   // ─── Render ───
 
-  const renderTask = (task: Task) => {
+  const renderTask = (task: Task, isSubtask = false) => {
     const overdue = isOverdue(task);
     const isDone = task.status === 'done';
     const isSynced = !!task.gcalEventId;
@@ -463,7 +475,10 @@ export function TasksModule({ resident }: TasksModuleProps) {
       <div
         className="mod-card"
         key={task.id}
-        style={overdue ? { borderLeft: '3px solid #ff6b6b' } : undefined}
+        style={{
+          ...(overdue ? { borderLeft: '3px solid #ff6b6b' } : {}),
+          ...(isSubtask ? { marginLeft: 20, borderLeft: '2px solid rgba(255,255,255,0.1)' } : {}),
+        }}
       >
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
           <div
@@ -539,6 +554,11 @@ export function TasksModule({ resident }: TasksModuleProps) {
                 title={isSynced ? 'Update GCal event' : 'Push to Google Calendar'}
               >
                 {isPushing ? '...' : isSynced ? '\u21bb GCal' : '\u2192 GCal'}
+              </button>
+            )}
+            {!isSubtask && (
+              <button className="mod-btn mod-btn--sm" onClick={() => openCreateSubtask(task)} title="Add subtask">
+                + Sub
               </button>
             )}
             <button className="mod-btn mod-btn--sm" onClick={() => openEdit(task)}>Edit</button>
@@ -665,6 +685,12 @@ export function TasksModule({ resident }: TasksModuleProps) {
 
       {showForm && (
         <div className="mod-form">
+          {form.parentId && (
+            <div style={{ fontSize: 9, color: '#8b9bb4', marginBottom: 8 }}>
+              Subtask of: <strong>{tasks.find(t => t.id === form.parentId)?.title ?? 'Task'}</strong>
+              <button type="button" className="mod-btn mod-btn--sm" onClick={() => updateField('parentId', '')} style={{ marginLeft: 8 }}>Clear</button>
+            </div>
+          )}
           <label>
             Title
             <input
@@ -772,7 +798,7 @@ export function TasksModule({ resident }: TasksModuleProps) {
         </div>
       )}
 
-      {!showForm && filtered.map(renderTask)}
+      {!showForm && taskTreeList.map(task => renderTask(task, !!(task.parentId && task.parentId !== '')))}
     </div>
   );
 }
