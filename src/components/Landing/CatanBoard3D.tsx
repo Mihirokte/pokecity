@@ -55,10 +55,9 @@ function HexTile({
   const pokemonId = agentName ? config.pokemonId : null;
   const pokeTexture = pokemonId ? spriteTextures.get(pokemonId) || null : null;
 
-  // Create hex geometry: local shape at origin, rotated flat
+  // Catan-style: chunky hex with distinct top and sloped sides
   const geometry = useMemo(() => {
     const shape = new THREE.Shape();
-    // Build hex centered at origin (local coordinates)
     for (let i = 0; i < 6; i++) {
       const ang = (Math.PI / 3) * i;
       const lx = HEX_SIZE * Math.cos(ang);
@@ -66,30 +65,37 @@ function HexTile({
       if (i === 0) shape.moveTo(lx, ly);
       else shape.lineTo(lx, ly);
     }
-
     const geo = new THREE.ExtrudeGeometry(shape, {
-      depth: 0.55,
+      depth: 0.65,
       bevelEnabled: true,
-      bevelSize: 0.06,
-      bevelThickness: 0.04,
+      bevelSize: 0.12,
+      bevelThickness: 0.06,
       bevelSegments: 2,
     });
-    geo.rotateX(-Math.PI / 2); // lay flat: hex face → XZ plane, extrusion → Y up
+    geo.rotateX(-Math.PI / 2);
     return geo;
   }, []);
 
-  // Solid color material
-  const material = useMemo(
-    () =>
-      new THREE.MeshStandardMaterial({
-        color: config.topColor,
-        emissive: config.emissiveColor,
-        emissiveIntensity: 0.25,
-        metalness: 0.3,
-        roughness: 0.6,
-      }),
-    [config]
-  );
+  const materials = useMemo(() => {
+    const top = new THREE.MeshStandardMaterial({
+      color: config.topColor,
+      emissive: config.emissiveColor,
+      emissiveIntensity: 0.25,
+      metalness: 0.2,
+      roughness: 0.65,
+    });
+    const bottom = new THREE.MeshStandardMaterial({
+      color: config.sideColor,
+      metalness: 0.15,
+      roughness: 0.8,
+    });
+    const side = new THREE.MeshStandardMaterial({
+      color: config.sideColor,
+      metalness: 0.15,
+      roughness: 0.8,
+    });
+    return [top, bottom, side];
+  }, [config]);
 
   // Bob animation
   useFrame((state) => {
@@ -103,8 +109,7 @@ function HexTile({
 
   return (
     <group ref={groupRef} position={[x, 0, z]}>
-      {/* Hexagon tile */}
-      <mesh geometry={geometry} material={material} castShadow receiveShadow />
+      <mesh geometry={geometry} material={materials} castShadow receiveShadow />
 
       {/* Type label centered on tile */}
       <Html

@@ -18,12 +18,13 @@ import type { House, Resident } from '../../types';
  * POST-LOGIN CITY SCENE ONLY.
  * Used by CityView when user is signed in and data is loaded.
  * - Resident tiles (occupied hexes) have an invisible clickable mesh: click → onSelectResident → CityPanel opens.
- * - Empty tiles and tiles without a resident never get a click handler.
+ * - Central pit: click to add a new resident (onAddAgent).
  * - Pre-login equivalent is CatanBoard3D (display-only, no selection).
  */
 interface CatanCitySceneProps {
   entries: Array<{ resident: Resident; house: House }>;
   onSelectResident: (resident: Resident, house: House) => void;
+  onAddAgent?: () => void;
 }
 
 // ============================================================================
@@ -59,9 +60,9 @@ function HexTile({
   const pokemonId = isOccupied ? config.pokemonId : null;
   const pokeTexture = pokemonId ? spriteTextures.get(pokemonId) || null : null;
 
+  // Catan-style: chunky hex with distinct top (resource color) and sloped sides
   const geometry = useMemo(() => {
     const shape = new THREE.Shape();
-    // Build hex centered at origin (local coordinates)
     for (let i = 0; i < 6; i++) {
       const ang = (Math.PI / 3) * i;
       const lx = HEX_SIZE * Math.cos(ang);
@@ -69,29 +70,37 @@ function HexTile({
       if (i === 0) shape.moveTo(lx, ly);
       else shape.lineTo(lx, ly);
     }
-
     const geo = new THREE.ExtrudeGeometry(shape, {
-      depth: 0.55,
+      depth: 0.65,
       bevelEnabled: true,
-      bevelSize: 0.06,
-      bevelThickness: 0.04,
+      bevelSize: 0.12,
+      bevelThickness: 0.06,
       bevelSegments: 2,
     });
-    geo.rotateX(-Math.PI / 2); // lay flat: hex face → XZ plane, extrusion → Y up
+    geo.rotateX(-Math.PI / 2);
     return geo;
   }, []);
 
-  const material = useMemo(
-    () =>
-      new THREE.MeshStandardMaterial({
-        color: config.topColor,
-        emissive: isOccupied ? config.emissiveColor : config.topColor,
-        emissiveIntensity: isOccupied ? 0.4 : 0.15,
-        metalness: 0.3,
-        roughness: 0.6,
-      }),
-    [config, isOccupied]
-  );
+  const materials = useMemo(() => {
+    const top = new THREE.MeshStandardMaterial({
+      color: config.topColor,
+      emissive: isOccupied ? config.emissiveColor : config.topColor,
+      emissiveIntensity: isOccupied ? 0.4 : 0.15,
+      metalness: 0.2,
+      roughness: 0.65,
+    });
+    const bottom = new THREE.MeshStandardMaterial({
+      color: config.sideColor,
+      metalness: 0.15,
+      roughness: 0.8,
+    });
+    const side = new THREE.MeshStandardMaterial({
+      color: config.sideColor,
+      metalness: 0.15,
+      roughness: 0.8,
+    });
+    return [top, bottom, side];
+  }, [config, isOccupied]);
 
   useFrame((state) => {
     if (groupRef.current) {
@@ -104,7 +113,7 @@ function HexTile({
 
   return (
     <group ref={groupRef} position={[x, 0, z]}>
-      <mesh geometry={geometry} material={material} castShadow receiveShadow />
+      <mesh geometry={geometry} material={materials} castShadow receiveShadow />
 
       {/* Type label */}
       <Html
@@ -377,9 +386,10 @@ function FloatingParticles() {
 interface CatanSceneProps {
   entries: Array<{ resident: Resident; house: House }>;
   onSelectResident: (resident: Resident, house: House) => void;
+  onAddAgent?: () => void;
 }
 
-function CatanScene({ entries, onSelectResident }: CatanSceneProps) {
+function CatanScene({ entries, onSelectResident, onAddAgent }: CatanSceneProps) {
   const [spriteTextures, setSpriteTextures] = useState<Map<number, THREE.Texture>>(
     new Map()
   );
@@ -429,8 +439,12 @@ function CatanScene({ entries, onSelectResident }: CatanSceneProps) {
       <Mountains />
       <Sun />
 
-      {/* Render all 19 hex tiles */}
+      {/* Central pit replaces center hex when onAddAgent provided (Catan-style spawn) */}
+      {onAddAgent && <CentralPit onAddAgent={onAddAgent} />}
+
+      {/* Render hex tiles (skip center 0,0 when pit is shown) */}
       {BOARD_HEXES.map(([q, r], idx) => {
+        if (onAddAgent && q === 0 && r === 0) return null; // center = pit
         const tileType = TILE_TYPE_SEQUENCE[idx];
         const isHomeTile = HOME_TILE_INDICES.has(idx);
         const resident = isHomeTile ? occupiedTiles.get(tileType) : undefined;
@@ -485,12 +499,103 @@ function CatanScene({ entries, onSelectResident }: CatanSceneProps) {
 }
 
 // ============================================================================
+// CENTRAL PIT (add-agent spawn point)
+// ============================================================================
+// Catan-style central depression: hexagonal pit at board center. Click to add resident.
+
+function CentralPit({ onAddAgent }: { onAddAgent: () => void }) {
+  const pitRef = useRef<THREE.Group>(null);
+  const innerRadius = 1.4;
+  const depth = 0.5;
+
+  const hexShape = useMemo(() => {
+    const shape = new THREE.Shape();
+    for (let i = 0; i < 6; i++) {
+      const ang = (Math.PI / 3) * i;
+      const lx = innerRadius * Math.cos(ang);
+      const ly = innerRadius * Math.sin(ang);
+      if (i === 0) shape.moveTo(lx, ly);
+      else shape.lineTo(lx, ly);
+    }
+    return shape;
+  }, []);
+
+  const pitGeometry = useMemo(() => {
+    const geo = new THREE.ExtrudeGeometry(hexShape, {
+      depth: depth,
+      bevelEnabled: true,
+      bevelSize: 0.15,
+      bevelThickness: 0.08,
+      bevelSegments: 2,
+    });
+    geo.rotateX(-Math.PI / 2);
+    geo.translate(0, -depth / 2, 0); // so top is at y ≈ 0
+    return geo;
+  }, [hexShape]);
+
+  return (
+    <group ref={pitRef} position={[0, 0, 0]}>
+      {/* Sunken pit mesh: dark stone / harbor feel */}
+      <mesh geometry={pitGeometry} position={[0, -0.35, 0]} castShadow receiveShadow>
+        <meshStandardMaterial
+          color="#3d4a5c"
+          roughness={0.85}
+          metalness={0.1}
+          emissive="#1a2332"
+        />
+      </mesh>
+      {/* Shallow inner floor */}
+      <mesh
+        position={[0, -0.08, 0]}
+        rotation={[-Math.PI / 2, 0, 0]}
+        receiveShadow
+      >
+        <circleGeometry args={[innerRadius * 0.92, 6]} />
+        <meshStandardMaterial
+          color="#2a3544"
+          roughness={0.9}
+          metalness={0.05}
+        />
+      </mesh>
+      {/* Plus icon / add hint */}
+      <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[0.5, 0.7, 32]} />
+        <meshBasicMaterial color="#FFD700" side={THREE.DoubleSide} />
+      </mesh>
+      <Html position={[0, 0.15, 0]} center distanceFactor={1.2} style={{ pointerEvents: 'none' }}>
+        <div style={{
+          fontFamily: 'Dogica, monospace',
+          fontSize: '10px',
+          fontWeight: 'bold',
+          color: '#FFD700',
+          textShadow: '0 0 6px rgba(0,0,0,0.9)',
+          whiteSpace: 'nowrap',
+        }}>
+          + ADD RESIDENT
+        </div>
+      </Html>
+      {/* Invisible clickable area */}
+      <mesh
+        position={[0, 0.5, 0]}
+        onClick={(e) => { e.stopPropagation(); onAddAgent(); }}
+        onPointerOver={() => { document.body.style.cursor = 'pointer'; }}
+        onPointerOut={() => { document.body.style.cursor = 'default'; }}
+      >
+        <cylinderGeometry args={[innerRadius, innerRadius, 1.2, 6]} />
+        <meshBasicMaterial visible={false} />
+      </mesh>
+    </group>
+  );
+}
+
+// ============================================================================
 // MAIN EXPORT
 // ============================================================================
 
 export function CatanCityScene({
   entries,
   onSelectResident,
+  onAddAgent,
 }: CatanCitySceneProps) {
   return (
     <Canvas
@@ -506,7 +611,7 @@ export function CatanCityScene({
       }}
     >
       <React.Suspense fallback={null}>
-        <CatanScene entries={entries} onSelectResident={onSelectResident} />
+        <CatanScene entries={entries} onSelectResident={onSelectResident} onAddAgent={onAddAgent} />
       </React.Suspense>
     </Canvas>
   );
