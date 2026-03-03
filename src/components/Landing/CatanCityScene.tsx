@@ -6,14 +6,15 @@ import {
   BOARD_HEXES,
   axialToWorld,
   HEX_SIZE,
+  getBoardEdges,
+  getPerimeterEdges,
+  getHomeSettlementPositions,
 } from './hexUtils';
 import {
   getTileConfig,
   TILE_TYPE_SEQUENCE,
   HOME_TILE_INDICES,
-  ELEMENT_COLORS,
 } from './catanData';
-import type { TileElement } from './catanData';
 import { spriteAnimatedUrl, spriteArtworkUrl, ELEMENT_SPRITE_IDS } from '../../config/pokemon';
 import type { House, Resident } from '../../types';
 
@@ -94,219 +95,9 @@ function FloatingAgentName({
   );
 }
 
-// ============================================================================
-// AGENT BASE GLOW (element-colored glow under occupied tile)
-// ============================================================================
-
-function AgentBaseGlow({ elementColor }: { elementColor: string }) {
-  const glowRef = useRef<THREE.Group>(null);
-  const ringRef = useRef<THREE.Mesh>(null);
-
-  useFrame((state) => {
-    const t = state.clock.elapsedTime;
-    if (glowRef.current) {
-      const scale = 1 + Math.sin(t * 1.2) * 0.08;
-      glowRef.current.scale.setScalar(scale);
-    }
-    if (ringRef.current && ringRef.current.material instanceof THREE.MeshBasicMaterial) {
-      const opacity = 0.5 + Math.sin(t * 1.5) * 0.15;
-      ringRef.current.material.opacity = Math.max(0.35, Math.min(0.7, opacity));
-    }
-  });
-
-  return (
-    <group ref={glowRef} position={[0, 0.56, 0]}>
-      <mesh rotation={[-Math.PI / 2, 0, 0]}>
-        <coneGeometry args={[1.1, 0.4, 6]} />
-        <meshBasicMaterial
-          color={elementColor}
-          transparent
-          opacity={0.45}
-          side={THREE.DoubleSide}
-          depthWrite={false}
-        />
-      </mesh>
-      <mesh ref={ringRef} rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[0.65, 0.95, 32]} />
-        <meshBasicMaterial
-          color={elementColor}
-          transparent
-          opacity={0.6}
-          side={THREE.DoubleSide}
-          depthWrite={false}
-        />
-      </mesh>
-    </group>
-  );
-}
-
-// ============================================================================
-// ELEMENT CEILING EFFECT — idea of a layer above (no solid ceiling)
-// Particles from above: drip, fall, drift. Subtle hint of an upper layer.
-// ============================================================================
-
-const CEILING_PARTICLE_COUNT = 14;
-const CEILING_RADIUS = 0.9;
-const CEILING_TOP_Y = 1.15;
-const CEILING_FLOOR_Y = -0.35;
-
-const FALL_SPEED: Record<TileElement, number> = {
-  water: 0.4,
-  fire: 0.55,
-  wind: 0.25,
-  grass: 0.35,
-  lightning: 1.4,
-  rock: 0.9,
-};
-
-function ElementSurroundingEffect({ element }: { element: TileElement }) {
-  const color = ELEMENT_COLORS[element];
-  const isEmissive = element === 'fire' || element === 'lightning';
-  const layerRef = useRef<THREE.Mesh>(null);
-
-  const positions = useMemo(() => {
-    return Array.from({ length: CEILING_PARTICLE_COUNT }, (_, i) => {
-      const angle = (i / CEILING_PARTICLE_COUNT) * Math.PI * 2 + (i * 0.7);
-      const r = CEILING_RADIUS * (0.4 + (i % 3) * 0.25);
-      return [Math.cos(angle) * r, CEILING_TOP_Y + (i * 0.04), Math.sin(angle) * r] as [number, number, number];
-    });
-  }, []);
-
-  useFrame((state) => {
-    if (layerRef.current) {
-      const t = state.clock.elapsedTime;
-      layerRef.current.position.y = 1.18 + Math.sin(t * 0.4) * 0.03;
-      if (layerRef.current.material && 'opacity' in layerRef.current.material) {
-        (layerRef.current.material as THREE.MeshBasicMaterial).opacity = 0.04 + Math.sin(t * 0.6) * 0.02;
-      }
-    }
-  });
-
-  return (
-    <group position={[0, 1.3, 0]}>
-      {/* Idea of a layer above: faint soft disc, not a solid ceiling */}
-      <mesh ref={layerRef} position={[0, 1.18, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[0.3, 1.4, 16]} />
-        <meshBasicMaterial
-          color={color}
-          transparent
-          opacity={0.05}
-          side={THREE.DoubleSide}
-          depthWrite={false}
-        />
-      </mesh>
-      <pointLight position={[0, 1.2, 0]} intensity={0.6} distance={2.5} decay={2} color={color} />
-      {positions.map((pos, i) => (
-        <CeilingParticle
-          key={i}
-          element={element}
-          color={color}
-          startPosition={pos}
-          index={i}
-          isEmissive={isEmissive}
-        />
-      ))}
-    </group>
-  );
-}
-
-function CeilingParticle({
-  element,
-  color,
-  startPosition,
-  index,
-  isEmissive,
-}: {
-  element: TileElement;
-  color: string;
-  startPosition: [number, number, number];
-  index: number;
-  isEmissive: boolean;
-}) {
-  const meshRef = useRef<THREE.Mesh>(null);
-  const yRef = useRef(startPosition[1]);
-  const speed = FALL_SPEED[element];
-
-  useFrame((_, delta) => {
-    if (!meshRef.current) return;
-    const dt = Math.min(delta, 0.1);
-    yRef.current -= speed * dt;
-    if (element === 'wind') {
-      meshRef.current.position.x = startPosition[0] + Math.sin(yRef.current * 3) * 0.15;
-      meshRef.current.position.z = startPosition[2] + Math.cos(yRef.current * 2.5) * 0.1;
-    } else {
-      meshRef.current.position.x = startPosition[0] + (element === 'grass' ? Math.sin(yRef.current * 4) * 0.08 : 0);
-      meshRef.current.position.z = startPosition[2];
-    }
-    meshRef.current.position.y = yRef.current;
-    if (yRef.current < CEILING_FLOOR_Y) {
-      yRef.current = CEILING_TOP_Y + (index * 0.03) % 0.4;
-    }
-    meshRef.current.rotation.y += 0.015;
-  });
-
-  const scale = 0.95 + (index % 3) * 0.1;
-  const matProps = {
-    color,
-    transparent: true,
-    opacity: element === 'water' ? 0.9 : 0.85,
-    side: THREE.DoubleSide,
-    depthWrite: !isEmissive,
-    ...(isEmissive ? { emissive: color, emissiveIntensity: 0.5 } : {}),
-  };
-
-  switch (element) {
-    case 'water':
-      return (
-        <mesh ref={meshRef} position={[startPosition[0], startPosition[1], startPosition[2]]} scale={scale * 0.2}>
-          <sphereGeometry args={[0.5, 8, 6]} />
-          <meshStandardMaterial {...matProps} />
-        </mesh>
-      );
-    case 'fire':
-      return (
-        <mesh ref={meshRef} position={[startPosition[0], startPosition[1], startPosition[2]]} scale={[scale * 0.18, scale * 0.3, scale * 0.18]} rotation={[0, 0, Math.PI]}>
-          <coneGeometry args={[0.5, 1, 6]} />
-          <meshStandardMaterial {...matProps} />
-        </mesh>
-      );
-    case 'wind':
-      return (
-        <mesh ref={meshRef} position={[startPosition[0], startPosition[1], startPosition[2]]} scale={scale * 0.15} rotation={[Math.PI / 2, 0, 0]}>
-          <torusGeometry args={[0.35, 0.2, 4, 8]} />
-          <meshStandardMaterial {...matProps} />
-        </mesh>
-      );
-    case 'grass':
-      return (
-        <mesh ref={meshRef} position={[startPosition[0], startPosition[1], startPosition[2]]} scale={[scale * 0.12, scale * 0.28, scale * 0.06]} rotation={[0, index * 0.5, 0]}>
-          <boxGeometry args={[1, 1, 1]} />
-          <meshStandardMaterial {...matProps} />
-        </mesh>
-      );
-    case 'lightning':
-      return (
-        <mesh ref={meshRef} position={[startPosition[0], startPosition[1], startPosition[2]]} scale={[scale * 0.08, scale * 0.9, scale * 0.08]} rotation={[0, 0, Math.PI / 2]}>
-          <cylinderGeometry args={[0.5, 0.5, 1, 6]} />
-          <meshStandardMaterial {...matProps} />
-        </mesh>
-      );
-    case 'rock':
-      return (
-        <mesh ref={meshRef} position={[startPosition[0], startPosition[1], startPosition[2]]} scale={scale * 0.18}>
-          <dodecahedronGeometry args={[0.5, 0]} />
-          <meshStandardMaterial {...matProps} />
-        </mesh>
-      );
-    default:
-      return (
-        <mesh ref={meshRef} position={[startPosition[0], startPosition[1], startPosition[2]]} scale={scale * 0.18}>
-          <sphereGeometry args={[0.5, 6, 4]} />
-          <meshStandardMaterial {...matProps} />
-        </mesh>
-      );
-  }
-}
+// Sprite: one size, clearly above the tile surface
+const SPRITE_SIZE = 2.8;
+const SPRITE_Y = 1.5;
 
 // ============================================================================
 // HEX TILE COMPONENT
@@ -392,13 +183,11 @@ function HexTile({
 
   const [x, z] = axialToWorld(q, r);
 
-  const elementColor = config.element ? ELEMENT_COLORS[config.element] : config.emissiveColor;
-
   return (
     <group ref={groupRef} position={[x, 0, z]}>
       <mesh geometry={geometry} material={materials} castShadow receiveShadow />
 
-      {/* Futuristic border: bright emissive ring + inner edge */}
+      {/* Border ring */}
       <mesh position={[0, 0.68, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <ringGeometry args={[HEX_SIZE * 0.88, HEX_SIZE * 1.0, 6]} />
         <meshBasicMaterial
@@ -410,22 +199,12 @@ function HexTile({
         />
       </mesh>
 
-      {/* Agent base glow (element-colored) */}
-      {isOccupied && pokemonId && config.element && (
-        <AgentBaseGlow elementColor={elementColor} />
-      )}
-
-      {/* Element surrounding effect: orbiting particles */}
-      {isOccupied && pokemonId && config.element && (
-        <ElementSurroundingEffect element={config.element} />
-      )}
-
-      {/* Pokemon sprite: larger 2D texture */}
+      {/* Sprite: one size, above surface */}
       {pokemonId && pokeTexture && (
-        <group position={[0, 1.3, 0]}>
+        <group position={[0, SPRITE_Y, 0]}>
           <Billboard follow={true}>
             <mesh renderOrder={1} castShadow={false}>
-              <planeGeometry args={[2.2, 2.2]} />
+              <planeGeometry args={[SPRITE_SIZE, SPRITE_SIZE]} />
               <meshBasicMaterial
                 map={pokeTexture}
                 transparent
@@ -437,33 +216,14 @@ function HexTile({
               />
             </mesh>
           </Billboard>
-          <pointLight
-            intensity={1.2}
-            distance={4}
-            decay={2}
-            color={elementColor}
-          />
         </group>
-      )}
-
-      {/* Subtle ring for unoccupied home tiles */}
-      {!isOccupied && pokemonId && (
-        <mesh position={[0, 0.58, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-          <ringGeometry args={[0.5, 0.7, 16]} />
-          <meshBasicMaterial
-            color={config.borderColor}
-            transparent
-            opacity={0.2}
-            side={THREE.DoubleSide}
-          />
-        </mesh>
       )}
 
       {isOccupied && residentName && (
         <FloatingAgentName
           name={residentName}
-          glowColor={elementColor}
-          baseY={1.75}
+          glowColor={config.emissiveColor}
+          baseY={SPRITE_Y + SPRITE_SIZE / 2 + 0.25}
         />
       )}
     </group>
@@ -750,6 +510,9 @@ function CatanScene({ entries, onSelectResident, onAddAgent }: CatanSceneProps) 
       {/* Central pit replaces center hex when onAddAgent provided (Catan-style spawn) */}
       {onAddAgent && <CentralPit onAddAgent={onAddAgent} />}
 
+      {/* Catan-style settlements at home vertices + block roads along board perimeter */}
+      <SettlementsAndRoads />
+
       {/* Render hex tiles (skip center 0,0 when pit is shown) */}
       {BOARD_HEXES.map(([q, r], idx) => {
         if (onAddAgent && q === 0 && r === 0) return null; // center = pit
@@ -809,8 +572,145 @@ function CatanScene({ entries, onSelectResident, onAddAgent }: CatanSceneProps) 
 }
 
 // ============================================================================
+// SETTLEMENTS & ROADS (Catan-style: small 3D settlements at vertices, block roads along perimeter)
+// ============================================================================
+
+const ROAD_HEIGHT = 0.18;
+const ROAD_WIDTH = 0.22;
+const SETTLEMENT_BASE_Y = 0.72;
+
+function SettlementsAndRoads() {
+  const allEdges = useMemo(() => getBoardEdges(BOARD_HEXES), []);
+  const perimeterEdges = useMemo(() => getPerimeterEdges(BOARD_HEXES, allEdges), [allEdges]);
+  const homeIndices = useMemo(
+    () => Array.from(HOME_TILE_INDICES).sort((a, b) => a - b),
+    []
+  );
+  const settlementPositions = useMemo(
+    () => getHomeSettlementPositions(BOARD_HEXES, homeIndices),
+    [homeIndices]
+  );
+
+  return (
+    <group>
+      {/* Perimeter roads: 3D blocks along each edge */}
+      {perimeterEdges.map((edge, i) => {
+        const dx = edge.x2 - edge.x1;
+        const dz = edge.z2 - edge.z1;
+        const len = Math.sqrt(dx * dx + dz * dz);
+        const midX = (edge.x1 + edge.x2) / 2;
+        const midZ = (edge.z1 + edge.z2) / 2;
+        const rotY = Math.atan2(dx, dz);
+        return (
+          <mesh
+            key={`road-${i}`}
+            position={[midX, SETTLEMENT_BASE_Y + ROAD_HEIGHT / 2, midZ]}
+            rotation={[0, rotY, 0]}
+            castShadow
+            receiveShadow
+          >
+            <boxGeometry args={[ROAD_WIDTH, ROAD_HEIGHT, len]} />
+            <meshStandardMaterial
+              color="#2d3748"
+              roughness={0.85}
+              metalness={0.2}
+            />
+          </mesh>
+        );
+      })}
+
+      {/* Settlements: small 3D blocks beside each home tile vertex */}
+      {settlementPositions.map(([x, z], i) => (
+        <group key={`settlement-${i}`} position={[x, SETTLEMENT_BASE_Y, z]}>
+          {/* Base block */}
+          <mesh castShadow receiveShadow position={[0, 0.12, 0]}>
+            <boxGeometry args={[0.28, 0.24, 0.28]} />
+            <meshStandardMaterial
+              color="#4a5568"
+              roughness={0.7}
+              metalness={0.15}
+            />
+          </mesh>
+          {/* Roof / second tier (city-style for variety) */}
+          <mesh castShadow position={[0, 0.3, 0]}>
+            <boxGeometry args={[0.2, 0.14, 0.2]} />
+            <meshStandardMaterial
+              color="#718096"
+              roughness={0.6}
+              metalness={0.2}
+            />
+          </mesh>
+        </group>
+      ))}
+    </group>
+  );
+}
+
+// ============================================================================
 // CENTRAL PIT (max 3D: stepped well, raised rim, harbor feel)
 // ============================================================================
+
+const NEON_GOLD = '#FFD700';
+
+function NeonPlusSign() {
+  const groupRef = useRef<THREE.Group>(null);
+  const barThick = 0.12;
+  const barLength = 0.7;
+
+  useFrame((state) => {
+    if (groupRef.current) {
+      groupRef.current.position.y = 1.1 + Math.sin(state.clock.elapsedTime * 0.8) * 0.08;
+      groupRef.current.rotation.y = state.clock.elapsedTime * 0.15;
+    }
+  });
+
+  return (
+    <group ref={groupRef} position={[0, 1.1, 0]}>
+      <pointLight color={NEON_GOLD} intensity={1.5} distance={3} decay={2} />
+      {/* Vertical bar */}
+      <mesh>
+        <boxGeometry args={[barThick, barLength, barThick]} />
+        <meshStandardMaterial
+          color={NEON_GOLD}
+          emissive={NEON_GOLD}
+          emissiveIntensity={0.9}
+          metalness={0.1}
+          roughness={0.3}
+        />
+      </mesh>
+      {/* Horizontal bar */}
+      <mesh>
+        <boxGeometry args={[barLength, barThick, barThick]} />
+        <meshStandardMaterial
+          color={NEON_GOLD}
+          emissive={NEON_GOLD}
+          emissiveIntensity={0.9}
+          metalness={0.1}
+          roughness={0.3}
+        />
+      </mesh>
+      {/* Glow: slightly larger, transparent */}
+      <mesh>
+        <boxGeometry args={[barThick + 0.08, barLength + 0.12, barThick + 0.08]} />
+        <meshBasicMaterial
+          color={NEON_GOLD}
+          transparent
+          opacity={0.25}
+          depthWrite={false}
+        />
+      </mesh>
+      <mesh>
+        <boxGeometry args={[barLength + 0.12, barThick + 0.08, barThick + 0.08]} />
+        <meshBasicMaterial
+          color={NEON_GOLD}
+          transparent
+          opacity={0.25}
+          depthWrite={false}
+        />
+      </mesh>
+    </group>
+  );
+}
 
 function CentralPit({ onAddAgent }: { onAddAgent: () => void }) {
   const pitRef = useRef<THREE.Group>(null);
@@ -844,6 +744,8 @@ function CentralPit({ onAddAgent }: { onAddAgent: () => void }) {
 
   return (
     <group ref={pitRef} position={[0, 0, 0]}>
+      {/* Floating 3D neon plus sign above the pit */}
+      <NeonPlusSign />
       {/* Raised hexagonal rim (stone edge) */}
       <mesh position={[0, 0.08, 0]} castShadow receiveShadow>
         <cylinderGeometry args={[rimRadius, rimRadius + 0.05, 0.15, 6]} />

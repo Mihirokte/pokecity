@@ -39,3 +39,94 @@ export function getSettlementWorldPos(
   const [x, z] = corners[cornerIndex];
   return [x, 0, z]; // y = 0 base height
 }
+
+const PREC = 100;
+function vertexKey(x: number, z: number): string {
+  return `${Math.round(x * PREC)},${Math.round(z * PREC)}`;
+}
+
+export interface BoardVertex {
+  key: string;
+  x: number;
+  z: number;
+}
+
+export interface BoardEdge {
+  key1: string;
+  key2: string;
+  x1: number;
+  z1: number;
+  x2: number;
+  z2: number;
+}
+
+/** All unique vertices from the 19 hexes (corners merged) */
+export function getBoardVertices(hexList: [number, number][]): BoardVertex[] {
+  const map = new Map<string, { x: number; z: number }>();
+  for (const [q, r] of hexList) {
+    const corners = hexCorners(q, r);
+    for (const [x, z] of corners) {
+      const key = vertexKey(x, z);
+      if (!map.has(key)) map.set(key, { x, z });
+    }
+  }
+  return Array.from(map.entries()).map(([key, { x, z }]) => ({ key, x, z }));
+}
+
+/** All edges (each edge once), with world coords */
+export function getBoardEdges(hexList: [number, number][]): BoardEdge[] {
+  const set = new Set<string>();
+  const list: BoardEdge[] = [];
+  for (const [q, r] of hexList) {
+    const corners = hexCorners(q, r);
+    for (let i = 0; i < 6; i++) {
+      const [x1, z1] = corners[i];
+      const [x2, z2] = corners[(i + 1) % 6];
+      const k1 = vertexKey(x1, z1);
+      const k2 = vertexKey(x2, z2);
+      const edgeKey = k1 < k2 ? `${k1}-${k2}` : `${k2}-${k1}`;
+      if (!set.has(edgeKey)) {
+        set.add(edgeKey);
+        list.push({ key1: k1, key2: k2, x1, z1, x2, z2 });
+      }
+    }
+  }
+  return list;
+}
+
+/** Edges that belong to exactly one hex (perimeter of the board) */
+export function getPerimeterEdges(
+  hexList: [number, number][],
+  allEdges: BoardEdge[]
+): BoardEdge[] {
+  const count = new Map<string, number>();
+  for (const [q, r] of hexList) {
+    const corners = hexCorners(q, r);
+    for (let i = 0; i < 6; i++) {
+      const [x1, z1] = corners[i];
+      const [x2, z2] = corners[(i + 1) % 6];
+      const k1 = vertexKey(x1, z1);
+      const k2 = vertexKey(x2, z2);
+      const edgeKey = k1 < k2 ? `${k1}-${k2}` : `${k2}-${k1}`;
+      count.set(edgeKey, (count.get(edgeKey) ?? 0) + 1);
+    }
+  }
+  return allEdges.filter((e) => {
+    const edgeKey = e.key1 < e.key2 ? `${e.key1}-${e.key2}` : `${e.key2}-${e.key1}`;
+    return count.get(edgeKey) === 1;
+  });
+}
+
+/** Settlement position (x, z) for each home tile; corner varies (i % 6) so they spread around the board */
+export function getHomeSettlementPositions(
+  hexList: [number, number][],
+  homeIndices: number[]
+): [number, number][] {
+  return homeIndices.map((idx, i) => {
+    const [q, r] = hexList[idx];
+    const corners = hexCorners(q, r);
+    const cornerIndex = i % 6;
+    const [x, z] = corners[cornerIndex];
+    return [x, z];
+  });
+}

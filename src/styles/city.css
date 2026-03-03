@@ -25,6 +25,14 @@
   from { transform: translateY(0);   opacity: 1; }
   to   { transform: translateY(100%); opacity: 0; }
 }
+@keyframes panel-slide-in-right {
+  from { transform: translateX(100%); opacity: 0; }
+  to   { transform: translateX(0);   opacity: 1; }
+}
+@keyframes panel-slide-out-right {
+  from { transform: translateX(0);   opacity: 1; }
+  to   { transform: translateX(100%); opacity: 0; }
+}
 @keyframes dialogue-cursor {
   0%, 49% { opacity: 1; }
   50%, 100% { opacity: 0; }
@@ -717,15 +725,20 @@
    ════════════════════════════════════════════ */
 .city-panel {
   position: fixed;
-  inset: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 70%;
+  max-width: 90vw;
   z-index: 100;
   display: flex;
   flex-direction: column;
   background: #0c0c1e;
-  animation: panel-slide-up 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+  box-shadow: -8px 0 24px rgba(0,0,0,0.4);
+  animation: panel-slide-in-right 0.35s cubic-bezier(0.22, 1, 0.36, 1);
 }
 .city-panel--closing {
-  animation: panel-slide-down 0.25s ease-in forwards;
+  animation: panel-slide-out-right 0.25s ease-in forwards;
 }
 
 /* Type color accent bar at very top */
