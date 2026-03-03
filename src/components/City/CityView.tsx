@@ -2,9 +2,11 @@ import { useState, useCallback, useRef } from 'react';
 import { useCityStore } from '../../stores/cityStore';
 import { useUIStore } from '../../stores/uiStore';
 import { useAuthStore } from '../../stores/authStore';
+import { SheetsService } from '../../services/sheetsService';
+import { SAMPLE_SPREADSHEET_ID } from '../../data/sampleData';
 import { HOUSE_TYPES, HOUSE_TYPE_LIST } from '../../config/houseTypes';
-import { spriteArtworkUrl, PLAYER_POKEMON_ID, badgeUrl, HEADER_BADGE_ID, MODULE_BADGE_IDS } from '../../config/pokemon';
-import type { HouseModuleType, House, Resident } from '../../types';
+import { spriteArtworkUrl, spriteUrl, PLAYER_POKEMON_ID, badgeUrl, HEADER_BADGE_ID, MODULE_BADGE_IDS } from '../../config/pokemon';
+import type { HouseModuleType, House, Resident, SheetName } from '../../types';
 import { CityPanel } from './CityPanel';
 import { AboutMePanel } from './AboutMePanel';
 import { CatanCityScene } from '../Landing/CatanCityScene';
@@ -35,8 +37,13 @@ export function CityView() {
   const [moveTargetHex, setMoveTargetHex] = useState<number | null>(null);
 
   const updateHousePosition = useCityStore(s => s.updateHousePosition);
-  const loadAllData = useCityStore(s => s.loadAllData);
+  const spreadsheetId = useAuthStore(s => s.spreadsheetId);
   const [resettingAll, setResettingAll] = useState(false);
+
+  const sheetsToClearOnReset: SheetName[] = [
+    'CalendarEvents', 'Tasks', 'Notes', 'TripPlans', 'HealthMetrics', 'ShoppingItems',
+    'Residents', 'Houses',
+  ];
   const headerRef = useRef<HTMLDivElement>(null);
   const focusHeader = useCallback(() => {
     requestAnimationFrame(() => {
@@ -86,14 +93,20 @@ export function CityView() {
               <button
                 key={resident.id}
                 type="button"
-                className="city-header__resident-btn"
+                className="city-header__resident-btn city-header__resident-btn--sprite"
                 onClick={() => setSelected({ resident, house })}
                 onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelected({ resident, house }); } }}
-                aria-label={`Open ${resident.name}'s ${house.name}`}
+                aria-label={`Open ${resident.name}, ${house.name}`}
                 aria-pressed={selected?.resident.id === resident.id}
-                style={{ fontSize: 9, padding: '4px 8px' }}
+                title={resident.name}
               >
-                {resident.name}
+                <img
+                  src={spriteUrl(resident.emoji)}
+                  alt=""
+                  width={28}
+                  height={28}
+                  style={{ display: 'block', imageRendering: 'pixelated' }}
+                />
               </button>
             ))}
           </nav>
@@ -109,12 +122,17 @@ export function CityView() {
             setShowAddForm(false);
             setMoveTargetHex(null);
             try {
-              await loadAllData();
-              addToast('Data reloaded. UI refreshed.', 'success');
-              focusHeader();
+              if (spreadsheetId && spreadsheetId !== SAMPLE_SPREADSHEET_ID) {
+                for (const sheet of sheetsToClearOnReset) {
+                  await SheetsService.clearDataRows(sheet);
+                }
+                addToast('Spreadsheet and agents cleared. Refreshing…', 'success');
+              } else {
+                addToast('Refreshing…', 'success');
+              }
+              window.location.reload();
             } catch {
-              addToast('Failed to reload data.', 'error');
-            } finally {
+              addToast('Failed to clear spreadsheet.', 'error');
               setResettingAll(false);
             }
           }}

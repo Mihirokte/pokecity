@@ -346,6 +346,25 @@ export const SheetsService = {
     }
   },
 
+  // ── Clear all data rows in a sheet (keeps header row 1) ──
+  async clearDataRows(sheetName: SheetName): Promise<void> {
+    const { sheetId } = getAuth();
+    if (sheetId === SAMPLE_SPREADSHEET_ID) return Promise.resolve();
+    return withRetry(async () => {
+      const { token } = getAuth();
+      const tab = tabName(sheetName);
+      const range = `'${tab}'!A2:Z1000`;
+      const res = await fetch(
+        `${SHEETS_API}/${sheetId}/values/${encodeURIComponent(range)}:clear`,
+        { method: 'POST', headers: headers(token), body: '{}' },
+      );
+      if (!res.ok) {
+        const errBody = await res.text().catch(() => '');
+        throw new Error(`Failed to clear ${sheetName} (${res.status}): ${errBody || res.statusText}`);
+      }
+    });
+  },
+
   // ── Delete a row by ID ──
   async deleteRow(sheetName: SheetName, id: string): Promise<void> {
     if (getAuth().sheetId === SAMPLE_SPREADSHEET_ID) return Promise.resolve();
