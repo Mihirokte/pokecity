@@ -11,15 +11,16 @@ import {
   getTileConfig,
   TILE_TYPE_SEQUENCE,
   HOME_TILE_INDICES,
-  DEMO_AGENT_BY_TYPE,
 } from './catanData';
+import type { House, Resident } from '../../types';
 
-interface CatanBoard3DProps {
-  onLogin: () => void;
+interface CatanCitySceneProps {
+  entries: Array<{ resident: Resident; house: House }>;
+  onSelectResident: (resident: Resident, house: House) => void;
 }
 
 // ============================================================================
-// HEX TILE COMPONENT (SOLID COLOR + TYPE LABEL)
+// HEX TILE COMPONENT
 // ============================================================================
 
 interface HexTileProps {
@@ -27,8 +28,9 @@ interface HexTileProps {
   r: number;
   bobOffset: number;
   typeLabel: string;
-  agentName?: string;
+  residentName?: string;
   spriteTextures: Map<number, THREE.Texture>;
+  isHomeTile: boolean;
 }
 
 function HexTile({
@@ -36,19 +38,20 @@ function HexTile({
   r,
   bobOffset,
   typeLabel,
-  agentName,
+  residentName,
   spriteTextures,
+  isHomeTile,
 }: HexTileProps) {
   const groupRef = useRef<THREE.Group>(null);
   const hexIndex = BOARD_HEXES.findIndex(([hq, hr]) => hq === q && hr === r);
   const tileType = TILE_TYPE_SEQUENCE[hexIndex];
   const config = getTileConfig(tileType);
 
-  // Only show pokemon if this is a home tile AND there's an agent
-  const pokemonId = agentName ? config.pokemonId : null;
+  // Only show pokemon if this is a home tile AND there's a resident
+  const isOccupied = isHomeTile && !!residentName;
+  const pokemonId = isOccupied ? config.pokemonId : null;
   const pokeTexture = pokemonId ? spriteTextures.get(pokemonId) || null : null;
 
-  // Create hex geometry: local shape at origin, rotated flat
   const geometry = useMemo(() => {
     const shape = new THREE.Shape();
     // Build hex centered at origin (local coordinates)
@@ -71,20 +74,18 @@ function HexTile({
     return geo;
   }, []);
 
-  // Solid color material
   const material = useMemo(
     () =>
       new THREE.MeshStandardMaterial({
         color: config.topColor,
-        emissive: config.emissiveColor,
-        emissiveIntensity: 0.25,
+        emissive: isOccupied ? config.emissiveColor : config.topColor,
+        emissiveIntensity: isOccupied ? 0.4 : 0.15,
         metalness: 0.3,
         roughness: 0.6,
       }),
-    [config]
+    [config, isOccupied]
   );
 
-  // Bob animation
   useFrame((state) => {
     if (groupRef.current) {
       groupRef.current.position.y =
@@ -96,20 +97,19 @@ function HexTile({
 
   return (
     <group ref={groupRef} position={[x, 0, z]}>
-      {/* Hexagon tile */}
       <mesh geometry={geometry} material={material} castShadow receiveShadow />
 
-      {/* Type label centered on tile */}
+      {/* Type label */}
       <Html
         position={[0, 0.65, 0]}
         distanceFactor={1}
-        scale={0.8}
+        scale={0.7}
         style={{ pointerEvents: 'none' }}
       >
         <div
           style={{
             fontFamily: 'Dogica, monospace',
-            fontSize: '11px',
+            fontSize: '10px',
             fontWeight: 'bold',
             color: '#fff',
             textShadow: '0 0 8px rgba(0,0,0,0.9)',
@@ -122,7 +122,7 @@ function HexTile({
         </div>
       </Html>
 
-      {/* Pokemon sprite floating above tile */}
+      {/* Pokemon sprite (only shown if occupied home tile) */}
       {pokemonId && pokeTexture && (
         <group position={[0, 1.3, 0]}>
           <Billboard>
@@ -152,9 +152,32 @@ function HexTile({
           <meshBasicMaterial
             color={config.emissiveColor}
             transparent
-            opacity={0.3}
+            opacity={isOccupied ? 0.5 : 0.2}
           />
         </mesh>
+      )}
+
+      {/* Resident name label if occupied */}
+      {isOccupied && residentName && (
+        <Html
+          position={[0, -0.3, 0]}
+          distanceFactor={1}
+          scale={0.6}
+          style={{ pointerEvents: 'none' }}
+        >
+          <div
+            style={{
+              fontFamily: 'VT323, monospace',
+              fontSize: '9px',
+              color: config.emissiveColor,
+              textShadow: '0 0 4px rgba(0,0,0,0.9)',
+              textAlign: 'center',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {residentName}
+          </div>
+        </Html>
       )}
     </group>
   );
@@ -216,21 +239,21 @@ function FloatingParticles() {
 
   useFrame(() => {
     if (groupRef.current) {
-      groupRef.current.rotation.y += 0.0005;
+      groupRef.current.rotation.y += 0.0003;
     }
   });
 
   return (
     <group ref={groupRef}>
-      {Array.from({ length: 16 }).map((_, i) => {
-        const angle = (i / 16) * Math.PI * 2;
-        const radius = 12;
+      {Array.from({ length: 12 }).map((_, i) => {
+        const angle = (i / 12) * Math.PI * 2;
+        const radius = 11;
         const x = Math.cos(angle) * radius;
         const z = Math.sin(angle) * radius;
-        const y = 4 + Math.sin(i * 0.4) * 2;
+        const y = 3 + Math.sin(i * 0.5) * 1.5;
 
         return (
-          <mesh key={i} position={[x, y, z]} scale={0.06}>
+          <mesh key={i} position={[x, y, z]} scale={0.05}>
             <octahedronGeometry args={[1, 0]} />
             <meshBasicMaterial color="#FFD700" />
           </mesh>
@@ -241,20 +264,23 @@ function FloatingParticles() {
 }
 
 // ============================================================================
-// CATAN SCENE
+// CATAN CITY SCENE
 // ============================================================================
 
-function CatanScene() {
-  const orbitControlsRef = useRef<any>(null);
-  const [autoRotate, setAutoRotate] = useState(true);
+interface CatanSceneProps {
+  entries: Array<{ resident: Resident; house: House }>;
+  onSelectResident: (resident: Resident, house: House) => void;
+}
+
+function CatanScene({ entries, onSelectResident }: CatanSceneProps) {
   const [spriteTextures, setSpriteTextures] = useState<Map<number, THREE.Texture>>(
     new Map()
   );
 
-  // Load all pokemon sprites
+  // Load sprites for all house types
   useEffect(() => {
     const textureLoader = new THREE.TextureLoader();
-    const pokemonIds = [251, 68, 235, 18, 57, 52]; // From catanData
+    const pokemonIds = [251, 68, 235, 18, 57, 52];
 
     pokemonIds.forEach((pokemonId) => {
       const animatedUrl = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-v/black-white/animated/${pokemonId}.gif`;
@@ -279,9 +305,14 @@ function CatanScene() {
     });
   }, []);
 
-  const handleOrbitStart = () => {
-    setAutoRotate(false);
-  };
+  // Map of house type → resident (for highlighting occupied tiles)
+  const occupiedTiles = useMemo(() => {
+    const map = new Map<string, Resident>();
+    entries.forEach(({ resident, house }) => {
+      map.set(house.type, resident);
+    });
+    return map;
+  }, [entries]);
 
   return (
     <>
@@ -292,84 +323,89 @@ function CatanScene() {
       {BOARD_HEXES.map(([q, r], idx) => {
         const tileType = TILE_TYPE_SEQUENCE[idx];
         const isHomeTile = HOME_TILE_INDICES.has(idx);
-        const agentName = isHomeTile ? DEMO_AGENT_BY_TYPE[tileType] : undefined;
+        const resident = isHomeTile ? occupiedTiles.get(tileType) : undefined;
 
         return (
-          <HexTile
-            key={`hex-${q}-${r}`}
-            q={q}
-            r={r}
-            bobOffset={idx * 0.15}
-            typeLabel={tileType === 'desert' ? 'DESERT' : tileType.toUpperCase()}
-            agentName={agentName}
-            spriteTextures={spriteTextures}
-          />
+          <group key={`hex-${q}-${r}`}>
+            <HexTile
+              q={q}
+              r={r}
+              bobOffset={idx * 0.15}
+              typeLabel={tileType === 'desert' ? 'DESERT' : tileType.toUpperCase()}
+              residentName={resident?.name}
+              spriteTextures={spriteTextures}
+              isHomeTile={isHomeTile}
+            />
+
+            {/* Clickable region for selecting resident */}
+            {resident && (
+              <Html
+                position={[...axialToWorld(q, r), 1]}
+                distanceFactor={1}
+                scale={1}
+                style={{
+                  cursor: 'pointer',
+                  pointerEvents: 'auto',
+                }}
+                onClick={() => {
+                  const house = entries.find((e) => e.resident.id === resident.id)?.house;
+                  if (house) {
+                    onSelectResident(resident, house);
+                  }
+                }}
+              >
+                <div
+                  style={{
+                    width: '60px',
+                    height: '60px',
+                    background: 'transparent',
+                  }}
+                />
+              </Html>
+            )}
+          </group>
         );
       })}
 
       <FloatingParticles />
 
       <OrbitControls
-        ref={orbitControlsRef}
-        autoRotate={autoRotate}
-        autoRotateSpeed={0.3}
+        autoRotate={false}
         enableDamping
         dampingFactor={0.08}
-        onStart={handleOrbitStart}
       />
 
-      <Stars radius={100} depth={50} count={4000} factor={4} />
+      <Stars radius={100} depth={50} count={3000} factor={4} />
       <Preload all />
     </>
   );
 }
 
 // ============================================================================
-// MAIN COMPONENT
+// MAIN EXPORT
 // ============================================================================
 
-export function CatanBoard3D({ onLogin }: CatanBoard3DProps) {
+export function CatanCityScene({
+  entries,
+  onSelectResident,
+}: CatanCitySceneProps) {
   return (
-    <div className="catan-root">
-      <Canvas
-        shadows
-        camera={{ position: [0, 16, 20], fov: 50 }}
-        gl={{
-          antialias: true,
-          powerPreference: 'high-performance',
-        }}
-        style={{
-          background: 'linear-gradient(135deg, #1a2a4a 0%, #0a1a2e 60%, #050810 100%)',
-        }}
-      >
-        <React.Suspense fallback={null}>
-          <CatanScene />
-        </React.Suspense>
-      </Canvas>
-
-      {/* Overlay UI */}
-      <div className="catan-overlay" onClick={(e) => e.stopPropagation()}>
-        <div className="catan-title-block">
-          <h1 className="catan-title">POKÉCITY</h1>
-          <p className="catan-subtitle">Your City Awaits</p>
-        </div>
-
-        <div className="catan-info-panel">
-          <h2 className="catan-info-title">WHAT IS POKÉCITY?</h2>
-          <p className="catan-info-body">
-            Your life, gamified. Six Pokémon modules manage your productivity: calendar,
-            tasks, notes, travel, gym, and shopping. Built by Mihir on Google Sheets.
-          </p>
-          <p className="catan-info-footer">
-            No server. No fees. Just you and your city.
-          </p>
-          <button className="catan-signin-btn" onClick={onLogin}>
-            SIGN IN WITH GOOGLE
-          </button>
-        </div>
-
-        <div className="catan-hint">DRAG TO EXPLORE • CLICK TO SIGN IN</div>
-      </div>
-    </div>
+    <Canvas
+      shadows
+      camera={{ position: [0, 16, 20], fov: 50 }}
+      gl={{
+        antialias: true,
+        powerPreference: 'high-performance',
+      }}
+      style={{
+        position: 'absolute',
+        inset: 0,
+        background: 'linear-gradient(135deg, #1a2a4a 0%, #0a1a2e 60%, #050810 100%)',
+      }}
+    >
+      <React.Suspense fallback={null}>
+        <CatanScene entries={entries} onSelectResident={onSelectResident} />
+      </React.Suspense>
+    </Canvas>
   );
 }

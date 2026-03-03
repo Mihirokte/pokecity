@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { DEFAULT_AGENTS } from '../../pokecenter/default-agents';
+import { CatanBoard3D } from './CatanBoard3D';
 import { AgentDetail } from '../../pokecenter/pages/AgentDetail';
 import type { PCAgent } from '../../types';
 import './LandingPage.css';
@@ -33,21 +34,14 @@ export function LandingPage() {
 
   return (
     <div className="landing-root">
-      {/* 3D Background */}
-      <div className="landing-3d-bg">
-        <div className="landing-sky" />
-        <div className="landing-sun" />
-        <div className="landing-mountains">
-          <div className="mountain mountain-1" />
-          <div className="mountain mountain-2" />
-          <div className="mountain mountain-3" />
-        </div>
-        <div className="landing-ground" />
+      {/* 3D Catan Board Background */}
+      <div className="landing-3d-container">
+        <CatanBoard3D onLogin={handleLoginClick} />
       </div>
 
-      {/* Content */}
-      <div className="landing-content">
-        <div className="landing-header">
+      {/* Agents Overlay */}
+      <div className="landing-agents-overlay">
+        <div className="landing-agents-header">
           <div className="landing-logo">
             <img 
               src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/25.png" 
@@ -56,18 +50,9 @@ export function LandingPage() {
             />
             <span className="landing-logo-text">POKÉCITY</span>
           </div>
-          <div className="landing-header-actions">
-            <button className="landing-login-btn" onClick={() => setShowLoginModal(true)}>
-              Sign In
-            </button>
-          </div>
-        </div>
-
-        <div className="landing-hero">
-          <h1 className="landing-title">Meet Your Agents</h1>
-          <p className="landing-subtitle">
-            Click on an agent to learn more about their capabilities
-          </p>
+          <button className="landing-login-btn" onClick={() => setShowLoginModal(true)}>
+            Sign In
+          </button>
         </div>
 
         <div className="landing-agents-grid">

@@ -147,7 +147,7 @@ function HexTile({
 
       {/* Glow circle under sprite */}
       {pokemonId && (
-        <mesh position={[0, 0.58, 0]}>
+        <mesh position={[0, 0.15, 0]}>
           <circleGeometry args={[0.5, 16]} />
           <meshBasicMaterial
             color={config.emissiveColor}

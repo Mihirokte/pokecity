@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "overleaf": {
+      "command": "node",
+      "args": [
+        "/path/to/OverleafMCP/overleaf-mcp-server.js"
+      ]
+    }
+  }
+}

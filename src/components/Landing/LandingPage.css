@@ -8,98 +8,36 @@
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
 }
 
-/* 3D Background */
-.landing-3d-bg {
+/* 3D Container */
+.landing-3d-container {
   position: absolute;
   inset: 0;
   z-index: 0;
 }
 
-.landing-sky {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(180deg, 
-    #0ea5e9 0%, 
-    #7dd3fc 40%, 
-    #bae6fd 70%,
-    #fef9c3 100%
-  );
-}
-
-.landing-sun {
-  position: absolute;
-  top: 8%;
-  right: 15%;
-  width: 80px;
-  height: 80px;
-  background: radial-gradient(circle, #fcd34d 0%, #fef08a 50%, transparent 70%);
-  border-radius: 50%;
-  box-shadow: 0 0 60px #fcd34d, 0 0 100px #fef08a;
-  animation: sunPulse 4s ease-in-out infinite;
-}
-
-@keyframes sunPulse {
-  0%, 100% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(1.05); opacity: 0.9; }
-}
-
-.landing-mountains {
-  position: absolute;
-  bottom: 25%;
-  left: 0;
-  right: 0;
-  height: 40%;
-}
-
-.mountain {
-  position: absolute;
-  bottom: 0;
-  width: 0;
-  height: 0;
-  border-style: solid;
-}
-
-.mountain-1 {
-  left: 5%;
-  border-width: 0 120px 200px 120px;
-  border-color: transparent transparent #475569 transparent;
-}
-
-.mountain-2 {
-  left: 25%;
-  border-width: 0 150px 280px 150px;
-  border-color: transparent transparent #64748b transparent;
-}
-
-.mountain-3 {
-  right: 10%;
-  border-width: 0 100px 180px 100px;
-  border-color: transparent transparent #475569 transparent;
-}
-
-.landing-ground {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 25%;
-  background: linear-gradient(180deg, #22c55e 0%, #15803d 50%, #166534 100%);
-}
-
-/* Content */
-.landing-content {
+/* Agents Overlay */
+.landing-agents-overlay {
   position: relative;
   z-index: 1;
   height: 100%;
   overflow-y: auto;
   padding: 24px;
+  background: linear-gradient(180deg, 
+    rgba(10, 26, 47, 0.3) 0%, 
+    rgba(10, 26, 47, 0.1) 50%,
+    rgba(10, 26, 47, 0.3) 100%
+  );
 }
 
-.landing-header {
+.landing-agents-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 16px 24px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 12px;
+  backdrop-filter: blur(10px);
+  margin-bottom: 20px;
 }
 
 .landing-logo {
@@ -117,44 +55,35 @@
 .landing-logo-text {
   font-size: 24px;
   font-weight: 700;
-  color: #1e293b;
+  color: #fff;
   letter-spacing: -0.5px;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
 }
 
-.landing-tagline {
+.landing-login-btn {
+  padding: 10px 20px;
+  background: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 8px;
   font-size: 14px;
-  color: #64748b;
-  font-weight: 500;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
 
-.landing-hero {
-  text-align: center;
-  padding: 40px 20px;
-}
-
-.landing-title {
-  font-size: 48px;
-  font-weight: 800;
-  color: #1e293b;
-  margin: 0 0 12px 0;
-  letter-spacing: -1px;
-}
-
-.landing-subtitle {
-  font-size: 18px;
-  color: #64748b;
-  margin: 0;
-  max-width: 500px;
-  margin: 0 auto;
+.landing-login-btn:hover {
+  background: #1d4ed8;
+  transform: translateY(-1px);
 }
 
 /* Agents Grid */
 .landing-agents-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 20px;
-  max-width: 1000px;
-  margin: 40px auto;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 16px;
+  max-width: 900px;
+  margin: 20px auto;
   padding: 0 20px;
 }
 
@@ -170,24 +99,23 @@
 .landing-agent-card {
   background: rgba(255, 255, 255, 0.95);
   border-radius: 16px;
-  padding: 20px;
+  padding: 16px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  gap: 10px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
   border: 1px solid rgba(255, 255, 255, 0.5);
-  backdrop-filter: blur(10px);
   transition: all 0.2s ease;
 }
 
 .landing-agent-card:hover {
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
 }
 
 .landing-agent-sprite {
-  width: 80px;
-  height: 80px;
+  width: 64px;
+  height: 64px;
   image-rendering: pixelated;
   object-fit: contain;
 }
@@ -197,22 +125,22 @@
 }
 
 .landing-agent-name {
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 600;
   color: #1e293b;
 }
 
 .landing-agent-type {
-  font-size: 13px;
+  font-size: 12px;
   color: #64748b;
-  margin-top: 4px;
+  margin-top: 2px;
 }
 
 .landing-agent-status {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 500;
   text-transform: uppercase;
-  padding: 4px 12px;
+  padding: 3px 10px;
   border-radius: 20px;
 }
 
@@ -234,9 +162,9 @@
 /* Footer */
 .landing-footer {
   text-align: center;
-  padding: 40px 20px;
-  color: #94a3b8;
-  font-size: 14px;
+  padding: 20px;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 13px;
 }
 
 /* Sidepane */
@@ -271,47 +199,6 @@
 @keyframes slideInRight {
   from { transform: translateX(100%); }
   to { transform: translateX(0); }
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-  .landing-title {
-    font-size: 32px;
-  }
-  
-  .landing-agents-grid {
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-    gap: 12px;
-  }
-  
-  .landing-agent-sprite {
-    width: 60px;
-    height: 60px;
-  }
-}
-
-/* Login Button */
-.landing-header-actions {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.landing-login-btn {
-  padding: 10px 20px;
-  background: #2563eb;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.landing-login-btn:hover {
-  background: #1d4ed8;
-  transform: translateY(-1px);
 }
 
 /* Modal */
@@ -412,4 +299,21 @@
 .landing-modal-google-icon {
   width: 18px;
   height: 18px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .landing-agents-grid {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 12px;
+  }
+  
+  .landing-agent-sprite {
+    width: 50px;
+    height: 50px;
+  }
+
+  .landing-agent-card {
+    padding: 12px;
+  }
 }

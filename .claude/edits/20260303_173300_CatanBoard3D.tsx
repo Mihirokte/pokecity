@@ -101,7 +101,7 @@ function HexTile({
 
       {/* Type label centered on tile */}
       <Html
-        position={[0, 0.65, 0]}
+        position={[0, 0.25, 0]}
         distanceFactor={1}
         scale={0.8}
         style={{ pointerEvents: 'none' }}
@@ -124,7 +124,7 @@ function HexTile({
 
       {/* Pokemon sprite floating above tile */}
       {pokemonId && pokeTexture && (
-        <group position={[0, 1.3, 0]}>
+        <group position={[0, 1.2, 0]}>
           <Billboard>
             <mesh castShadow>
               <planeGeometry args={[1.4, 1.4]} />
@@ -147,7 +147,7 @@ function HexTile({
 
       {/* Glow circle under sprite */}
       {pokemonId && (
-        <mesh position={[0, 0.58, 0]}>
+        <mesh position={[0, 0.15, 0]}>
           <circleGeometry args={[0.5, 16]} />
           <meshBasicMaterial
             color={config.emissiveColor}
