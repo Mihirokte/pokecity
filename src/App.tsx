@@ -49,12 +49,18 @@ export default function App() {
   // On mount: try restoring session or handling OAuth callback
   useEffect(() => {
     (async () => {
-      if (window.location.hash.includes('access_token')) {
-        await handleCallback();
-        setBooting(false);
-        return;
+      // Check for OAuth token in hash
+      if (window.location.hash && window.location.hash.includes('access_token')) {
+        console.log('Processing OAuth callback...');
+        const success = await handleCallback();
+        console.log('OAuth callback result:', success);
+        if (success) {
+          // Clear the hash after successful callback
+          window.history.replaceState(null, '', window.location.pathname);
+        }
+      } else {
+        restoreSession();
       }
-      restoreSession();
       setBooting(false);
     })();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
