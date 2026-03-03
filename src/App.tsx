@@ -3,9 +3,10 @@ import { useAuthStore } from './stores/authStore';
 import { useCityStore } from './stores/cityStore';
 import { useUIStore } from './stores/uiStore';
 import { SheetsService } from './services/sheetsService';
-import { LandingPage } from './components/Landing/LandingPage';
+import { CatanLanding } from './components/Landing/CatanLanding';
 import { CityView } from './components/City/CityView';
 import { Toasts } from './components/Toasts';
+import './styles/city.css';
 
 function LoadingScreen() {
   return (
@@ -117,11 +118,15 @@ export default function App() {
 
   const isAuthed = !!user && !!accessToken && isTokenValid();
 
+  // Show CatanLanding for unauthenticated users, CityView for authenticated
   return (
     <>
       <Toasts />
       {!isAuthed ? (
-        <LandingPage />
+        <CatanLanding onEnterCity={() => {
+          // This will trigger auth flow when user clicks enter
+          window.location.hash = 'auth';
+        }} />
       ) : !dataLoaded ? (
         <LoadingScreen />
       ) : (

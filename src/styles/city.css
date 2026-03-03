@@ -1584,3 +1584,422 @@
   opacity: 0;
   transition: opacity 0.3s;
 }
+
+/* ═══════════════════════════════════════════
+   Catan Board - 3D Hexagonal Grid Landing Page
+   ═══════════════════════════════════════════ */
+
+/* ── Scene Container ── */
+.catan-scene {
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(ellipse at center, #1a1a2e 0%, #0a0a15 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  perspective: 1200px;
+}
+
+/* ── Starfield Background ── */
+.catan-starfield {
+  position: absolute;
+  inset: 0;
+  background-image: 
+    radial-gradient(2px 2px at 20px 30px, #ffffff, transparent),
+    radial-gradient(2px 2px at 40px 70px, rgba(255,255,255,0.8), transparent),
+    radial-gradient(1px 1px at 90px 40px, #ffffff, transparent),
+    radial-gradient(2px 2px at 130px 80px, rgba(255,255,255,0.6), transparent),
+    radial-gradient(1px 1px at 160px 120px, #ffffff, transparent);
+  background-size: 200px 200px;
+  animation: starfield-twinkle 4s ease-in-out infinite;
+}
+
+@keyframes starfield-twinkle {
+  0%, 100% { opacity: 0.8; }
+  50% { opacity: 1; }
+}
+
+/* ── Board Container ── */
+.catan-board-container {
+  position: relative;
+  transform-style: preserve-3d;
+  transform: rotateX(55deg) rotateZ(0deg);
+  transition: transform 0.5s ease;
+}
+
+/* Hover to tilt the board more */
+.catan-board-container:hover {
+  transform: rotateX(45deg) rotateZ(5deg);
+}
+
+/* ── Hex Grid ── */
+.catan-grid {
+  position: relative;
+  transform-style: preserve-3d;
+}
+
+/* ── Individual Hex Tile ── */
+.catan-hex {
+  position: absolute;
+  width: 120px;
+  height: 138px;
+  transform-style: preserve-3d;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.catan-hex:hover {
+  transform: translateZ(20px);
+}
+
+.catan-hex:hover .catan-hex__surface {
+  filter: brightness(1.2);
+}
+
+/* Hex Shape using clip-path */
+.catan-hex__surface {
+  position: absolute;
+  inset: 0;
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+  background: var(--hex-color);
+  transition: all 0.3s ease;
+  transform: translateZ(0);
+}
+
+/* 3D Side/Extrusion */
+.catan-hex__side {
+  position: absolute;
+  inset: 0;
+  background: var(--hex-color-dark);
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+  transform: translateZ(-20px) translateY(10px);
+  filter: brightness(0.7);
+}
+
+/* Hex Border */
+.catan-hex__border {
+  position: absolute;
+  inset: 0;
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+  border: 3px solid rgba(255,255,255,0.2);
+  pointer-events: none;
+}
+
+/* Hex Glow on Hover */
+.catan-hex__glow {
+  position: absolute;
+  inset: -10px;
+  background: var(--hex-color);
+  opacity: 0;
+  filter: blur(20px);
+  transition: opacity 0.3s ease;
+  z-index: -1;
+}
+
+.catan-hex:hover .catan-hex__glow {
+  opacity: 0.4;
+}
+
+/* ── Center Logo Tile ── */
+.catan-hex--center .catan-hex__surface {
+  background: linear-gradient(135deg, #FFD700 0%, #FFA500 50%, #FF6B00 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.catan-hex--center .catan-hex__surface::before {
+  content: '🏰';
+  font-size: 48px;
+  filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));
+}
+
+/* ── Type Label on Hex ── */
+.catan-hex__label {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: 'VT323', monospace;
+  font-size: 14px;
+  color: rgba(255,255,255,0.9);
+  text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* ── Settlement/City on Hex ── */
+.catan-settlement {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) translateZ(30px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.catan-settlement:hover {
+  transform: translate(-50%, -50%) translateZ(50px) scale(1.1);
+}
+
+/* Floating Sprite */
+.catan-settlement__sprite {
+  width: 64px;
+  height: 64px;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 8px 16px rgba(0,0,0,0.4));
+  animation: settlement-float 3s ease-in-out infinite;
+  /* Counter-rotate to face camera */
+  transform: rotateX(-55deg);
+}
+
+@keyframes settlement-float {
+  0%, 100% { transform: rotateX(-55deg) translateY(0px); }
+  50% { transform: rotateX(-55deg) translateY(-8px); }
+}
+
+.catan-settlement:hover .catan-settlement__sprite {
+  animation: settlement-bounce 0.5s ease-in-out infinite;
+}
+
+@keyframes settlement-bounce {
+  0%, 100% { transform: rotateX(-55deg) translateY(0px); }
+  50% { transform: rotateX(-55deg) translateY(-12px); }
+}
+
+/* Settlement Base (City/Tower) */
+.catan-settlement__base {
+  width: 40px;
+  height: 30px;
+  background: linear-gradient(180deg, #FFD700 0%, #B8860B 100%);
+  clip-path: polygon(10% 100%, 0% 60%, 15% 30%, 30% 0%, 70% 0%, 85% 30%, 100% 60%, 90% 100%);
+  position: relative;
+  margin-top: -5px;
+}
+
+.catan-settlement__base::before {
+  content: '';
+  position: absolute;
+  top: 5px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 20px;
+  height: 15px;
+  background: #1a1a2e;
+  clip-path: polygon(0% 0%, 100% 0%, 80% 100%, 20% 100%);
+}
+
+/* Settlement Name Tag */
+.catan-settlement__name {
+  font-family: 'VT323', monospace;
+  font-size: 12px;
+  color: #fff;
+  background: rgba(0,0,0,0.7);
+  padding: 2px 8px;
+  border-radius: 4px;
+  margin-top: 8px;
+  white-space: nowrap;
+  opacity: 0;
+  transform: translateY(-5px);
+  transition: all 0.2s ease;
+}
+
+.catan-settlement:hover .catan-settlement__name {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ── Roads ── */
+.catan-road {
+  position: absolute;
+  height: 8px;
+  background: linear-gradient(90deg, #8B4513 0%, #D2691E 50%, #8B4513 100%);
+  transform-origin: left center;
+  border-radius: 4px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+  pointer-events: none;
+}
+
+.catan-road::before,
+.catan-road::after {
+  content: '';
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  background: #D2691E;
+  border-radius: 50%;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.catan-road::before { left: -6px; }
+.catan-road::after { right: -6px; }
+
+/* ── Landing Page Header ── */
+.catan-landing-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  padding: 20px 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  z-index: 100;
+  background: linear-gradient(180deg, rgba(0,0,0,0.8) 0%, transparent 100%);
+}
+
+.catan-landing-header__title {
+  font-family: 'Dogica', monospace;
+  font-size: 24px;
+  font-weight: 700;
+  color: #FFD700;
+  text-shadow: 0 0 20px rgba(255,215,0,0.5);
+  letter-spacing: 2px;
+}
+
+.catan-landing-header__subtitle {
+  font-family: 'VT323', monospace;
+  font-size: 18px;
+  color: rgba(255,255,255,0.7);
+  margin-top: 4px;
+}
+
+.catan-landing-header__actions {
+  display: flex;
+  gap: 12px;
+}
+
+.catan-landing-header__btn {
+  font-family: 'Dogica', monospace;
+  font-size: 10px;
+  padding: 10px 20px;
+  border: 2px solid;
+  border-radius: 0;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  letter-spacing: 1px;
+}
+
+.catan-landing-header__btn--primary {
+  background: #FFD700;
+  color: #1a1a00;
+  border-color: #FFD700;
+}
+
+.catan-landing-header__btn--primary:hover {
+  background: #ffe840;
+  box-shadow: 0 0 20px rgba(255,215,0,0.5);
+}
+
+.catan-landing-header__btn--secondary {
+  background: transparent;
+color: #fff;
+  border-color: rgba(255,255,255,0.3);
+}
+
+.catan-landing-header__btn--secondary:hover {
+  border-color: #fff;
+  background: rgba(255,255,255,0.1);
+}
+
+/* ── Landing Page Footer ── */
+.catan-landing-footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 20px 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 40px;
+  z-index: 100;
+  background: linear-gradient(0deg, rgba(0,0,0,0.8) 0%, transparent 100%);
+}
+
+.catan-landing-footer__stat {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: 'VT323', monospace;
+  font-size: 16px;
+  color: rgba(255,255,255,0.8);
+}
+
+.catan-landing-footer__stat-value {
+  color: #FFD700;
+  font-size: 20px;
+}
+
+/* ── Loading State ── */
+.catan-loading {
+  position: fixed;
+  inset: 0;
+  background: #0a0a15;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.catan-loading__spinner {
+  width: 60px;
+  height: 60px;
+  border: 4px solid rgba(255,215,0,0.2);
+  border-top-color: #FFD700;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.catan-loading__text {
+  font-family: 'VT323', monospace;
+  font-size: 18px;
+  color: #FFD700;
+  margin-top: 20px;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .catan-hex {
+    width: 80px;
+    height: 92px;
+  }
+  
+  .catan-settlement__sprite {
+    width: 48px;
+    height: 48px;
+  }
+  
+  .catan-settlement__base {
+    width: 30px;
+    height: 22px;
+  }
+  
+  .catan-landing-header {
+    padding: 16px 20px;
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  .catan-landing-header__title {
+    font-size: 18px;
+  }
+  
+  .catan-landing-footer {
+    flex-wrap: wrap;
+    gap: 20px;
+  }
+}
