@@ -744,3 +744,843 @@
   .city-lot { width: calc(50vw - 24px); }
   .city-lot--empty { width: calc(50vw - 24px); }
 }
+
+/* ═══════════════════════════════════════════
+   Module Components (Tasks, Calendar, Notes, etc.)
+   ═══════════════════════════════════════════ */
+
+/* ── Module Header ── */
+.mod-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+.mod-title {
+  font-family: 'Dogica', monospace;
+  font-size: 12px;
+  font-weight: 700;
+  color: #FFD700;
+  letter-spacing: 0.05em;
+}
+
+/* ── Buttons ── */
+.mod-btn {
+  font-family: 'Dogica', monospace;
+  font-size: 8px;
+  font-weight: 700;
+  background: rgba(255,255,255,0.08);
+  color: #ccc;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 2px;
+  padding: 6px 10px;
+  cursor: pointer;
+  letter-spacing: 0.04em;
+  transition: all 0.12s;
+}
+
+.mod-btn:hover {
+  background: rgba(255,255,255,0.14);
+  color: #fff;
+  border-color: rgba(255,255,255,0.2);
+}
+
+.mod-btn--sm {
+  padding: 4px 8px;
+  font-size: 7px;
+}
+
+.mod-btn--danger {
+  background: rgba(239,68,68,0.15);
+  color: #ff6b6b;
+  border-color: rgba(239,68,68,0.3);
+}
+
+.mod-btn--danger:hover {
+  background: rgba(239,68,68,0.25);
+}
+
+/* ── Tabs ── */
+.mod-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.mod-tab {
+  font-family: 'VT323', monospace;
+  font-size: 14px;
+  background: none;
+  border: none;
+  color: #8b8b9e;
+  padding: 6px 12px;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: all 0.12s;
+}
+
+.mod-tab:hover {
+  color: #ccc;
+  background: rgba(255,255,255,0.04);
+}
+
+.mod-tab.active {
+  color: #FFD700;
+  background: rgba(255,215,0,0.1);
+}
+
+/* ── Card ── */
+.mod-card {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 4px;
+  padding: 12px;
+  margin-bottom: 8px;
+  transition: border-color 0.12s;
+}
+
+.mod-card:hover {
+  border-color: rgba(255,255,255,0.12);
+}
+
+/* ── Checkbox ── */
+.checkbox {
+  width: 18px;
+  height: 18px;
+  min-width: 18px;
+  border: 2px solid rgba(255,255,255,0.25);
+  border-radius: 3px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: transparent;
+  transition: all 0.12s;
+  margin-top: 2px;
+}
+
+.checkbox:hover {
+  border-color: rgba(255,255,255,0.4);
+}
+
+.checkbox.checked {
+  background: rgba(16,185,129,0.2);
+  border-color: #10b981;
+  color: #10b981;
+}
+
+/* ── Priority ── */
+.priority--low { background: #8b8b9e; }
+.priority--normal { background: #3b82f6; }
+.priority--high { background: #f59e0b; }
+.priority--urgent { background: #ef4444; }
+
+/* ── Status Badge ── */
+.status-badge {
+  font-family: 'VT323', monospace;
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 2px;
+}
+
+.status--backlog {
+  background: rgba(255,255,255,0.06);
+  color: #8b8b9e;
+}
+
+.status--inProgress {
+  background: rgba(245,158,11,0.15);
+  color: #f59e0b;
+}
+
+.status--done {
+  background: rgba(16,185,129,0.15);
+  color: #10b981;
+}
+
+/* ── Form ── */
+.mod-form {
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 4px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.mod-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-family: 'VT323', monospace;
+  font-size: 14px;
+  color: #8b8b9e;
+  margin-bottom: 12px;
+}
+
+.mod-form input,
+.mod-form select,
+.mod-form textarea {
+  background: rgba(0,0,0,0.3);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 3px;
+  color: #f0f0f5;
+  padding: 8px 10px;
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.12s;
+}
+
+.mod-form input:focus,
+.mod-form select:focus,
+.mod-form textarea:focus {
+  border-color: #FFD700;
+}
+
+.mod-form-row {
+  display: flex;
+  gap: 12px;
+}
+
+.mod-form-row label {
+  flex: 1;
+  margin-bottom: 12px;
+}
+
+.mod-form-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+
+/* ── Empty State ── */
+.mod-empty {
+  text-align: center;
+  padding: 32px 16px;
+  color: #55556a;
+  font-family: 'VT323', monospace;
+  font-size: 16px;
+}
+
+/* ── Shop Panel (PokéCenter style) ── */
+.pokecenter {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  z-index: 50;
+  pointer-events: none;
+}
+
+.pokecenter__hero {
+  position: absolute;
+  bottom: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+  transition: opacity 0.3s;
+  pointer-events: all;
+}
+
+.pokecenter__hero--dim {
+  opacity: 0.4;
+}
+
+.pokecenter__keeper {
+  cursor: pointer;
+}
+
+.pokecenter__keeper-sprite {
+  width: 80px;
+  height: 80px;
+  image-rendering: auto;
+  animation: sprite-float 2s ease-in-out infinite;
+}
+
+.pokecenter__bubble {
+  background: #fff;
+  color: #1a1a00;
+  font-family: 'VT323', monospace;
+  font-size: 16px;
+  padding: 8px 16px;
+  border-radius: 12px;
+  position: relative;
+  margin-top: 8px;
+  white-space: nowrap;
+}
+
+.pokecenter__bubble::before {
+  content: '';
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-bottom-color: #fff;
+  border-top: none;
+}
+
+/* ── Shop Panel ── */
+.shop-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(0,0,0,0.7);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  animation: fadeIn 0.2s ease-out;
+  pointer-events: all;
+}
+
+.shop-panel {
+  width: 100%;
+  max-width: 600px;
+  max-height: 85vh;
+  background: #0d0d20;
+  border: 3px solid #FFD700;
+  border-bottom: none;
+  border-radius: 8px 8px 0 0;
+  display: flex;
+  flex-direction: column;
+  animation: panel-slide-up 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.shop-panel__header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: rgba(0,0,0,0.3);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  flex-shrink: 0;
+}
+
+.shop-panel__back {
+  font-family: 'Dogica', monospace;
+  font-size: 8px;
+  background: none;
+  border: 1px solid rgba(255,255,255,0.15);
+  color: #ccc;
+  padding: 6px 10px;
+  cursor: pointer;
+  border-radius: 2px;
+}
+
+.shop-panel__back:hover {
+  background: rgba(255,255,255,0.08);
+  color: #fff;
+}
+
+.shop-panel__title {
+  font-family: 'Dogica', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  color: #FFD700;
+  letter-spacing: 0.05em;
+  flex: 1;
+}
+
+.shop-panel__close {
+  font-size: 14px;
+  background: none;
+  border: none;
+  color: #8b8b9e;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+
+.shop-panel__close:hover {
+  color: #fff;
+}
+
+.shop-panel__body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+}
+
+.shop-panel__footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: rgba(0,0,0,0.2);
+  border-top: 1px solid rgba(255,255,255,0.06);
+  flex-shrink: 0;
+}
+
+.shop-panel__stats {
+  font-family: 'VT323', monospace;
+  font-size: 14px;
+  color: #8b8b9e;
+}
+
+.shop-panel__add-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.shop-panel__add-form select,
+.shop-panel__add-form input {
+  background: rgba(0,0,0,0.3);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 3px;
+  color: #f0f0f5;
+  padding: 8px 10px;
+  font-size: 13px;
+}
+
+.shop-panel__add-form select:focus,
+.shop-panel__add-form input:focus {
+  border-color: #FFD700;
+  outline: none;
+}
+
+/* ── Dashboard Grid ── */
+.dash-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+/* ── Dashboard Card ── */
+.dash-card {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 6px;
+  padding: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.dash-card:hover {
+  border-color: var(--card-accent, #FFD700);
+  transform: translateY(-2px);
+}
+
+.dash-card__top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.dash-card__sprite {
+  width: 40px;
+  height: 40px;
+  image-rendering: auto;
+}
+
+.dash-card__info {
+  flex: 1;
+  min-width: 0;
+}
+
+.dash-card__name {
+  font-family: 'Dogica', monospace;
+  font-size: 9px;
+  font-weight: 700;
+  color: #f0f0f5;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dash-card__badge {
+  font-family: 'VT323', monospace;
+  font-size: 11px;
+  color: #fff;
+  padding: 2px 6px;
+  border-radius: 2px;
+  margin-top: 2px;
+  display: inline-block;
+}
+
+.dash-card__widget {
+  min-height: 60px;
+}
+
+.dash-card--add {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100px;
+  border: 2px dashed rgba(255,215,0,0.3);
+  background: transparent;
+}
+
+.dash-card--add:hover {
+  border-color: #FFD700;
+  background: rgba(255,215,0,0.05);
+}
+
+.dash-card__add-icon {
+  font-size: 24px;
+  color: rgba(255,215,0,0.6);
+}
+
+.dash-card__add-label {
+  font-family: 'VT323', monospace;
+  font-size: 12px;
+  color: rgba(255,215,0,0.5);
+  margin-top: 4px;
+}
+
+.dash-card--add-form {
+  cursor: default;
+}
+
+.dash-card--add-form:hover {
+  transform: none;
+  border-color: rgba(255,255,255,0.06);
+}
+
+/* ── Dashboard Widgets ── */
+.dash-widget {
+  background: rgba(0,0,0,0.2);
+  border-radius: 4px;
+  padding: 8px;
+}
+
+.dash-widget__label {
+  font-family: 'VT323', monospace;
+  font-size: 12px;
+  color: #8b8b9e;
+  margin-bottom: 6px;
+}
+
+.dash-widget__stat {
+  font-family: 'VT323', monospace;
+  font-size: 11px;
+  color: #55556a;
+  margin-top: 6px;
+}
+
+/* Calendar Widget */
+.dash-cal {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  text-align: center;
+}
+
+.dash-cal__head {
+  font-size: 8px;
+  color: #55556a;
+  padding: 2px;
+}
+
+.dash-cal__day {
+  font-size: 9px;
+  color: #8b8b9e;
+  padding: 2px;
+  border-radius: 2px;
+}
+
+.dash-cal__day--today {
+  background: rgba(255,215,0,0.2);
+  color: #FFD700;
+}
+
+.dash-cal__day--event {
+  background: rgba(129,140,248,0.2);
+  color: #818cf8;
+}
+
+/* Tasks Widget */
+.dash-tasks__bar {
+  display: flex;
+  height: 6px;
+  border-radius: 3px;
+  overflow: hidden;
+  background: rgba(255,255,255,0.06);
+}
+
+.dash-tasks__seg {
+  height: 100%;
+}
+
+.dash-tasks__seg--done { background: #50c878; }
+.dash-tasks__seg--prog { background: #48dbfb; }
+.dash-tasks__seg--back { background: #8b9bb4; }
+.dash-tasks__seg--empty { background: rgba(255,255,255,0.06); }
+
+.dash-tasks__legend {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+  font-size: 9px;
+  color: #55556a;
+}
+
+.dash-tasks__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 3px;
+}
+
+/* Notes Widget */
+.dash-notes__stack {
+  position: relative;
+  height: 40px;
+}
+
+.dash-notes__page {
+  position: absolute;
+  width: 100%;
+  height: 32px;
+  background: #f5a623;
+  border-radius: 2px;
+  top: 0;
+}
+
+.dash-notes__preview {
+  font-size: 8px;
+  color: #1a1a00;
+  padding: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Travel Widget */
+.dash-travel__dest {
+  font-family: 'VT323', monospace;
+  font-size: 13px;
+  color: #f0f0f5;
+}
+
+.dash-travel__countdown {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.dash-travel__days {
+  font-size: 20px;
+  font-weight: 700;
+  color: #1abc9c;
+}
+
+.dash-travel__label {
+  font-size: 10px;
+  color: #8b8b9e;
+}
+
+.dash-travel__none {
+  font-size: 12px;
+  color: #55556a;
+}
+
+/* Health Widget */
+.dash-health__latest {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.dash-health__value {
+  font-size: 24px;
+  font-weight: 700;
+  color: #e74c3c;
+}
+
+.dash-health__type {
+  font-size: 10px;
+  color: #8b8b9e;
+}
+
+.dash-health__none {
+  font-size: 12px;
+  color: #55556a;
+}
+
+.dash-health__spark {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 24px;
+  margin-top: 8px;
+}
+
+.dash-health__bar {
+  flex: 1;
+  background: #e74c3c;
+  border-radius: 1px;
+  min-height: 4px;
+}
+
+/* Shopping Widget */
+.dash-shop__lists {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.dash-shop__list-pill {
+  font-size: 9px;
+  background: rgba(255,255,255,0.06);
+  color: #8b8b9e;
+  padding: 2px 6px;
+  border-radius: 8px;
+}
+
+.dash-shop__progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dash-shop__track {
+  flex: 1;
+  height: 4px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.dash-shop__fill {
+  height: 100%;
+  background: #e67e22;
+  transition: width 0.3s;
+}
+
+.dash-shop__count {
+  font-size: 10px;
+  color: #55556a;
+}
+
+/* ── Agent Edit Input ── */
+.agent-edit-input {
+  background: rgba(0,0,0,0.3);
+  border: 1px solid #FFD700;
+  border-radius: 2px;
+  color: #f0f0f5;
+  font-size: 14px;
+  padding: 4px 8px;
+  outline: none;
+  width: 100%;
+}
+
+.agent-edit-input--sm {
+  font-size: 12px;
+}
+
+/* ── Resident Panel (inside Shop) ── */
+.shop-panel__agent-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 4px;
+  margin-bottom: 16px;
+}
+
+.shop-panel__agent-sprite {
+  width: 48px;
+  height: 48px;
+  image-rendering: auto;
+}
+
+.resident-panel__name {
+  font-family: 'Dogica', monospace;
+  font-size: 12px;
+  font-weight: 700;
+  color: #f0f0f5;
+}
+
+.resident-panel__role {
+  font-family: 'VT323', monospace;
+  font-size: 14px;
+  color: #8b8b9e;
+}
+
+.resident-panel__delete {
+  font-family: 'Dogica', monospace;
+  font-size: 7px;
+  background: rgba(239,68,68,0.15);
+  color: #ef4444;
+  border: 1px solid rgba(239,68,68,0.3);
+  padding: 6px 10px;
+  cursor: pointer;
+  border-radius: 2px;
+}
+
+.resident-panel__delete:hover {
+  background: rgba(239,68,68,0.25);
+}
+
+/* ── Module Container ── */
+.module-container {
+  flex: 1;
+  overflow-y: auto;
+}
+
+/* ── Pokeball Transition ── */
+.pokeball-transition {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 120px;
+  z-index: 90;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.pokeball-transition__top,
+.pokeball-transition__bottom {
+  height: 30px;
+  background: #ef4444;
+  position: relative;
+}
+
+.pokeball-transition__top {
+  border-radius: 60px 60px 0 0;
+  background: linear-gradient(180deg, #ef4444 0%, #dc2626 100%);
+}
+
+.pokeball-transition__bottom {
+  border-radius: 0 0 60px 60px;
+  background: linear-gradient(180deg, #f0f0f5 0%, #d1d5db 100%);
+}
+
+.pokeball-transition__center {
+  height: 20px;
+  background: #1a1a00;
+  position: relative;
+}
+
+.pokeball-transition__button {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 24px;
+  height: 24px;
+  background: #f0f0f5;
+  border: 3px solid #1a1a00;
+  border-radius: 50%;
+}
+
+.pokeball-transition__top--open,
+.pokeball-transition__bottom--open {
+  opacity: 0;
+  transition: opacity 0.3s;
+}
