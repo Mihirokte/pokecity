@@ -45,6 +45,7 @@ export default function App() {
   const dataLoaded = useCityStore(s => s.dataLoaded);
 
   const [booting, setBooting] = useState(true);
+  const [newVersionAvailable, setNewVersionAvailable] = useState(false);
 
   // On mount: try restoring session or handling OAuth callback
   useEffect(() => {
@@ -58,38 +59,6 @@ export default function App() {
       setBooting(false);
     })();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Periodically check for new deployments (cache busting)
-  // Every 5 minutes, fetch index.html to see if it has changed
-  useEffect(() => {
-    const checkForNewVersion = async () => {
-      try {
-        const response = await fetch(`${import.meta.env.BASE_URL}index.html`, {
-          method: 'HEAD',
-          cache: 'no-cache',
-        });
-        // Get the etag or last-modified header as a version identifier
-        const etag = response.headers.get('etag');
-        const lastModified = response.headers.get('last-modified');
-        const versionId = etag || lastModified || '';
-
-        // Store and compare with previous version
-        const storedVersionId = sessionStorage.getItem('pokecity_version_id');
-        if (storedVersionId && storedVersionId !== versionId) {
-          addToast('A new version is available! Refresh the page to get the latest features.', 'info');
-        } else if (!storedVersionId && versionId) {
-          sessionStorage.setItem('pokecity_version_id', versionId);
-        }
-      } catch (e) {
-        // Silently fail - network error or cors issue
-        console.debug('Version check failed:', e);
-      }
-    };
-
-    checkForNewVersion();
-    const interval = setInterval(checkForNewVersion, 5 * 60 * 1000); // Check every 5 minutes
-    return () => clearInterval(interval);
-  }, [addToast]);
 
   // After auth, bootstrap spreadsheet, ensure new sheets exist, load data
   useEffect(() => {

@@ -45,6 +45,7 @@ export default function App() {
   const dataLoaded = useCityStore(s => s.dataLoaded);
 
   const [booting, setBooting] = useState(true);
+  const [newVersionAvailable, setNewVersionAvailable] = useState(false);
 
   // On mount: try restoring session or handling OAuth callback
   useEffect(() => {
@@ -76,6 +77,7 @@ export default function App() {
         // Store and compare with previous version
         const storedVersionId = sessionStorage.getItem('pokecity_version_id');
         if (storedVersionId && storedVersionId !== versionId) {
+          setNewVersionAvailable(true);
           addToast('A new version is available! Refresh the page to get the latest features.', 'info');
         } else if (!storedVersionId && versionId) {
           sessionStorage.setItem('pokecity_version_id', versionId);
