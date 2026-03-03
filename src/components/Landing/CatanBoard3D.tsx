@@ -93,10 +93,22 @@ function FloatingAgentName({
   );
 }
 
-// Sprite: sized to fit within hex (match CatanCityScene)
-const SPRITE_SIZE = HEX_SIZE * 0.92;
+// Sprite: smaller, match CatanCityScene; float applied in useFrame
+const SPRITE_SIZE = HEX_SIZE * 0.48;
 const HEX_TOP_Y = 0.65;
-const SPRITE_Y = HEX_TOP_Y + SPRITE_SIZE / 2 + 0.15;
+const SPRITE_Y = HEX_TOP_Y + SPRITE_SIZE / 2 + 0.08;
+
+/** Wraps sprite in a group that bobs up/down (floating animation) */
+function SpriteWithFloat({ baseY, children }: { baseY: number; children: React.ReactNode }) {
+  const groupRef = useRef<THREE.Group>(null);
+  useFrame((state) => {
+    if (groupRef.current) {
+      const t = state.clock.elapsedTime * 1.8;
+      groupRef.current.position.y = baseY + Math.sin(t) * 0.12;
+    }
+  });
+  return <group ref={groupRef} position={[0, baseY, 0]}>{children}</group>;
+}
 
 // ============================================================================
 // HEX TILE COMPONENT
@@ -204,7 +216,7 @@ function HexTile({
       )}
 
       {pokemonId && pokeTexture && (
-        <group position={[0, SPRITE_Y, 0]}>
+        <SpriteWithFloat baseY={SPRITE_Y}>
           <Billboard follow={true}>
             <mesh renderOrder={1} castShadow={false}>
               <planeGeometry args={[SPRITE_SIZE, SPRITE_SIZE]} />
@@ -219,7 +231,7 @@ function HexTile({
               />
             </mesh>
           </Billboard>
-        </group>
+        </SpriteWithFloat>
       )}
     </group>
   );
