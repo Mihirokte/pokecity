@@ -198,11 +198,23 @@ export function CalendarModule({ resident }: CalendarModuleProps) {
           } as CalendarEvent;
         });
 
-      const otherEvents = moduleData.calendarEvents.filter(e => e.residentId !== resident.id);
-      const myManualEvents = moduleData.calendarEvents.filter(e => e.residentId === resident.id && !e.id.startsWith('gcal_'));
-      setModuleData('calendarEvents', [...otherEvents, ...myManualEvents, ...gcalEvents]);
+      const allLocal = moduleData.calendarEvents;
+      const otherEvents = allLocal.filter(e => e.residentId !== resident.id);
+      const myManualEvents = allLocal.filter(e => e.residentId === resident.id && !e.id.startsWith('gcal_'));
+      const oldGcalIds = allLocal
+        .filter(e => e.residentId === resident.id && e.id.startsWith('gcal_'))
+        .map(e => e.id);
 
+      setModuleData('calendarEvents', [...otherEvents, ...myManualEvents, ...gcalEvents]);
       addToast(`Synced ${gcalEvents.length} events from Google Calendar`, 'success');
+
+      // Persist to Sheets: replace old gcal rows with new ones (2 API calls total)
+      try {
+        await SheetsService.deleteRows('CalendarEvents', oldGcalIds);
+        await SheetsService.batchAppend('CalendarEvents', gcalEvents);
+      } catch {
+        addToast('Events synced locally — sheet save failed', 'info');
+      }
     } catch (e: unknown) {
       console.error('Google Calendar sync error:', e);
       addToast('Failed to sync Google Calendar', 'error');

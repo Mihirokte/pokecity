@@ -33,6 +33,12 @@ export function ShoppingModule({ resident }: { resident: Resident }) {
     [allItems, resident.id],
   );
 
+  // Sentinel items (itemName === '__list__') anchor list names in Sheets without showing in UI
+  const realItems = useMemo(
+    () => residentItems.filter(i => i.itemName !== '__list__'),
+    [residentItems],
+  );
+
   const listNames = useMemo(() => {
     const names = new Set(residentItems.map(i => i.listName));
     names.add(activeList);
@@ -40,8 +46,8 @@ export function ShoppingModule({ resident }: { resident: Resident }) {
   }, [residentItems, activeList]);
 
   const listItems = useMemo(
-    () => residentItems.filter(i => i.listName === activeList),
-    [residentItems, activeList],
+    () => realItems.filter(i => i.listName === activeList),
+    [realItems, activeList],
   );
 
   const groupedItems = useMemo(() => {
@@ -73,14 +79,36 @@ export function ShoppingModule({ resident }: { resident: Resident }) {
     [listItems],
   );
 
-  const handleCreateList = useCallback(() => {
+  const handleCreateList = useCallback(async () => {
     const name = newListName.trim();
     if (!name) return;
     setActiveList(name);
     setNewListName('');
     setShowNewList(false);
     addToast(`List "${name}" created`, 'success');
-  }, [newListName, addToast]);
+
+    // If no items exist for this list name yet, persist a sentinel item so the
+    // list survives page reload (list names are derived from ShoppingItems rows).
+    const alreadyExists = residentItems.some(i => i.listName === name);
+    if (!alreadyExists) {
+      const now = new Date().toISOString();
+      const sentinel: ShoppingItem = {
+        id: `shop_${crypto.randomUUID()}`,
+        residentId: resident.id,
+        listName: name,
+        itemName: '__list__',
+        quantity: '0',
+        unit: '',
+        estimatedPrice: '',
+        checked: 'false',
+        category: '',
+        createdAt: now,
+        updatedAt: now,
+      };
+      await sync('shoppingItems', allItems, [...allItems, sentinel],
+        () => SheetsService.append('ShoppingItems', sentinel), 'Failed to save list');
+    }
+  }, [newListName, residentItems, resident.id, allItems, sync, addToast]);
 
   const handleQuickAdd = useCallback(async () => {
     const name = quickAdd.trim();

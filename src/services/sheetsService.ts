@@ -346,6 +346,72 @@ export const SheetsService = {
     }
   },
 
+  // ── Batch append multiple rows in a single API call ──
+  async batchAppend(sheetName: SheetName, objs: AnyObject[]): Promise<void> {
+    if (!objs.length) return;
+    const { sheetId } = getAuth();
+    if (sheetId === SAMPLE_SPREADSHEET_ID) return Promise.resolve();
+    return withRetry(async () => {
+      const { token } = getAuth();
+      const tab = tabName(sheetName);
+      const rows = objs.map(obj => objectToRow(sheetName, obj));
+      const res = await fetch(
+        `${SHEETS_API}/${sheetId}/values/${encodeURIComponent(tab)}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`,
+        {
+          method: 'POST',
+          headers: headers(token),
+          body: JSON.stringify({ values: rows }),
+        },
+      );
+      if (!res.ok) {
+        const errBody = await res.text().catch(() => '');
+        if (res.status === 401) throw new Error(`Failed to batch append to ${sheetName} (401): Unauthorized`);
+        throw new Error(`Failed to batch append to ${sheetName} (${res.status}): ${errBody || res.statusText}`);
+      }
+    });
+  },
+
+  // ── Batch delete rows by IDs (single readAll + single batchUpdate) ──
+  async deleteRows(sheetName: SheetName, ids: string[]): Promise<void> {
+    if (!ids.length) return;
+    if (getAuth().sheetId === SAMPLE_SPREADSHEET_ID) return Promise.resolve();
+    return withRetry(async () => {
+      const { token, sheetId } = getAuth();
+      const { sheetGids } = useAuthStore.getState();
+      const gid = sheetGids[sheetName];
+      if (gid === undefined) throw new Error(`No GID for ${sheetName}`);
+
+      const all = await this.readAll<{ id: string }>(sheetName);
+      const idSet = new Set(ids);
+      // Collect 1-based data row indices (header is index 0), sort descending to avoid shifting
+      const rowIndices = all
+        .map((r, i) => (idSet.has(r.id) ? i + 1 : -1))
+        .filter(i => i !== -1)
+        .sort((a, b) => b - a);
+      if (!rowIndices.length) return;
+
+      const requests = rowIndices.map(rowIndex => ({
+        deleteDimension: {
+          range: {
+            sheetId: gid,
+            dimension: 'ROWS',
+            startIndex: rowIndex,
+            endIndex: rowIndex + 1,
+          },
+        },
+      }));
+      const res = await fetch(`${SHEETS_API}/${sheetId}:batchUpdate`, {
+        method: 'POST',
+        headers: headers(token),
+        body: JSON.stringify({ requests }),
+      });
+      if (!res.ok) {
+        const errBody = await res.text().catch(() => '');
+        throw new Error(`Failed to delete rows from ${sheetName} (${res.status}): ${errBody || res.statusText}`);
+      }
+    });
+  },
+
   // ── Delete a row by ID ──
   async deleteRow(sheetName: SheetName, id: string): Promise<void> {
     if (getAuth().sheetId === SAMPLE_SPREADSHEET_ID) return Promise.resolve();
