@@ -5,7 +5,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { SheetsService } from '../../services/sheetsService';
 import { SAMPLE_SPREADSHEET_ID } from '../../data/sampleData';
 import { HOUSE_TYPES, HOUSE_TYPE_LIST } from '../../config/houseTypes';
-import { spriteArtworkUrl, spriteUrl, PLAYER_POKEMON_ID, badgeUrl, HEADER_BADGE_ID, MODULE_BADGE_IDS } from '../../config/pokemon';
+import { spriteArtworkUrl, PLAYER_POKEMON_ID, badgeUrl, HEADER_BADGE_ID, MODULE_BADGE_IDS } from '../../config/pokemon';
 import type { HouseModuleType, House, Resident, SheetName } from '../../types';
 import { CityPanel } from './CityPanel';
 import { AboutMePanel } from './AboutMePanel';
@@ -21,7 +21,7 @@ export function CityView() {
   const houses = useCityStore(s => s.houses);
   const residents = useCityStore(s => s.residents);
   const cityName = useCityStore(s => s.cityName);
-  const findOrCreateHouse = useCityStore(s => s.findOrCreateHouse);
+  const placeHouse = useCityStore(s => s.placeHouse);
   const addResident = useCityStore(s => s.addResident);
   const logout = useAuthStore(s => s.logout);
   const addToast = useUIStore(s => s.addToast);
@@ -56,7 +56,7 @@ export function CityView() {
     if (!newAgentName.trim() || adding) return;
     setAdding(true);
     try {
-      const house = await findOrCreateHouse(newAgentType);
+      const house = await placeHouse(newAgentType);
       await addResident(house.id, newAgentName.trim());
       setNewAgentName('');
       setShowAddForm(false);
@@ -65,7 +65,7 @@ export function CityView() {
     } finally {
       setAdding(false);
     }
-  }, [newAgentName, newAgentType, adding, findOrCreateHouse, addResident, addToast, focusHeader]);
+  }, [newAgentName, newAgentType, adding, placeHouse, addResident, addToast, focusHeader]);
 
   // Build list: one entry per resident with their house
   const entries = residents
@@ -87,30 +87,6 @@ export function CityView() {
         <div className="city-header__stats">
           {entries.length} resident{entries.length !== 1 ? 's' : ''}
         </div>
-        {entries.length > 0 && (
-          <nav aria-label="Residents" style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-            {entries.map(({ resident, house }) => (
-              <button
-                key={resident.id}
-                type="button"
-                className="city-header__resident-btn city-header__resident-btn--sprite"
-                onClick={() => setSelected({ resident, house })}
-                onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelected({ resident, house }); } }}
-                aria-label={`Open ${resident.name}, ${house.name}`}
-                aria-pressed={selected?.resident.id === resident.id}
-                title={resident.name}
-              >
-                <img
-                  src={spriteUrl(resident.emoji)}
-                  alt=""
-                  width={28}
-                  height={28}
-                  style={{ display: 'block', imageRendering: 'pixelated' }}
-                />
-              </button>
-            ))}
-          </nav>
-        )}
         <div className="city-header__spacer" />
         <button
           type="button"
@@ -172,6 +148,25 @@ export function CityView() {
           LOGOUT
         </button>
       </header>
+
+      {/* Top-right: compact resident list (50% opacity block below header) */}
+      {entries.length > 0 && (
+        <div className="city-resident-block" aria-label="Residents">
+          <div className="city-resident-block__inner">
+            {entries.map(({ resident, house }) => (
+              <button
+                key={resident.id}
+                type="button"
+                className="city-resident-block__item"
+                onClick={() => setSelected({ resident, house })}
+                aria-label={`Open ${resident.name}`}
+              >
+                {resident.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* ── Empty State (no residents yet) ── */}
       {entries.length === 0 && !showAddForm && (
