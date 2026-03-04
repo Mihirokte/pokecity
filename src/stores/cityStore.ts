@@ -152,7 +152,7 @@ export const useCityStore = create<CityState>((set, get) => ({
 
   loadAllData: async () => {
     try {
-      const [houses, residents, calendarEvents, tasks, notes, tripPlans, healthMetrics, shoppingItems] =
+      const [rawHouses, rawResidents, calendarEvents, tasks, notes, tripPlans, healthMetrics, shoppingItems] =
         await Promise.all([
           SheetsService.readAll<House>('Houses'),
           SheetsService.readAll<Resident>('Residents'),
@@ -164,11 +164,43 @@ export const useCityStore = create<CityState>((set, get) => ({
           SheetsService.readAll<ShoppingItem>('ShoppingItems'),
         ]);
 
+      // Normalize gridX from sheet (strings) to number and deduplicate so each house has a unique hex
+      const defaultEmoji = String(RESIDENT_POKEMON_IDS[0]);
+      const houses: House[] = rawHouses.map((h) => ({
+        ...h,
+        gridX: Math.max(0, Math.min(BOARD_HEX_COUNT - 1, parseInt(String(h.gridX), 10) || 0)),
+        gridY: 0,
+      }));
+      const occupied = new Set<number>();
+      const normalizedHouses = houses.map((h) => {
+        let hexIndex = getHexIndexForHouse(h.gridX);
+        if (occupied.has(hexIndex)) {
+          const preferred = ORDERED_HOME_HEX_INDICES.find((i) => !occupied.has(i));
+          hexIndex = preferred ?? Array.from({ length: BOARD_HEX_COUNT }, (_, i) => i).find((i) => !occupied.has(i)) ?? 0;
+        }
+        occupied.add(hexIndex);
+        return { ...h, gridX: hexIndex };
+      });
+
+      // Normalize resident emoji (sheet returns string; ensure valid Pokémon id for sprites)
+      const residents: Resident[] = rawResidents.map((r) => {
+        const parsed = parseInt(String(r.emoji), 10);
+        const emoji = !Number.isNaN(parsed) && parsed > 0 ? String(parsed) : defaultEmoji;
+        return { ...r, emoji };
+      });
+
+      // Persist corrected positions so reload stays consistent
+      for (let i = 0; i < normalizedHouses.length; i++) {
+        if (normalizedHouses[i].gridX !== houses[i].gridX) {
+          SheetsService.update('Houses', normalizedHouses[i]).catch(() => syncFailedToast('Failed to save house position'));
+        }
+      }
+
       const meta = await SheetsService.readAll<{ key: string; value: string }>('Meta');
       const cityNameRow = meta.find(m => m.key === 'cityName');
 
       set({
-        houses,
+        houses: normalizedHouses,
         residents,
         moduleData: { calendarEvents, tasks, notes, tripPlans, healthMetrics, shoppingItems },
         cityName: cityNameRow?.value ?? 'My City',

@@ -510,16 +510,16 @@ function CatanScene({ entries, onSelectResident, onAddAgent, onEmptyTileClick, p
     new Map()
   );
 
-  // Load static fallback textures for unoccupied tiles (first frame of animated sprite)
+  // Load textures for residents + elements. From spreadsheet POV: entries come from sheet; don't dispose on re-fetch or sprites vanish.
   const texturesRef = useRef<Map<number, THREE.Texture>>(new Map());
   useEffect(() => {
-    const textureLoader = new THREE.TextureLoader();
     const residentIds = entries
       .map((e) => parseInt(e.resident.emoji, 10))
       .filter((n) => !Number.isNaN(n) && n > 0);
     const pokemonIds = [...new Set([...Object.values(ELEMENT_SPRITE_IDS), ...residentIds])];
-
+    const textureLoader = new THREE.TextureLoader();
     pokemonIds.forEach((pokemonId) => {
+      if (texturesRef.current.has(pokemonId)) return;
       const url = spriteAnimatedUrl(pokemonId);
       textureLoader.load(url, (texture) => {
         texture.magFilter = THREE.NearestFilter;
@@ -528,11 +528,13 @@ function CatanScene({ entries, onSelectResident, onAddAgent, onEmptyTileClick, p
         setSpriteTextures((prev) => new Map(prev).set(pokemonId, texture));
       });
     });
+  }, [entries]);
+  useEffect(() => {
     return () => {
       texturesRef.current.forEach((t) => t.dispose());
       texturesRef.current.clear();
     };
-  }, [entries]);
+  }, []);
 
   // Map of hex index → resident+house (gridX is hex index 0..18 or legacy slot 0..5)
   const occupiedTiles = useMemo(() => {
@@ -567,6 +569,9 @@ function CatanScene({ entries, onSelectResident, onAddAgent, onEmptyTileClick, p
         const isHomeTile = HOME_TILE_INDICES.has(idx);
         const entry = occupiedTiles.get(idx);
         const resident = entry?.resident;
+        const emojiNum = resident ? parseInt(resident.emoji, 10) : NaN;
+        const fallbackId = entry?.house ? getTileConfig(entry.house.type).pokemonId : null;
+        const spriteId = Number.isInteger(emojiNum) && emojiNum > 0 ? emojiNum : (fallbackId ?? 25);
 
         return (
           <group key={`hex-${q}-${r}`}>
@@ -576,10 +581,8 @@ function CatanScene({ entries, onSelectResident, onAddAgent, onEmptyTileClick, p
               bobOffset={idx * 0.15}
               typeLabel={tileType === 'desert' ? 'DESERT' : tileType.toUpperCase()}
               residentName={resident?.name}
-              residentSpriteId={resident ? parseInt(resident.emoji, 10) : undefined}
-              residentSpriteAnimatedUrl={
-                resident ? spriteAnimatedUrl(parseInt(resident.emoji, 10)) : undefined
-              }
+              residentSpriteId={resident ? spriteId : undefined}
+              residentSpriteAnimatedUrl={resident ? spriteAnimatedUrl(spriteId) : undefined}
               spriteTextures={spriteTextures}
               isHomeTile={isHomeTile}
               hideNameplate={panelOpen}
