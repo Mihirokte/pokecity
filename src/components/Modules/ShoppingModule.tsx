@@ -10,6 +10,7 @@ const DEFAULT_LIST = 'Groceries';
 export function ShoppingModule({ resident }: { resident: Resident }) {
   const moduleData = useCityStore(s => s.moduleData);
   const setModuleData = useCityStore(s => s.setModuleData);
+  const addCityXP = useCityStore(s => s.addCityXP);
   const addToast = useUIStore(s => s.addToast);
 
   const [activeList, setActiveList] = useState<string>(DEFAULT_LIST);
@@ -165,6 +166,7 @@ export function ShoppingModule({ resident }: { resident: Resident }) {
 
     const prev = allItems;
     setModuleData('shoppingItems', allItems.map(i => i.id === item.id ? updated : i));
+    if (updated.checked === 'true') addCityXP(2, 'shopping');
 
     try {
       await SheetsService.update('ShoppingItems', updated);
@@ -172,7 +174,7 @@ export function ShoppingModule({ resident }: { resident: Resident }) {
       setModuleData('shoppingItems', prev);
       addToast('Failed to update item', 'error');
     }
-  }, [allItems, setModuleData, addToast]);
+  }, [allItems, setModuleData, addToast, addCityXP]);
 
   // ── Delete single item ──
   const handleDelete = useCallback(async (id: string) => {

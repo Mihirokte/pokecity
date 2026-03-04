@@ -43,6 +43,7 @@ const emptyForm = (metricType: string): HealthForm => ({
 export function GymModule({ resident }: { resident: Resident }) {
   const moduleData = useCityStore(s => s.moduleData);
   const setModuleData = useCityStore(s => s.setModuleData);
+  const addCityXP = useCityStore(s => s.addCityXP);
   const addToast = useUIStore(s => s.addToast);
 
   const [activeType, setActiveType] = useState<string>('weight');
@@ -163,6 +164,7 @@ export function GymModule({ resident }: { resident: Resident }) {
     setForm(emptyForm(activeType));
     setShowForm(false);
     addToast('Metric logged', 'success');
+    addCityXP(10, 'gym');
 
     try {
       await SheetsService.append('HealthMetrics', entry);
@@ -170,7 +172,7 @@ export function GymModule({ resident }: { resident: Resident }) {
       setModuleData('healthMetrics', allMetrics);
       addToast('Failed to save metric', 'error');
     }
-  }, [form, resident.id, allMetrics, activeType, editingId, setModuleData, addToast]);
+  }, [form, resident.id, allMetrics, activeType, editingId, setModuleData, addToast, addCityXP]);
 
   const handleDelete = useCallback(async (id: string) => {
     const prev = allMetrics;

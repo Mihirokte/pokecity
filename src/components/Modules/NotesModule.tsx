@@ -13,6 +13,7 @@ interface NotesModuleProps {
 export function NotesModule({ resident }: NotesModuleProps) {
   const notes = useCityStore(s => s.moduleData.notes);
   const setModuleData = useCityStore(s => s.setModuleData);
+  const addCityXP = useCityStore(s => s.addCityXP);
   const addToast = useUIStore(s => s.addToast);
 
   const [activeNoteId, setActiveNoteId] = useState<string | null>(null);
@@ -176,12 +177,13 @@ export function NotesModule({ resident }: NotesModuleProps) {
     try {
       await SheetsService.append('Notes', note);
       addToast('Note created', 'success');
+      addCityXP(5, 'note');
     } catch {
       setModuleData('notes', notes);
       setActiveNoteId(null);
       addToast('Failed to create note', 'error');
     }
-  }, [newTitle, resident.id, notes, setModuleData, addToast]);
+  }, [newTitle, resident.id, notes, setModuleData, addToast, addCityXP]);
 
   const handleDelete = useCallback(
     async (noteId: string) => {

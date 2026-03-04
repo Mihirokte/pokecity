@@ -205,6 +205,7 @@ async function deleteGcalEvent(
 export function TasksModule({ resident }: TasksModuleProps) {
   const moduleData = useCityStore(s => s.moduleData);
   const setModuleData = useCityStore(s => s.setModuleData);
+  const addCityXP = useCityStore(s => s.addCityXP);
   const addToast = useUIStore(s => s.addToast);
   const accessToken = useAuthStore(s => s.accessToken);
 
@@ -321,6 +322,7 @@ export function TasksModule({ resident }: TasksModuleProps) {
       setShowForm(false);
       setEditingId(null);
       addToast('Task updated', 'success');
+      if (updated.status === 'done') addCityXP(10, 'task');
 
       try {
         await SheetsService.update('Tasks', updated);
@@ -359,7 +361,7 @@ export function TasksModule({ resident }: TasksModuleProps) {
         addToast('Failed to sync task', 'error');
       }
     }
-  }, [form, editingId, moduleData.tasks, resident.id, setModuleData, addToast, accessToken]);
+  }, [form, editingId, moduleData.tasks, resident.id, setModuleData, addToast, addCityXP, accessToken]);
 
   const handleDelete = useCallback(async (task: Task) => {
     const prev = moduleData.tasks;
@@ -392,6 +394,7 @@ export function TasksModule({ resident }: TasksModuleProps) {
     const next = prev.map(t => (t.id === task.id ? updated : t));
     setModuleData('tasks', next);
     addToast(`Status: ${STATUS_LABELS[nextStatus]}`, 'info');
+    if (nextStatus === 'done') addCityXP(10, 'task');
 
     try {
       await SheetsService.update('Tasks', updated);
@@ -408,7 +411,7 @@ export function TasksModule({ resident }: TasksModuleProps) {
         // silent
       }
     }
-  }, [moduleData.tasks, setModuleData, addToast, accessToken]);
+  }, [moduleData.tasks, setModuleData, addToast, addCityXP, accessToken]);
 
   const pushToGcal = useCallback(async (task: Task) => {
     if (!accessToken || !task.dueDate) return;

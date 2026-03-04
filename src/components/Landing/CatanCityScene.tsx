@@ -17,6 +17,7 @@ import {
 } from './catanData';
 import { spriteAnimatedUrl, ELEMENT_SPRITE_IDS } from '../../config/pokemon';
 import type { House, Resident } from '../../types';
+import type { SpriteStyle } from '../../stores/cityStore';
 
 /**
  * POST-LOGIN CITY SCENE ONLY.
@@ -33,6 +34,8 @@ interface CatanCitySceneProps {
   onEmptyTileClick?: (hexIndex: number) => void;
   /** When true, hide floating nameplates so they don't layer on top of the side panel */
   panelOpen?: boolean;
+  /** Optional: render residents as a 3D \"standee\" instead of a flat plane */
+  spriteStyle?: SpriteStyle;
 }
 
 // ============================================================================
@@ -127,6 +130,7 @@ interface HexTileProps {
   isHomeTile: boolean;
   /** When true, hide floating nameplate (e.g. when side panel is open) */
   hideNameplate?: boolean;
+  spriteStyle?: SpriteStyle;
 }
 
 function HexTile({
@@ -140,6 +144,7 @@ function HexTile({
   spriteTextures,
   isHomeTile,
   hideNameplate,
+  spriteStyle = '2d',
 }: HexTileProps) {
   const groupRef = useRef<THREE.Group>(null);
   const hexIndex = BOARD_HEXES.findIndex(([hq, hr]) => hq === q && hr === r);
@@ -247,22 +252,65 @@ function HexTile({
           </Billboard>
         </SpriteWithFloat>
       ) : pokemonId && pokeTexture ? (
-        <SpriteWithFloat baseY={SPRITE_Y}>
-          <Billboard follow={true}>
-            <mesh renderOrder={1} castShadow={false}>
-              <planeGeometry args={[SPRITE_SIZE, SPRITE_SIZE]} />
-              <meshBasicMaterial
-                map={pokeTexture}
-                transparent
-                alphaTest={0.02}
-                depthWrite={false}
-                side={THREE.DoubleSide}
-                color="#ffffff"
-                toneMapped={false}
-              />
+        <>
+          {/* Ground shadow (kept on tile, not billboarded) */}
+          {spriteStyle === '3d' && (
+            <mesh position={[0, HEX_TOP_Y + 0.03, 0]} rotation={[-Math.PI / 2, 0, 0]} renderOrder={0}>
+              <circleGeometry args={[SPRITE_SIZE * 0.32, 24]} />
+              <meshBasicMaterial color="#000000" transparent opacity={0.22} depthWrite={false} />
             </mesh>
-          </Billboard>
-        </SpriteWithFloat>
+          )}
+
+          <SpriteWithFloat baseY={SPRITE_Y}>
+            <Billboard follow={true}>
+              {spriteStyle === '3d' ? (
+                <group>
+                  {/* Front */}
+                  <mesh renderOrder={1} castShadow={false}>
+                    <planeGeometry args={[SPRITE_SIZE, SPRITE_SIZE]} />
+                    <meshStandardMaterial
+                      map={pokeTexture}
+                      transparent
+                      alphaTest={0.02}
+                      depthWrite={false}
+                      side={THREE.DoubleSide}
+                      color="#ffffff"
+                      roughness={0.55}
+                      metalness={0.05}
+                    />
+                  </mesh>
+                  {/* Back (slight offset to give thickness and avoid z-fight) */}
+                  <mesh position={[0, 0, -0.02]} rotation={[0, Math.PI, 0]} renderOrder={1} castShadow={false}>
+                    <planeGeometry args={[SPRITE_SIZE, SPRITE_SIZE]} />
+                    <meshStandardMaterial
+                      map={pokeTexture}
+                      transparent
+                      alphaTest={0.02}
+                      depthWrite={false}
+                      side={THREE.DoubleSide}
+                      color="#ffffff"
+                      roughness={0.55}
+                      metalness={0.05}
+                    />
+                  </mesh>
+                </group>
+              ) : (
+                <mesh renderOrder={1} castShadow={false}>
+                  <planeGeometry args={[SPRITE_SIZE, SPRITE_SIZE]} />
+                  <meshBasicMaterial
+                    map={pokeTexture}
+                    transparent
+                    alphaTest={0.02}
+                    depthWrite={false}
+                    side={THREE.DoubleSide}
+                    color="#ffffff"
+                    toneMapped={false}
+                  />
+                </mesh>
+              )}
+            </Billboard>
+          </SpriteWithFloat>
+        </>
       ) : null}
 
       {isOccupied && residentName && !hideNameplate && (
@@ -501,11 +549,12 @@ interface CatanSceneProps {
   onAddAgent?: () => void;
   onEmptyTileClick?: (hexIndex: number) => void;
   panelOpen?: boolean;
+  spriteStyle?: SpriteStyle;
 }
 
 const CENTER_HEX_INDEX = 10; // [0,0] in BOARD_HEXES
 
-function CatanScene({ entries, onSelectResident, onAddAgent, onEmptyTileClick, panelOpen }: CatanSceneProps) {
+function CatanScene({ entries, onSelectResident, onAddAgent, onEmptyTileClick, panelOpen, spriteStyle }: CatanSceneProps) {
   const [spriteTextures, setSpriteTextures] = useState<Map<number, THREE.Texture>>(
     new Map()
   );
@@ -586,6 +635,7 @@ function CatanScene({ entries, onSelectResident, onAddAgent, onEmptyTileClick, p
               spriteTextures={spriteTextures}
               isHomeTile={isHomeTile}
               hideNameplate={panelOpen}
+              spriteStyle={spriteStyle}
             />
 
             {/* Post-login: click occupied tile → open panel; click unoccupied → move agent here */}
@@ -1164,6 +1214,7 @@ export function CatanCityScene({
   onAddAgent,
   onEmptyTileClick,
   panelOpen,
+  spriteStyle,
 }: CatanCitySceneProps) {
   return (
     <Canvas
@@ -1179,7 +1230,14 @@ export function CatanCityScene({
       }}
     >
       <React.Suspense fallback={null}>
-        <CatanScene entries={entries} onSelectResident={onSelectResident} onAddAgent={onAddAgent} onEmptyTileClick={onEmptyTileClick} panelOpen={panelOpen} />
+        <CatanScene
+          entries={entries}
+          onSelectResident={onSelectResident}
+          onAddAgent={onAddAgent}
+          onEmptyTileClick={onEmptyTileClick}
+          panelOpen={panelOpen}
+          spriteStyle={spriteStyle}
+        />
       </React.Suspense>
     </Canvas>
   );

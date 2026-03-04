@@ -1,12 +1,12 @@
 import { useState, useCallback, useRef } from 'react';
-import { useCityStore } from '../../stores/cityStore';
+import { useCityStore, xpForLevel } from '../../stores/cityStore';
 import { useUIStore } from '../../stores/uiStore';
 import { useAuthStore } from '../../stores/authStore';
 import { SheetsService } from '../../services/sheetsService';
 import { SAMPLE_SPREADSHEET_ID } from '../../data/sampleData';
 import { HOUSE_TYPES, HOUSE_TYPE_LIST } from '../../config/houseTypes';
 import { spriteArtworkUrl, PLAYER_POKEMON_ID, badgeUrl, HEADER_BADGE_ID, MODULE_BADGE_IDS } from '../../config/pokemon';
-import type { HouseModuleType, House, Resident, SheetName } from '../../types';
+import type { HouseModuleType, House, Resident, SheetName, Task, CalendarEvent, Note } from '../../types';
 import { CityPanel } from './CityPanel';
 import { AboutMePanel } from './AboutMePanel';
 import { CatanCityScene } from '../Landing/CatanCityScene';
@@ -17,15 +17,32 @@ interface SelectedEntry {
   house: House;
 }
 
+const todayStr = () => new Date().toISOString().slice(0, 10);
+
 export function CityView() {
   const houses = useCityStore(s => s.houses);
   const residents = useCityStore(s => s.residents);
   const cityName = useCityStore(s => s.cityName);
+  const cityProgress = useCityStore(s => s.cityProgress);
+  const moduleData = useCityStore(s => s.moduleData);
   const placeHouse = useCityStore(s => s.placeHouse);
   const addResident = useCityStore(s => s.addResident);
+  const setSpriteStyle = useCityStore(s => s.setSpriteStyle);
+  const setModuleData = useCityStore(s => s.setModuleData);
+  const addCityXP = useCityStore(s => s.addCityXP);
   const logout = useAuthStore(s => s.logout);
   const addToast = useUIStore(s => s.addToast);
   const resetHouseTypes = useCityStore(s => s.resetHouseTypes);
+
+  const today = todayStr();
+  const eventsToday = moduleData.calendarEvents.filter(
+    e => e.startDate <= today && (e.endDate || e.startDate) >= today
+  ).length;
+  const tasksDueToday = moduleData.tasks.filter(
+    t => t.dueDate === today && t.status !== 'done'
+  ).length;
+  const goals = cityProgress.dailyGoals ?? { date: today, task: false, calendarNote: false, gymShop: false, bonusGiven: false };
+  const goalsForToday = goals.date === today ? goals : { date: today, task: false, calendarNote: false, gymShop: false, bonusGiven: false };
 
   const [selected, setSelected] = useState<SelectedEntry | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -35,6 +52,13 @@ export function CityView() {
   const [adding, setAdding] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [moveTargetHex, setMoveTargetHex] = useState<number | null>(null);
+  const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const [quickType, setQuickType] = useState<'task' | 'event' | 'note'>('task');
+  const [quickResidentId, setQuickResidentId] = useState('');
+  const [quickTitle, setQuickTitle] = useState('');
+  const [quickDate, setQuickDate] = useState(today);
+  const [quickAllDay, setQuickAllDay] = useState(true);
+  const [quickSaving, setQuickSaving] = useState(false);
 
   const updateHousePosition = useCityStore(s => s.updateHousePosition);
   const spreadsheetId = useAuthStore(s => s.spreadsheetId);
@@ -87,6 +111,54 @@ export function CityView() {
         <div className="city-header__stats">
           {entries.length} resident{entries.length !== 1 ? 's' : ''}
         </div>
+        <div className="city-header__progress" title={`${cityProgress.cityXP} XP · Level ${cityProgress.cityLevel}`}>
+          <span className="city-header__level">Lv.{cityProgress.cityLevel}</span>
+          <span className="city-header__xp">{cityProgress.cityXP} XP</span>
+          {cityProgress.dailyStreak > 0 && (
+            <span className="city-header__streak">{cityProgress.dailyStreak}d</span>
+          )}
+          <div className="city-header__xp-bar" role="progressbar" aria-valuenow={cityProgress.cityXP} aria-valuemin={xpForLevel(cityProgress.cityLevel)} aria-valuemax={xpForLevel(cityProgress.cityLevel + 1)}>
+            <div
+              className="city-header__xp-fill"
+              style={{
+                width: `${Math.min(100, (cityProgress.cityXP - xpForLevel(cityProgress.cityLevel)) / Math.max(1, xpForLevel(cityProgress.cityLevel + 1) - xpForLevel(cityProgress.cityLevel)) * 100)}%`,
+              }}
+            />
+          </div>
+        </div>
+        <div className="city-header__daily-goals" title="Daily goals: 1 task, 1 event/note, 1 workout/shop">
+          <span className={`city-header__goal ${goalsForToday.task ? 'city-header__goal--done' : ''}`} aria-label={goalsForToday.task ? 'Task done' : 'Complete 1 task'}>✓</span>
+          <span className={`city-header__goal ${goalsForToday.calendarNote ? 'city-header__goal--done' : ''}`} aria-label={goalsForToday.calendarNote ? 'Event/note done' : 'Add 1 event or note'}>📅</span>
+          <span className={`city-header__goal ${goalsForToday.gymShop ? 'city-header__goal--done' : ''}`} aria-label={goalsForToday.gymShop ? 'Workout/shop done' : 'Log workout or check 1 shop item'}>💪</span>
+        </div>
+        <div className="city-header__today" title="Events and tasks due today">
+          Today: {eventsToday} event{eventsToday !== 1 ? 's' : ''}, {tasksDueToday} task{tasksDueToday !== 1 ? 's' : ''} due
+        </div>
+        <button
+          type="button"
+          className="city-header__reset-btn"
+          title="Toggle board sprites (2D vs 3D standee)"
+          onClick={() => setSpriteStyle(cityProgress.spriteStyle === '3d' ? '2d' : '3d')}
+        >
+          {cityProgress.spriteStyle === '3d' ? '3D' : '2D'}
+        </button>
+        <button
+          type="button"
+          className="city-header__reset-btn"
+          title="Quick add a task, event, or note"
+          onClick={() => {
+            const first = entries[0]?.resident.id ?? '';
+            setQuickResidentId(first);
+            setQuickTitle('');
+            setQuickDate(today);
+            setQuickAllDay(true);
+            setQuickType('task');
+            setShowQuickAdd(true);
+          }}
+          disabled={entries.length === 0}
+        >
+          + QUICK
+        </button>
         <div className="city-header__spacer" />
         <button
           type="button"
@@ -198,6 +270,7 @@ export function CityView() {
           onAddAgent={() => setShowAddForm(true)}
           onEmptyTileClick={(hexIndex) => setMoveTargetHex(hexIndex)}
           panelOpen={selected !== null}
+          spriteStyle={cityProgress.spriteStyle}
         />
       </div>
 
@@ -237,6 +310,212 @@ export function CityView() {
             >
               Cancel
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Quick Add Modal ── */}
+      {showQuickAdd && (
+        <div
+          className="city-add-overlay"
+          onClick={e => { if (e.target === e.currentTarget) setShowQuickAdd(false); }}
+        >
+          <div className="city-add-panel" onClick={e => e.stopPropagation()}>
+            <div className="city-add-panel__title">+ QUICK ADD</div>
+
+            <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+              <button
+                type="button"
+                className={`city-btn city-btn--secondary${quickType === 'task' ? ' city-btn--primary' : ''}`}
+                onClick={() => setQuickType('task')}
+              >
+                TASK
+              </button>
+              <button
+                type="button"
+                className={`city-btn city-btn--secondary${quickType === 'event' ? ' city-btn--primary' : ''}`}
+                onClick={() => setQuickType('event')}
+              >
+                EVENT
+              </button>
+              <button
+                type="button"
+                className={`city-btn city-btn--secondary${quickType === 'note' ? ' city-btn--primary' : ''}`}
+                onClick={() => setQuickType('note')}
+              >
+                NOTE
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 10 }}>
+              <div style={{ fontFamily: 'Dogica, monospace', fontSize: 9, color: '#FFD700', letterSpacing: '0.06em' }}>
+                ASSIGN TO RESIDENT
+              </div>
+              <select
+                className="city-add-panel__input"
+                value={quickResidentId}
+                onChange={(e) => setQuickResidentId(e.target.value)}
+              >
+                {entries.map(({ resident, house }) => (
+                  <option key={resident.id} value={resident.id}>
+                    {resident.name} — {HOUSE_TYPES[house.type].label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <div style={{ fontFamily: 'Dogica, monospace', fontSize: 9, color: '#FFD700', letterSpacing: '0.06em' }}>
+                TITLE
+              </div>
+              <input
+                className="city-add-panel__input"
+                placeholder={quickType === 'task' ? 'New task...' : quickType === 'event' ? 'New event...' : 'New note...'}
+                value={quickTitle}
+                autoFocus
+                onChange={(e) => setQuickTitle(e.target.value)}
+              />
+            </div>
+
+            {(quickType === 'task' || quickType === 'event') && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 10 }}>
+                <div style={{ fontFamily: 'Dogica, monospace', fontSize: 9, color: '#FFD700', letterSpacing: '0.06em' }}>
+                  {quickType === 'task' ? 'DUE DATE' : 'DATE'}
+                </div>
+                <input
+                  className="city-add-panel__input"
+                  type="date"
+                  value={quickDate}
+                  onChange={(e) => setQuickDate(e.target.value)}
+                />
+                {quickType === 'event' && (
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontFamily: 'VT323, monospace', color: 'rgba(255,255,255,0.7)' }}>
+                    <input
+                      type="checkbox"
+                      checked={quickAllDay}
+                      onChange={(e) => setQuickAllDay(e.target.checked)}
+                    />
+                    All day
+                  </label>
+                )}
+              </div>
+            )}
+
+            <div className="city-add-panel__actions" style={{ marginTop: 12 }}>
+              <button
+                type="button"
+                className="city-btn city-btn--primary"
+                disabled={quickSaving || !quickTitle.trim() || !quickResidentId}
+                onClick={async () => {
+                  if (quickSaving) return;
+                  const title = quickTitle.trim();
+                  if (!title) return;
+                  const resident = residents.find(r => r.id === quickResidentId);
+                  if (!resident) { addToast('Resident not found', 'error'); return; }
+
+                  setQuickSaving(true);
+                  const now = new Date().toISOString();
+
+                  try {
+                    if (quickType === 'task') {
+                      const prev = moduleData.tasks;
+                      const task: Task = {
+                        id: `task_${crypto.randomUUID()}`,
+                        residentId: resident.id,
+                        title,
+                        priority: 'normal',
+                        status: 'backlog',
+                        dueDate: quickDate || '',
+                        notes: '',
+                        parentId: '',
+                        projectName: '',
+                        tags: '',
+                        createdAt: now,
+                        updatedAt: now,
+                        dueTime: '',
+                        gcalEventId: '',
+                        sortOrder: '',
+                      };
+                      setModuleData('tasks', [...prev, task]);
+                      try {
+                        await SheetsService.append('Tasks', task);
+                        setShowQuickAdd(false);
+                        addToast('Task created', 'success');
+                        focusHeader();
+                      } catch {
+                        setModuleData('tasks', prev);
+                        throw new Error('sync');
+                      }
+                    } else if (quickType === 'event') {
+                      const prev = moduleData.calendarEvents;
+                      const evt: CalendarEvent = {
+                        id: `evt_${crypto.randomUUID()}`,
+                        residentId: resident.id,
+                        title,
+                        startDate: quickDate || today,
+                        endDate: quickDate || today,
+                        startTime: '09:00',
+                        endTime: '10:00',
+                        allDay: quickAllDay ? 'true' : 'false',
+                        location: '',
+                        description: '',
+                        color: '#ff6b6b',
+                        recurrence: 'none',
+                        createdAt: now,
+                        updatedAt: now,
+                      };
+                      setModuleData('calendarEvents', [...prev, evt]);
+                      try {
+                        await SheetsService.append('CalendarEvents', evt);
+                        addCityXP(5, 'calendar');
+                        setShowQuickAdd(false);
+                        addToast('Event created', 'success');
+                        focusHeader();
+                      } catch {
+                        setModuleData('calendarEvents', prev);
+                        throw new Error('sync');
+                      }
+                    } else {
+                      const prev = moduleData.notes;
+                      const note: Note = {
+                        id: `note_${crypto.randomUUID()}`,
+                        residentId: resident.id,
+                        title,
+                        content: '',
+                        tags: '',
+                        version: '1',
+                        createdAt: now,
+                        updatedAt: now,
+                      };
+                      setModuleData('notes', [...prev, note]);
+                      try {
+                        await SheetsService.append('Notes', note);
+                        addCityXP(5, 'note');
+                        setShowQuickAdd(false);
+                        addToast('Note created', 'success');
+                        focusHeader();
+                      } catch {
+                        setModuleData('notes', prev);
+                        throw new Error('sync');
+                      }
+                    }
+                  } catch {
+                    addToast('Failed to sync quick add', 'error');
+                  } finally {
+                    setQuickSaving(false);
+                  }
+                }}
+              >
+                {quickSaving ? 'SAVING...' : '✓ SAVE'}
+              </button>
+              <button
+                type="button"
+                className="city-btn city-btn--secondary"
+                onClick={() => { setShowQuickAdd(false); focusHeader(); }}
+              >
+                CANCEL
+              </button>
+            </div>
           </div>
         </div>
       )}

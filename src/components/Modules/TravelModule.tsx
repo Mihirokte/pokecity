@@ -47,6 +47,7 @@ const TRANSPORT_LABELS: Record<TripLeg['transport'], string> = {
 export function TravelModule({ resident }: TravelModuleProps) {
   const tripPlans = useCityStore(s => s.moduleData.tripPlans);
   const setModuleData = useCityStore(s => s.setModuleData);
+  const addCityXP = useCityStore(s => s.addCityXP);
   const addToast = useUIStore(s => s.addToast);
 
   const [showForm, setShowForm] = useState(false);
@@ -132,12 +133,13 @@ export function TravelModule({ resident }: TravelModuleProps) {
     setFormEnd('');
     setShowForm(false);
     addToast('Trip created', 'success');
+    addCityXP(15, 'travel');
 
     SheetsService.append('TripPlans', trip).catch(() => {
       setModuleData('tripPlans', prev);
       addToast('Failed to save trip', 'error');
     });
-  }, [formName, formDest, formStart, formEnd, resident.id, tripPlans, setModuleData, addToast]);
+  }, [formName, formDest, formStart, formEnd, resident.id, tripPlans, setModuleData, addToast, addCityXP]);
 
   // ── Delete trip ──
   const handleDelete = useCallback(

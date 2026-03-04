@@ -50,10 +50,18 @@ export function CityPanel({ resident, house, onClose }: CityPanelProps) {
   const [dialogueDismissed, setDialogueDismissed] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
   const updateHousePosition = useCityStore(s => s.updateHousePosition);
+  const cityProgress = useCityStore(s => s.cityProgress);
   const ht = HOUSE_TYPES[house.type];
   const ModuleComponent = MODULE_MAP[house.type];
   const pokemonId = parseInt(resident.emoji, 10);
-  const dialogue = (Number.isNaN(pokemonId) ? null : POKEMON_DIALOGUES[pokemonId]) ?? DIALOGUES[house.type];
+  const baseDialogue = (Number.isNaN(pokemonId) ? null : POKEMON_DIALOGUES[pokemonId]) ?? DIALOGUES[house.type];
+  const vibe = (() => {
+    if (cityProgress.dailyStreak >= 7) return ' Your streak is legendary this week—keep it up!';
+    if (cityProgress.dailyStreak >= 3) return ' Nice streak! Let’s keep the chain going.';
+    if (cityProgress.cityLevel >= 5) return ' You’ve leveled up a ton—let’s push for the next milestone.';
+    return '';
+  })();
+  const dialogue = { ...baseDialogue, text: `${baseDialogue.text}${vibe}` };
   const pokemonName = Number.isNaN(pokemonId) ? null : (POKEMON_NAMES[pokemonId] ?? null);
   const currentHexIndex = getHexIndexForHouse(house.gridX);
 

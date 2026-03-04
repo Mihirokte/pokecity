@@ -43,6 +43,7 @@ function getLocalDate(d = new Date()): string {
 export function CalendarModule({ resident }: CalendarModuleProps) {
   const moduleData = useCityStore(s => s.moduleData);
   const setModuleData = useCityStore(s => s.setModuleData);
+  const addCityXP = useCityStore(s => s.addCityXP);
   const addToast = useUIStore(s => s.addToast);
 
   const [showForm, setShowForm] = useState(false);
@@ -154,6 +155,7 @@ export function CalendarModule({ resident }: CalendarModuleProps) {
       setModuleData('calendarEvents', [...allEvents, newEvent]);
       setShowForm(false);
       addToast('Event created', 'success');
+      addCityXP(5, 'calendar');
 
       try {
         await SheetsService.append('CalendarEvents', newEvent);
@@ -162,7 +164,7 @@ export function CalendarModule({ resident }: CalendarModuleProps) {
         addToast('Failed to sync event', 'error');
       }
     }
-  }, [form, editingId, moduleData.calendarEvents, resident.id, setModuleData, addToast]);
+  }, [form, editingId, moduleData.calendarEvents, resident.id, setModuleData, addToast, addCityXP]);
 
   const handleDelete = useCallback(async (id: string) => {
     const prev = moduleData.calendarEvents;

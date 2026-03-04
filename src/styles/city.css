@@ -140,6 +140,58 @@
   letter-spacing: 0.05em;
   white-space: nowrap;
 }
+.city-header__progress {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: 'VT323', monospace;
+  font-size: 14px;
+  color: rgba(255,255,255,0.9);
+}
+.city-header__level {
+  color: #FFD700;
+  font-weight: 700;
+}
+.city-header__xp {
+  color: #a0b0ff;
+}
+.city-header__streak {
+  color: #ffb86c;
+  font-weight: 700;
+}
+.city-header__xp-bar {
+  width: 48px;
+  height: 6px;
+  background: rgba(255,255,255,0.2);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.city-header__xp-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #50c878, #FFD700);
+  border-radius: 3px;
+  transition: width 0.2s ease;
+}
+.city-header__daily-goals {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 14px;
+}
+.city-header__goal {
+  opacity: 0.35;
+  transition: opacity 0.15s;
+}
+.city-header__goal--done {
+  opacity: 1;
+  color: #50c878;
+}
+.city-header__today {
+  font-family: 'VT323', monospace;
+  font-size: 13px;
+  color: rgba(255,255,255,0.7);
+  white-space: nowrap;
+}
 .city-header__resident-btn--sprite {
   padding: 4px;
   border: 2px solid rgba(255,255,255,0.2);
