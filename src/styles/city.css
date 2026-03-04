@@ -53,10 +53,6 @@
   from { opacity: 0; transform: translateY(6px) scale(0.96); }
   to   { opacity: 1; transform: translateY(0) scale(1); }
 }
-@keyframes overlay-fade-in {
-  from { opacity: 0; }
-  to   { opacity: 1; }
-}
 
 /* ── Pokémon badges (PokeAPI/sprites/badges) ── */
 .pokecity-badge {
@@ -1668,7 +1664,7 @@
   padding: 12px;
   cursor: pointer;
   transition: all 0.15s;
-  animation: card-enter 0.25s ease-out both;
+  animation: card-enter 0.25s ease-out;
 }
 
 .dash-card:hover {
