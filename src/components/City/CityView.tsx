@@ -104,7 +104,7 @@ export function CityView() {
       {/* ── Floating Header HUD ── */}
       <header ref={headerRef} className="city-header city-header--hud" tabIndex={-1}>
         <div className="city-header__brand">
-          <img src={badgeUrl(HEADER_BADGE_ID)} alt="" className="pokecity-badge pokecity-badge--header" />
+          <img src={badgeUrl(HEADER_BADGE_ID)} alt="" className="pokecity-badge pokecity-badge--header" loading="lazy" />
           <div className="city-header__name">{cityName}</div>
         </div>
         <span className="city-header__sep">|</span>
@@ -138,6 +138,7 @@ export function CityView() {
           type="button"
           className="city-header__reset-btn"
           title="Toggle board sprites (2D vs 3D standee)"
+          aria-label={`Switch to ${cityProgress.spriteStyle === '3d' ? '2D' : '3D'} sprites`}
           onClick={() => setSpriteStyle(cityProgress.spriteStyle === '3d' ? '2d' : '3d')}
         >
           {cityProgress.spriteStyle === '3d' ? '3D' : '2D'}
@@ -146,6 +147,7 @@ export function CityView() {
           type="button"
           className="city-header__reset-btn"
           title="Quick add a task, event, or note"
+          aria-label="Quick add a task, event, or note"
           onClick={() => {
             const first = entries[0]?.resident.id ?? '';
             setQuickResidentId(first);
@@ -163,6 +165,7 @@ export function CityView() {
         <button
           type="button"
           className="city-header__reset-btn"
+          aria-label="Reset all data and refresh"
           onClick={async () => {
             if (resettingAll) return;
             setResettingAll(true);
@@ -192,6 +195,7 @@ export function CityView() {
         <button
           type="button"
           className="city-header__reset-btn"
+          aria-label="Reset invalid house types to Tasks"
           onClick={async () => {
             if (resetting) return;
             setResetting(true);
@@ -247,6 +251,7 @@ export function CityView() {
             src={spriteArtworkUrl(PLAYER_POKEMON_ID)}
             alt="Pikachu"
             className="city-empty__sprite"
+            loading="lazy"
           />
           <div className="city-empty__title">YOUR CITY IS EMPTY!</div>
           <div className="city-empty__sub">
@@ -537,7 +542,7 @@ export function CityView() {
                   style={{ '--type-color': ht.color } as React.CSSProperties}
                   onClick={() => setNewAgentType(ht.type)}
                 >
-                  <img src={badgeUrl(MODULE_BADGE_IDS[ht.type] ?? 1)} alt="" className="pokecity-badge pokecity-badge--sm" />
+                  <img src={badgeUrl(MODULE_BADGE_IDS[ht.type] ?? 1)} alt="" className="pokecity-badge pokecity-badge--sm" loading="lazy" />
                   <span className="city-type-btn__emoji">{ht.emoji}</span>
                   <span className="city-type-btn__label">{ht.label.toUpperCase()}</span>
                 </button>

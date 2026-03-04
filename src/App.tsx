@@ -18,18 +18,37 @@ function LoadingScreen() {
       background: '#09090b',
       fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif",
     }}>
-      <div style={{
-        width: 64, height: 64, marginBottom: 24,
-        background: `url(https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/25.png) center/contain no-repeat`,
-        animation: 'pulse 1.5s ease infinite',
-      }} />
+      {/* Pokéball spinner */}
+      <div style={{ width: 64, height: 64, marginBottom: 24, position: 'relative', animation: 'pokeball-spin 1s linear infinite' }}>
+        <div style={{
+          position: 'absolute', inset: 0, borderRadius: '50%',
+          background: 'linear-gradient(to bottom, #e74c3c 50%, #f0f0f5 50%)',
+          border: '3px solid #1a1a2e',
+        }} />
+        <div style={{
+          position: 'absolute', top: '50%', left: 0, right: 0,
+          height: 4, background: '#1a1a2e', transform: 'translateY(-50%)',
+        }} />
+        <div style={{
+          position: 'absolute', top: '50%', left: '50%',
+          width: 16, height: 16, borderRadius: '50%',
+          background: '#f0f0f5', border: '3px solid #1a1a2e',
+          transform: 'translate(-50%, -50%)',
+        }} />
+        <div style={{
+          position: 'absolute', top: '50%', left: '50%',
+          width: 8, height: 8, borderRadius: '50%',
+          background: '#e74c3c',
+          transform: 'translate(-50%, -50%)',
+        }} />
+      </div>
       <div style={{ fontSize: 15, color: '#f0f0f5', fontWeight: 500, marginBottom: 6 }}>
         Loading PokéCity...
       </div>
       <div style={{ fontSize: 13, color: '#55556a' }}>
         Connecting to your data
       </div>
-      <style>{`@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }`}</style>
+      <style>{`@keyframes pokeball-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 }
