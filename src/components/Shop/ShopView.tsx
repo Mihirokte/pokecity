@@ -168,6 +168,7 @@ export function ShopView() {
             src={spriteArtworkUrl(PLAYER_POKEMON_ID)}
             alt="Pikachu"
             className="pokecenter__keeper-sprite"
+            loading="eager"
           />
           <div className="pokecenter__bubble">{speechText}</div>
         </div>
@@ -256,6 +257,7 @@ export function ShopView() {
                       src={spriteArtworkUrl(selectedAgent.emoji)}
                       alt={selectedAgent.name}
                       className="shop-panel__agent-sprite"
+                      loading="lazy"
                     />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       {editingField === 'name' ? (

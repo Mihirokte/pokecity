@@ -230,11 +230,12 @@ export function AgentCard({ resident, house, onClick }: AgentCardProps) {
           src={spriteArtworkUrl(resident.emoji)}
           alt={resident.name}
           className="dash-card__sprite"
+          loading="lazy"
         />
         <div className="dash-card__info">
           <div className="dash-card__name">{resident.name}</div>
           <div className="dash-card__meta">
-            <img src={badgeUrl(MODULE_BADGE_IDS[house.type] ?? 1)} alt="" className="pokecity-badge pokecity-badge--sm" />
+            <img src={badgeUrl(MODULE_BADGE_IDS[house.type] ?? 1)} alt="" className="pokecity-badge pokecity-badge--sm" loading="lazy" />
             <span className="dash-card__badge" style={{ background: ht.color }}>{ht.label}</span>
           </div>
         </div>
